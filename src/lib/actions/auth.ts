@@ -19,10 +19,18 @@ export async function login(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
   if (error) {
     return { error: "Invalid email or password." };
+  }
+
+  if (data.user.app_metadata.role !== "admin") {
+    await supabase.auth.signOut();
+    return { error: "This account does not have administrator access." };
   }
 
   redirect("/admin");

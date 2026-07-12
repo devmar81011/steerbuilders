@@ -10,7 +10,7 @@ export default async function AdminLoginPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) redirect("/admin");
+  if (user?.app_metadata.role === "admin") redirect("/admin");
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-sbc-off-white px-6">
