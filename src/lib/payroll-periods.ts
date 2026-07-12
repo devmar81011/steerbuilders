@@ -51,16 +51,13 @@ export function getWeeklyPayrollPeriod(weekStart: string): PayrollPeriod {
   const processDate = new Date(end);
   processDate.setDate(processDate.getDate() + 1);
 
-  const endYearSuffix =
-    end.getFullYear() !== start.getFullYear() ? `, ${end.getFullYear()}` : "";
-
   return {
     key: buildWeeklyKey(weekStart),
     cadence: "weekly",
     periodStart: weekStart,
     periodEnd: formatDateISO(end),
     processDate: formatDateISO(processDate),
-    label: `${formatShortDate(start)} – ${formatShortDate(end)}${endYearSuffix}`,
+    label: `Week of ${formatProcessDate(start)}`,
     processLabel: `Pay on ${formatProcessDate(processDate)}`,
   };
 }

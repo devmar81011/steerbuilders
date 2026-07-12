@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { logout } from "@/lib/actions/auth";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", exact: true },
@@ -87,12 +88,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <p className="text-sm font-semibold text-sbc-black">
             Steer Builders — Payroll System
           </p>
-          <Link
-            href="/admin/login"
-            className="text-xs font-medium uppercase tracking-widest text-sbc-gold hover:underline"
-          >
-            Sign In
-          </Link>
+          <form action={logout}>
+            <button
+              type="submit"
+              className="cursor-pointer text-xs font-medium uppercase tracking-widest text-sbc-gold hover:underline"
+            >
+              Sign Out
+            </button>
+          </form>
         </header>
 
         <main className="flex-1 p-6 md:p-8">{children}</main>

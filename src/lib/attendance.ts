@@ -105,21 +105,13 @@ export function shiftWeekStart(weekStart: string, weeks: number): string {
 
 export function formatWeekRange(weekStart: string): string {
   const start = parseDateISO(weekStart);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
-
-  const sameMonth = start.getMonth() === end.getMonth();
   const startFmt = start.toLocaleDateString("en-US", {
     month: "short",
-    day: "numeric",
-  });
-  const endFmt = end.toLocaleDateString("en-US", {
-    month: sameMonth ? undefined : "short",
     day: "numeric",
     year: "numeric",
   });
 
-  return `${startFmt} – ${endFmt}`;
+  return `Week of ${startFmt}`;
 }
 
 export function createDefaultAttendanceRow(
