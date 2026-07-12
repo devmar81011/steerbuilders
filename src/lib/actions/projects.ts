@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { ProjectInput, ProjectRow } from "@/lib/supabase/types";
 import { portfolio } from "@/lib/company-content";
+import { normalizeProjectImages } from "@/lib/project-images";
 
 export async function getProjects(): Promise<ProjectRow[]> {
   try {
@@ -15,7 +16,10 @@ export async function getProjects(): Promise<ProjectRow[]> {
       .order("name", { ascending: true });
 
     if (error || !data?.length) return [];
-    return data as ProjectRow[];
+    return (data as ProjectRow[]).map((row) => ({
+      ...row,
+      images: normalizeProjectImages(row.images),
+    }));
   } catch {
     return [];
   }
@@ -35,6 +39,7 @@ export async function getProjectsOrFallback(): Promise<ProjectRow[]> {
     description: p.description ?? null,
     featured: p.featured ?? false,
     category: p.category ?? null,
+    images: normalizeProjectImages(p.images),
     sort_order: index,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -43,7 +48,11 @@ export async function getProjectsOrFallback(): Promise<ProjectRow[]> {
 
 export async function createProject(input: ProjectInput) {
   const supabase = await createClient();
-  const { error } = await supabase.from("projects").insert(input);
+  const payload = {
+    ...input,
+    images: normalizeProjectImages(input.images),
+  };
+  const { error } = await supabase.from("projects").insert(payload);
   if (error) return { error: error.message };
   revalidatePath("/projects");
   revalidatePath("/admin/projects");
@@ -53,7 +62,13 @@ export async function createProject(input: ProjectInput) {
 
 export async function updateProject(id: string, input: Partial<ProjectInput>) {
   const supabase = await createClient();
-  const { error } = await supabase.from("projects").update(input).eq("id", id);
+  const payload = {
+    ...input,
+    ...(input.images !== undefined
+      ? { images: normalizeProjectImages(input.images) }
+      : {}),
+  };
+  const { error } = await supabase.from("projects").update(payload).eq("id", id);
   if (error) return { error: error.message };
   revalidatePath("/projects");
   revalidatePath("/admin/projects");
@@ -87,6 +102,7 @@ export async function seedProjectsFromContent() {
     description: p.description ?? null,
     featured: p.featured ?? false,
     category: p.category ?? null,
+    images: normalizeProjectImages(p.images),
     sort_order: index,
   }));
 

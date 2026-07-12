@@ -10,7 +10,7 @@ Living document for the Minimum Viable Product. **Always keep in sync with `src/
 
 ### Phase 1 — Public website ✅
 - [x] Branded homepage (company profile content from PDF)
-- [x] Proposal design system page (`/design-system`)
+- [x] Proposal design system (`/design-system`) — hidden from nav, direct URL for internal use
 - [x] About page with management team
 - [x] Full portfolio page (`/projects`)
 
@@ -43,7 +43,7 @@ Every time we ship something:
 | Route | Purpose |
 |-------|---------|
 | `/` | Public homepage |
-| `/design-system` | Brand & UI reference |
+| `/design-system` | Brand & UI reference (hidden — internal use only) |
 | `/mvp` | Live roadmap (reads mvp-status.ts) |
 | `/admin` | Payroll dashboard |
 | `/admin/employees` | Employee management |

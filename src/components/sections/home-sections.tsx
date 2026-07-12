@@ -1,7 +1,6 @@
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
-import { Button } from "@/components/ui/button";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { Card } from "@/components/ui/card";
 import {
@@ -12,6 +11,7 @@ import {
   services,
   proposalStats,
 } from "@/lib/company-content";
+import { ContactForm } from "@/components/sections/contact-form";
 
 export function HeroSection() {
   return (
@@ -164,27 +164,11 @@ export function ContactSection() {
           </div>
         </div>
 
-        <Card variant="dark" className="border-sbc-gray/30">
-          <form className="flex flex-col gap-4">
-            <input
-              type="text"
-              placeholder="Full Name"
-              className="border border-sbc-gray/40 bg-sbc-black px-4 py-3 text-sm font-medium text-sbc-white placeholder:text-sbc-gray focus:border-sbc-gold focus:outline-none"
-            />
-            <input
-              type="email"
-              placeholder="Email Address"
-              className="border border-sbc-gray/40 bg-sbc-black px-4 py-3 text-sm font-medium text-sbc-white placeholder:text-sbc-gray focus:border-sbc-gold focus:outline-none"
-            />
-            <textarea
-              placeholder="Tell us about your project..."
-              rows={4}
-              className="border border-sbc-gray/40 bg-sbc-black px-4 py-3 text-sm font-medium text-sbc-white placeholder:text-sbc-gray focus:border-sbc-gold focus:outline-none"
-            />
-            <Button type="button" className="self-start">
-              Send Inquiry
-            </Button>
-          </form>
+        <Card variant="dark" className="overflow-hidden border-sbc-gray/30 p-0">
+          <div className="h-1 bg-linear-to-r from-sbc-gold via-[#d4a647] to-sbc-gold-dark" />
+          <div className="p-6 md:p-8">
+            <ContactForm />
+          </div>
         </Card>
       </div>
     </Section>

@@ -1,11 +1,24 @@
 import Link from "next/link";
 import Image from "next/image";
+import type { Metadata } from "next";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableMeta,
+  TablePrimaryCell,
+  TableRow,
+  TableShell,
+} from "@/components/ui/table";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { colors } from "@/lib/design-tokens";
 import { company, mission } from "@/lib/company-content";
@@ -25,6 +38,11 @@ const sectionLabels = [
   "Completed Projects",
   "Ongoing Projects",
 ];
+
+export const metadata: Metadata = {
+  title: "Design System — Internal Reference",
+  robots: { index: false, follow: false },
+};
 
 export default function DesignSystemPage() {
   return (
@@ -161,6 +179,55 @@ export default function DesignSystemPage() {
                 <Button variant="outline">Outline</Button>
                 <Button variant="ghost">Ghost</Button>
               </div>
+              <div className="mt-4 flex flex-wrap gap-4 rounded-sm bg-sbc-black p-6">
+                <Button tone="dark">Primary</Button>
+                <Button tone="dark" variant="outline">
+                  Outline
+                </Button>
+                <Button tone="dark" variant="ghost">
+                  Ghost
+                </Button>
+              </div>
+            </div>
+            <div className="grid max-w-md gap-4">
+              <Input label="Text Input" placeholder="Sample value" />
+              <Select label="Dropdown" defaultValue="construction">
+                <option value="construction">Construction</option>
+                <option value="admin">Admin</option>
+              </Select>
+            </div>
+            <div>
+              <p className="mb-4 text-xs font-medium uppercase tracking-widest text-sbc-gray">
+                Data Table
+              </p>
+              <TableShell minWidth="640px">
+                <Table>
+                  <TableHeader>
+                    <tr>
+                      <TableHead>Project</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead align="right">Year</TableHead>
+                    </tr>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TablePrimaryCell subtitle="Cebu City">
+                        Dr. Sanchez Residence
+                      </TablePrimaryCell>
+                      <TableCell>
+                        <Badge>Completed</Badge>
+                      </TableCell>
+                      <TableCell align="right" className="!font-semibold">
+                        2024
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+                <TableMeta>
+                  <span>1 project</span>
+                  <span className="text-sbc-gold">Sample row</span>
+                </TableMeta>
+              </TableShell>
             </div>
             <div>
               <p className="mb-4 text-xs font-medium uppercase tracking-widest text-sbc-gray">
@@ -172,7 +239,7 @@ export default function DesignSystemPage() {
                 <Badge variant="light">Put on hold</Badge>
               </div>
             </div>
-            <div className="max-w-md">
+            <div className="hidden max-w-md">
               <p className="mb-4 text-xs font-medium uppercase tracking-widest text-sbc-gray">
                 Contact Form
               </p>

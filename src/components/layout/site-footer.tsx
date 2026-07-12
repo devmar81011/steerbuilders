@@ -44,11 +44,9 @@ export function SiteFooter() {
             </div>
             <div>
               <p className="mb-3 text-xs font-medium uppercase tracking-widest text-sbc-gold">
-                Resources
+                Team
               </p>
               <ul className="space-y-2 text-sm font-medium text-sbc-gray-light">
-                <li><Link href="/design-system" className="hover:text-sbc-gold">Design System</Link></li>
-                <li><Link href="/mvp" className="hover:text-sbc-gold">MVP Roadmap</Link></li>
                 <li><Link href="/admin" className="hover:text-sbc-gold">Admin</Link></li>
               </ul>
             </div>

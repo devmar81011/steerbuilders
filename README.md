@@ -15,7 +15,7 @@ See **[MVP.md](./MVP.md)** for scope and **[CHANGELOG.md](./CHANGELOG.md)** for 
 | Route | Description |
 |-------|-------------|
 | `/` | Public homepage |
-| `/design-system` | Brand & UI kit |
+| `/design-system` | Brand & UI kit (hidden — `/design-system` direct URL) |
 | `/mvp` | Live roadmap (auto-synced from code) |
 | `/admin` | Payroll dashboard |
 | `/admin/employees` | Employee management |

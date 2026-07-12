@@ -1,7 +1,10 @@
+import type { EmployeeCategory, EmployeeRole } from "@/lib/employee-categories";
+
 export type Employee = {
   id: string;
   name: string;
-  role: string;
+  category: EmployeeCategory;
+  role: EmployeeRole;
   rate: number;
   rateType: "hourly" | "salary";
   status: "active" | "inactive";
@@ -24,7 +27,8 @@ export const mockEmployees: Employee[] = [
   {
     id: "emp-001",
     name: "Juan Dela Cruz",
-    role: "Site Foreman",
+    category: "construction",
+    role: "Foreman",
     rate: 450,
     rateType: "hourly",
     status: "active",
@@ -32,7 +36,8 @@ export const mockEmployees: Employee[] = [
   {
     id: "emp-002",
     name: "Maria Santos",
-    role: "Project Manager",
+    category: "admin",
+    role: "Operations",
     rate: 65000,
     rateType: "salary",
     status: "active",
@@ -40,7 +45,8 @@ export const mockEmployees: Employee[] = [
   {
     id: "emp-003",
     name: "Pedro Reyes",
-    role: "Mason",
+    category: "construction",
+    role: "Skilled",
     rate: 380,
     rateType: "hourly",
     status: "active",
@@ -48,7 +54,8 @@ export const mockEmployees: Employee[] = [
   {
     id: "emp-004",
     name: "Ana Lopez",
-    role: "Accountant",
+    category: "admin",
+    role: "Finance/Admin",
     rate: 55000,
     rateType: "salary",
     status: "active",

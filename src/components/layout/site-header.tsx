@@ -45,9 +45,6 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <ButtonLink href="/design-system" variant="ghost" tone="dark" size="sm" className="hidden lg:inline-flex">
-            Design System
-          </ButtonLink>
           <ButtonLink href="/#contact" tone="dark" size="sm">
             Get a Quote
           </ButtonLink>

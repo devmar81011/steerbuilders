@@ -3,15 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MVP_VERSION } from "@/lib/mvp-status";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", exact: true },
   { href: "/admin/projects", label: "Projects" },
+  { href: "/admin/rates", label: "Daily Rates" },
   { href: "/admin/employees", label: "Employees" },
   { href: "/admin/payroll", label: "Payroll" },
-  { href: "/admin/review", label: "PDF Review" },
-  { href: "/admin/design", label: "Design Spec" },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
@@ -19,8 +17,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-sbc-off-white">
-      <aside className="hidden w-64 flex-col border-r border-sbc-gray-light bg-sbc-black text-sbc-white md:flex">
-        <div className="border-b border-sbc-gray/30 p-6">
+      <aside className="hidden w-64 flex-col border-r border-sbc-gray-light bg-sbc-white md:flex">
+        <div className="border-b border-sbc-gray-light p-6">
           <Link href="/admin" className="flex items-center gap-3">
             <Image
               src="/brand/logo-sbc.png"
@@ -30,8 +28,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               className="h-9 w-auto"
             />
             <div>
-              <p className="text-xs font-normal uppercase tracking-widest">Admin</p>
-              <p className="text-[10px] font-medium text-sbc-gold">MVP v{MVP_VERSION}</p>
+              <p className="text-xs font-normal uppercase tracking-widest text-sbc-black">
+                Admin
+              </p>
+              <p className="text-[10px] font-medium text-sbc-gold">Payroll System</p>
             </div>
           </Link>
         </div>
@@ -46,10 +46,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`block px-4 py-3 text-xs font-medium uppercase tracking-widest transition-colors ${
+                    className={`block border-l-2 px-4 py-2.5 text-xs font-medium uppercase tracking-widest transition-colors ${
                       active
-                        ? "bg-sbc-gold text-sbc-white"
-                        : "text-sbc-gray-light hover:bg-sbc-gray/20 hover:text-sbc-gold"
+                        ? "border-sbc-gold bg-sbc-gold/10 text-sbc-gold-dark"
+                        : "border-transparent text-sbc-gray hover:border-sbc-gold/40 hover:bg-sbc-gold/5 hover:text-sbc-gold-dark"
                     }`}
                   >
                     {item.label}
@@ -60,10 +60,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </ul>
         </nav>
 
-        <div className="border-t border-sbc-gray/30 p-4">
+        <div className="border-t border-sbc-gray-light p-4">
           <Link
             href="/"
-            className="block px-4 py-2 text-xs font-medium uppercase tracking-widest text-sbc-gray hover:text-sbc-gold"
+            className="block px-4 py-2 text-xs font-medium uppercase tracking-widest text-sbc-gray hover:text-sbc-gold-dark"
           >
             ← Public Site
           </Link>

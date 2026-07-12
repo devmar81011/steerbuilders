@@ -5,6 +5,7 @@
 create table if not exists public.employees (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  category text not null default 'construction' check (category in ('construction', 'admin')),
   role text not null,
   rate numeric(12, 2) not null,
   rate_type text not null check (rate_type in ('hourly', 'salary')),

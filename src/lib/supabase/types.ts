@@ -3,11 +3,12 @@ export type ProjectRow = {
   name: string;
   scope: string;
   location: string;
-  status: "Completed" | "Ongoing" | "Put on hold in 2025";
+  status: string;
   completion: string;
   description: string | null;
   featured: boolean;
   category: "completed" | "ongoing" | null;
+  images: string[];
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -22,12 +23,14 @@ export type ProjectInput = {
   description?: string;
   featured?: boolean;
   category?: ProjectRow["category"];
+  images?: string[];
   sort_order?: number;
 };
 
 export type EmployeeRow = {
   id: string;
   name: string;
+  category: "construction" | "admin";
   role: string;
   rate: number;
   rate_type: "hourly" | "salary";

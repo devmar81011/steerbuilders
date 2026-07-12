@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +19,11 @@ const statusStyles: Record<FeatureStatus, { label: string; variant: "gold" | "da
   planned: { label: "Planned", variant: "light" },
 };
 
+export const metadata: Metadata = {
+  title: "MVP Roadmap — Internal",
+  robots: { index: false, follow: false },
+};
+
 export default function MvpStatusPage() {
   const progress = getMvpProgress();
 
@@ -27,15 +33,15 @@ export default function MvpStatusPage() {
       <main className="flex-1">
         <Section dark>
           <Link
-            href="/"
+            href="/admin"
             className="mb-6 inline-block text-xs font-medium uppercase tracking-widest text-sbc-gold hover:underline"
           >
-            ← Back to Home
+            ← Back to Admin
           </Link>
           <SectionHeader
             label={`MVP v${MVP_VERSION} · Updated ${MVP_UPDATED}`}
-            title="Project Roadmap"
-            description="This page auto-reflects src/lib/mvp-status.ts. Update that file whenever features ship."
+            title="Internal Roadmap"
+            description="Hidden from public navigation. Direct URL only — updates from src/lib/mvp-status.ts."
             light
           />
           <div className="mt-8 flex items-center gap-6">

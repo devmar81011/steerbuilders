@@ -4,8 +4,21 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableEmpty,
+  TableHead,
+  TableHeader,
+  TableMeta,
+  TablePrimaryCell,
+  TableRow,
+  TableShell,
+} from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { getProjectsOrFallback } from "@/lib/actions/projects";
+import { getStatusBadgeVariant, isCompletedProject, isOngoingProject } from "@/lib/project-status";
 
 type Filter = "all" | "Completed" | "Ongoing";
 
@@ -22,9 +35,7 @@ export default async function ProjectsPage({
     filter === "all"
       ? portfolio
       : portfolio.filter((p) =>
-          filter === "Ongoing"
-            ? p.status === "Ongoing" || p.status === "Put on hold in 2025"
-            : p.status === "Completed"
+          filter === "Ongoing" ? isOngoingProject(p) : isCompletedProject(p)
         );
 
   const tabs: { key: Filter; label: string }[] = [
@@ -53,7 +64,7 @@ export default async function ProjectsPage({
         </Section>
 
         <Section>
-          <div className="mb-8 flex flex-wrap gap-3">
+          <div className="mb-8 flex flex-wrap gap-4">
             {tabs.map((tab) => (
               <ButtonLink
                 key={tab.key}
@@ -66,55 +77,58 @@ export default async function ProjectsPage({
             ))}
           </div>
 
-          <div className="overflow-x-auto border border-sbc-gray-light bg-sbc-white">
-            <table className="w-full min-w-[900px] text-left text-sm">
-              <thead className="border-b border-sbc-gray-light bg-sbc-off-white">
+          <TableShell minWidth="960px" scrollable maxHeight="640px">
+            <Table>
+              <TableHeader>
                 <tr>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                    Project
-                  </th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                    Scope of Work
-                  </th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                    Location
-                  </th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                    Completion
-                  </th>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Scope of Work</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead align="right">Completion</TableHead>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map((project) => (
-                  <tr
-                    key={`${project.id}-${project.name}`}
-                    className="border-b border-sbc-gray-light"
-                  >
-                    <td className="px-4 py-3 font-semibold">{project.name}</td>
-                    <td className="px-4 py-3 font-medium text-sbc-gray">{project.scope}</td>
-                    <td className="px-4 py-3 font-medium text-sbc-gray">{project.location}</td>
-                    <td className="px-4 py-3">
-                      <Badge
-                        variant={
-                          project.status === "Completed"
-                            ? "gold"
-                            : project.status === "Ongoing"
-                              ? "dark"
-                              : "light"
-                        }
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableEmpty
+                    colSpan={5}
+                    message="No projects match this filter."
+                  />
+                ) : (
+                  filtered.map((project) => (
+                    <TableRow key={`${project.id}-${project.name}`}>
+                      <TablePrimaryCell subtitle={project.scope}>
+                        {project.name}
+                      </TablePrimaryCell>
+                      <TableCell className="max-w-xs !text-sbc-gray">
+                        {project.scope}
+                      </TableCell>
+                      <TableCell className="!text-sbc-gray">{project.location}</TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(project.status, project.category)}>
+                          {project.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell
+                        align="right"
+                        numeric
+                        className="!font-semibold !text-sbc-black"
                       >
-                        {project.status}
-                      </Badge>
-                    </td>
-                    <td className="px-4 py-3 font-medium">{project.completion}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        {project.completion}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+            <TableMeta>
+              <span>
+                {filtered.length} project{filtered.length === 1 ? "" : "s"}
+                {filter !== "all" ? ` · ${filter}` : ""}
+              </span>
+              <span className="text-sbc-gold">Steer Builders Portfolio</span>
+            </TableMeta>
+          </TableShell>
         </Section>
       </main>
       <SiteFooter />

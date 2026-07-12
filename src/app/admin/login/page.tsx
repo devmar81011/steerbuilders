@@ -6,7 +6,7 @@ import Image from "next/image";
 
 export default function AdminLoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-sbc-black px-6">
+    <div className="flex min-h-screen items-center justify-center bg-sbc-off-white px-6">
       <Card className="w-full max-w-md">
         <div className="mb-6 flex justify-center">
           <Image
@@ -31,7 +31,7 @@ export default function AdminLoginPage() {
 
         <p className="mt-6 text-center text-xs font-medium text-sbc-gray">
           <Link href="/admin" className="text-sbc-gold hover:underline">
-            Continue to MVP dashboard →
+            Continue to dashboard →
           </Link>
         </p>
       </Card>

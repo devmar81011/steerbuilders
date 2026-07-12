@@ -6,11 +6,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableMeta,
+  TablePrimaryCell,
+  TableRow,
+  TableShell,
+} from "@/components/ui/table";
+import {
   createProject,
   deleteProject,
-  seedProjectsFromContent,
   updateProject,
 } from "@/lib/actions/projects";
+import { ProjectImagesEditor } from "@/components/admin/project-images-editor";
+import { ProjectImagesPicker } from "@/components/admin/project-images-picker";
+import { normalizeProjectImages } from "@/lib/project-images";
+import { getProjectCategory, getStatusBadgeVariant, isCompletedProject } from "@/lib/project-status";
 import type { ProjectRow } from "@/lib/supabase/types";
 
 type Props = {
@@ -26,31 +40,26 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
     name: "",
     scope: "",
     location: "",
-    status: "Completed" as ProjectRow["status"],
+    status: "Completed",
     completion: "",
     description: "",
     featured: false,
+    images: [] as string[],
   });
 
   const completedCount = useMemo(
-    () => items.filter((p) => p.status === "Completed").length,
+    () => items.filter((p) => isCompletedProject(p)).length,
     [items]
   );
-
-  function handleSeed() {
-    startTransition(async () => {
-      const result = await seedProjectsFromContent();
-      setMessage(result.error ?? `Seeded ${result.count} projects from PDF content.`);
-      if (result.success) window.location.reload();
-    });
-  }
 
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
+      const { images, ...projectFields } = form;
       const result = await createProject({
-        ...form,
-        category: form.status === "Completed" ? "completed" : "ongoing",
+        ...projectFields,
+        images: normalizeProjectImages(images),
+        category: getProjectCategory(form.status),
       });
       if (result.error) {
         setMessage(result.error);
@@ -65,6 +74,7 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
         completion: "",
         description: "",
         featured: false,
+        images: [],
       });
       window.location.reload();
     });
@@ -72,7 +82,7 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
 
   function handleDelete(id: string) {
     if (id.startsWith("static-")) {
-      setMessage("Connect Supabase and seed projects to enable delete.");
+      setMessage("Connect Supabase to enable editing and delete.");
       return;
     }
     startTransition(async () => {
@@ -94,26 +104,16 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
 
   return (
     <AdminShell>
-      <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
-            Admin
-          </p>
-          <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Projects</h1>
-          <p className="mt-2 text-sm font-semibold text-sbc-gray">
-            {usingDatabase
-              ? `${items.length} projects in Supabase (${completedCount} completed)`
-              : "Using static PDF content — seed database to enable editing"}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Button size="sm" variant="secondary" onClick={handleSeed} disabled={pending}>
-            Seed from PDF Content
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => window.open("/admin/design", "_blank")}>
-            View Admin Design
-          </Button>
-        </div>
+      <div className="mb-8">
+        <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
+          Admin
+        </p>
+        <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Projects</h1>
+        <p className="mt-2 text-sm font-semibold text-sbc-gray">
+          {usingDatabase
+            ? `${items.length} projects in database (${completedCount} completed)`
+            : `${items.length} projects shown — connect Supabase to save changes`}
+        </p>
       </div>
 
       {message && (
@@ -131,49 +131,61 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
         </p>
         <Input
           label="Project Name"
+          size="sm"
           value={form.name}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
           required
         />
         <Input
           label="Scope of Work"
+          size="sm"
           value={form.scope}
           onChange={(e) => setForm({ ...form, scope: e.target.value })}
           required
         />
         <Input
           label="Location"
+          size="sm"
           value={form.location}
           onChange={(e) => setForm({ ...form, location: e.target.value })}
           required
         />
         <Input
           label="Completion Date"
+          size="sm"
           value={form.completion}
           onChange={(e) => setForm({ ...form, completion: e.target.value })}
           required
         />
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
-            Status
-          </label>
-          <select
-            value={form.status}
-            onChange={(e) =>
-              setForm({ ...form, status: e.target.value as ProjectRow["status"] })
-            }
-            className="border border-sbc-gray-light px-4 py-3 text-sm font-medium"
-          >
-            <option value="Completed">Completed</option>
-            <option value="Ongoing">Ongoing</option>
-            <option value="Put on hold in 2025">Put on hold in 2025</option>
-          </select>
-        </div>
+        <Input
+          label="Status"
+          size="sm"
+          list="project-status-suggestions"
+          placeholder="e.g. Completed, Ongoing, On hold"
+          value={form.status}
+          onChange={(e) => setForm({ ...form, status: e.target.value })}
+          required
+        />
+        <datalist id="project-status-suggestions">
+          <option value="Completed" />
+          <option value="Ongoing" />
+          <option value="On hold" />
+        </datalist>
         <Input
           label="Description (optional)"
+          size="sm"
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
+        <div className="md:col-span-2">
+          <p className="mb-3 text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
+            Project photos (up to 4)
+          </p>
+          <ProjectImagesPicker
+            images={form.images}
+            onChange={(images) => setForm({ ...form, images })}
+          />
+        </div>
         <div className="md:col-span-2">
           <Button type="submit" disabled={pending}>
             Save Project
@@ -181,71 +193,71 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
         </div>
       </form>
 
-      <div className="overflow-x-auto border border-sbc-gray-light bg-sbc-white">
-        <table className="w-full min-w-[960px] text-left text-sm">
-          <thead className="border-b border-sbc-gray-light bg-sbc-off-white">
+      <TableShell minWidth="960px" scrollable>
+        <Table>
+          <TableHeader>
             <tr>
-              <th className="px-4 py-3 text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                Project
-              </th>
-              <th className="px-4 py-3 text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                Scope
-              </th>
-              <th className="px-4 py-3 text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                Status
-              </th>
-              <th className="px-4 py-3 text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                Featured
-              </th>
-              <th className="px-4 py-3 text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                Actions
-              </th>
+              <TableHead>Project</TableHead>
+              <TableHead>Scope</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Photos</TableHead>
+              <TableHead>Featured</TableHead>
+              <TableHead align="right">Actions</TableHead>
             </tr>
-          </thead>
-          <tbody>
+          </TableHeader>
+          <TableBody>
             {items.map((project) => (
-              <tr key={project.id} className="border-b border-sbc-gray-light">
-                <td className="px-4 py-3">
-                  <p className="font-semibold">{project.name}</p>
-                  <p className="text-xs font-medium text-sbc-gray">{project.location}</p>
-                </td>
-                <td className="px-4 py-3 font-medium text-sbc-gray">{project.scope}</td>
-                <td className="px-4 py-3">
-                  <Badge
-                    variant={
-                      project.status === "Completed"
-                        ? "gold"
-                        : project.status === "Ongoing"
-                          ? "dark"
-                          : "light"
-                    }
-                  >
+              <TableRow key={project.id}>
+                <TablePrimaryCell subtitle={project.location}>
+                  {project.name}
+                </TablePrimaryCell>
+                <TableCell className="max-w-xs !text-sbc-gray">{project.scope}</TableCell>
+                <TableCell>
+                  <Badge variant={getStatusBadgeVariant(project.status, project.category)}>
                     {project.status}
                   </Badge>
-                </td>
-                <td className="px-4 py-3">
+                </TableCell>
+                <TableCell className="relative">
+                  <ProjectImagesEditor
+                    projectId={project.id}
+                    initialImages={project.images ?? []}
+                    disabled={project.id.startsWith("static-")}
+                    onSaved={(images) =>
+                      setItems((prev) =>
+                        prev.map((p) => (p.id === project.id ? { ...p, images } : p))
+                      )
+                    }
+                  />
+                </TableCell>
+                <TableCell>
                   <button
                     type="button"
                     onClick={() => toggleFeatured(project.id, project.featured)}
-                    className="text-xs font-medium uppercase tracking-widest text-sbc-gold hover:underline"
+                    className="text-xs font-semibold uppercase tracking-widest text-sbc-gold transition-colors hover:text-sbc-gold-dark"
                   >
                     {project.featured ? "Yes" : "No"}
                   </button>
-                </td>
-                <td className="px-4 py-3">
+                </TableCell>
+                <TableCell align="right">
                   <button
                     type="button"
                     onClick={() => handleDelete(project.id)}
-                    className="text-xs font-medium uppercase tracking-widest text-sbc-gray hover:text-sbc-black"
+                    className="text-xs font-semibold uppercase tracking-widest text-sbc-gray transition-colors hover:text-sbc-gold-dark"
                   >
                     Delete
                   </button>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
+        <TableMeta>
+          <span>{items.length} projects</span>
+          <span className="text-sbc-gold">
+            {usingDatabase ? "Live database" : "Preview mode"}
+          </span>
+        </TableMeta>
+      </TableShell>
     </AdminShell>
   );
 }

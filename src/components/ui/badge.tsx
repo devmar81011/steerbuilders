@@ -7,7 +7,7 @@ type BadgeProps = {
 
 const variants = {
   gold: "bg-sbc-gold/15 text-sbc-gold border-sbc-gold/30",
-  dark: "bg-sbc-black text-sbc-white border-sbc-black",
+  dark: "bg-sbc-gold/15 text-sbc-gold-dark border-sbc-gold/35",
   light: "bg-sbc-gray-light/50 text-sbc-gray border-sbc-gray-light",
 };
 

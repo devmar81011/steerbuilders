@@ -59,11 +59,13 @@ export type PortfolioProject = {
   name: string;
   scope: string;
   location: string;
-  status: "Completed" | "Ongoing" | "Put on hold in 2025";
+  status: string;
   completion: string;
   featured?: boolean;
   description?: string;
   category?: "completed" | "ongoing";
+  /** Up to 4 image URLs for homepage gallery */
+  images?: string[];
 };
 
 export const portfolio: PortfolioProject[] = [
