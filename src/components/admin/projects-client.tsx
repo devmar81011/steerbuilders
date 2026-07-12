@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { sortRows, useTableSort } from "@/lib/table-sort";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -21,27 +23,64 @@ import {
   deleteProject,
   updateProject,
 } from "@/lib/actions/projects";
+import { setFeaturedProjectLimit } from "@/lib/actions/site-settings";
+import {
+  MAX_FEATURED_PROJECT_LIMIT,
+  MIN_FEATURED_PROJECT_LIMIT,
+} from "@/lib/featured-projects-config";
+import {
+  getFeaturedLimitPreview,
+  mergeProjectsWithPreview,
+  saveFeaturedLimitPreview,
+  saveProjectFeaturedPreview,
+} from "@/lib/projects-preview-storage";
 import { ProjectImagesEditor } from "@/components/admin/project-images-editor";
+import { textActionGoldClass } from "@/components/ui/icon-button";
+import {
+  TableEditButton,
+  TableDeleteButton,
+  TableRowActions,
+} from "@/components/admin/table-row-actions";
 import { ProjectImagesPicker } from "@/components/admin/project-images-picker";
 import { normalizeProjectImages } from "@/lib/project-images";
-import { getProjectCategory, getStatusBadgeVariant, isCompletedProject } from "@/lib/project-status";
+import {
+  getProjectCategory,
+  getStatusLabelClass,
+  isCompletedProject,
+  parseProjectStatusForForm,
+  resolveProjectStatus,
+  type ProjectStatusPreset,
+} from "@/lib/project-status";
 import type { ProjectRow } from "@/lib/supabase/types";
 
 type Props = {
   projects: ProjectRow[];
   usingDatabase: boolean;
+  featuredLimit: number;
 };
 
-export function AdminProjectsClient({ projects, usingDatabase }: Props) {
+type ProjectSortKey = "name" | "scope" | "status" | "photos" | "featured";
+
+export function AdminProjectsClient({
+  projects,
+  usingDatabase,
+  featuredLimit: initialFeaturedLimit,
+}: Props) {
   const [items, setItems] = useState(projects);
+  const [featuredLimit, setFeaturedLimit] = useState(initialFeaturedLimit);
+  const [featuredLimitInput, setFeaturedLimitInput] = useState(
+    String(initialFeaturedLimit)
+  );
+  const { sort, toggleSort } = useTableSort<ProjectSortKey>({ defaultKey: "name" });
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "",
     scope: "",
     location: "",
-    status: "Completed",
-    completion: "",
+    statusPreset: "Completed" as ProjectStatusPreset,
+    statusOther: "",
     description: "",
     featured: false,
     images: [] as string[],
@@ -52,39 +91,164 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
     [items]
   );
 
-  function handleCreate(e: React.FormEvent) {
+  const featuredCount = useMemo(
+    () => items.filter((project) => project.featured).length,
+    [items]
+  );
+
+  useEffect(() => {
+    const merged = mergeProjectsWithPreview(projects);
+    setItems(merged);
+    if (!usingDatabase) {
+      setFeaturedLimit(getFeaturedLimitPreview());
+      setFeaturedLimitInput(String(getFeaturedLimitPreview()));
+    }
+  }, [projects, usingDatabase]);
+
+  function countFeaturedCandidates(excludeId?: string) {
+    return items.filter((project) => project.featured && project.id !== excludeId)
+      .length;
+  }
+
+  function featuredLimitMessage(limit = featuredLimit) {
+    return `Featured limit reached (${limit}). Unfeature another project first or increase the limit below.`;
+  }
+
+  const sortedItems = useMemo(
+    () =>
+      sortRows(items, sort, (row, key) => {
+        if (key === "photos") return row.images?.length ?? 0;
+        if (key === "featured") return row.featured;
+        return row[key];
+      }),
+    [items, sort]
+  );
+
+  function resetForm() {
+    setEditingId(null);
+    setForm({
+      name: "",
+      scope: "",
+      location: "",
+      statusPreset: "Completed",
+      statusOther: "",
+      description: "",
+      featured: false,
+      images: [] as string[],
+    });
+  }
+
+  function startEdit(project: ProjectRow) {
+    setEditingId(project.id);
+    setForm({
+      name: project.name,
+      scope: project.scope,
+      location: project.location,
+      ...parseProjectStatusForForm(project.status),
+      description: project.description ?? "",
+      featured: project.featured,
+      images: project.images ?? [],
+    });
+    setMessage(null);
+  }
+
+  function buildProjectRow(
+    id: string,
+    payload: {
+      name: string;
+      scope: string;
+      location: string;
+      status: string;
+      description: string;
+      featured: boolean;
+      images: string[];
+      category: "completed" | "ongoing";
+    },
+    existing?: ProjectRow
+  ): ProjectRow {
+    return {
+      id,
+      name: payload.name,
+      scope: payload.scope,
+      location: payload.location,
+      status: payload.status,
+      completion: existing?.completion ?? "",
+      description: payload.description || null,
+      featured: payload.featured,
+      category: payload.category,
+      images: payload.images,
+      sort_order: existing?.sort_order ?? items.length,
+      created_at: existing?.created_at ?? new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const { images, ...projectFields } = form;
-      const result = await createProject({
+      const status = resolveProjectStatus(form.statusPreset, form.statusOther);
+      if (form.statusPreset === "other" && !status) {
+        setMessage("Please specify the project status.");
+        return;
+      }
+
+      const { images, statusPreset: _preset, statusOther: _other, ...projectFields } = form;
+      const payload = {
         ...projectFields,
+        status,
+        completion: "",
         images: normalizeProjectImages(images),
-        category: getProjectCategory(form.status),
-      });
+        category: getProjectCategory(status),
+      };
+
+      if (payload.featured && countFeaturedCandidates(editingId ?? undefined) >= featuredLimit) {
+        setMessage(featuredLimitMessage());
+        return;
+      }
+
+      if (!usingDatabase) {
+        if (editingId) {
+          setItems((prev) =>
+            prev.map((p) =>
+              p.id === editingId
+                ? buildProjectRow(editingId, payload, p)
+                : p
+            )
+          );
+          saveProjectFeaturedPreview(editingId, payload.featured);
+          setMessage("Project updated (preview — connect Supabase to save permanently).");
+        } else {
+          const id = `static-${Date.now()}`;
+          setItems((prev) => [...prev, buildProjectRow(id, payload)]);
+          saveProjectFeaturedPreview(id, payload.featured);
+          setMessage("Project added (preview — connect Supabase to save permanently).");
+        }
+        resetForm();
+        return;
+      }
+
+      const result = editingId
+        ? await updateProject(editingId, payload)
+        : await createProject(payload);
+
       if (result.error) {
         setMessage(result.error);
         return;
       }
-      setMessage("Project added.");
-      setForm({
-        name: "",
-        scope: "",
-        location: "",
-        status: "Completed",
-        completion: "",
-        description: "",
-        featured: false,
-        images: [],
-      });
+
+      setMessage(editingId ? "Project updated." : "Project added.");
+      resetForm();
       window.location.reload();
     });
   }
 
   function handleDelete(id: string) {
-    if (id.startsWith("static-")) {
-      setMessage("Connect Supabase to enable editing and delete.");
+    if (!usingDatabase) {
+      setItems((prev) => prev.filter((p) => p.id !== id));
+      setMessage("Project removed (preview).");
       return;
     }
+
     startTransition(async () => {
       const result = await deleteProject(id);
       setMessage(result.error ?? "Project deleted.");
@@ -93,12 +257,77 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
   }
 
   function toggleFeatured(id: string, featured: boolean) {
-    if (id.startsWith("static-")) return;
+    const next = !featured;
+
+    if (next && countFeaturedCandidates(id) >= featuredLimit) {
+      setMessage(featuredLimitMessage());
+      return;
+    }
+
+    setMessage(null);
+    setItems((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, featured: next } : p))
+    );
+
+    if (!usingDatabase) {
+      saveProjectFeaturedPreview(id, next);
+      setMessage(next ? "Project marked as featured." : "Project removed from featured.");
+      return;
+    }
+
     startTransition(async () => {
-      await updateProject(id, { featured: !featured });
-      setItems((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, featured: !featured } : p))
+      const result = await updateProject(id, { featured: next });
+      if (result.error) {
+        setItems((prev) =>
+          prev.map((p) => (p.id === id ? { ...p, featured } : p))
+        );
+        setMessage(result.error);
+        return;
+      }
+
+      saveProjectFeaturedPreview(id, next);
+      setMessage(next ? "Project marked as featured." : "Project removed from featured.");
+    });
+  }
+
+  function handleFeaturedLimitSave(e: React.FormEvent) {
+    e.preventDefault();
+    const parsed = Number.parseInt(featuredLimitInput, 10);
+    if (!Number.isFinite(parsed)) {
+      setMessage("Enter a valid featured project limit.");
+      return;
+    }
+
+    const nextLimit = Math.min(
+      MAX_FEATURED_PROJECT_LIMIT,
+      Math.max(MIN_FEATURED_PROJECT_LIMIT, parsed)
+    );
+
+    if (featuredCount > nextLimit) {
+      setMessage(
+        `You currently have ${featuredCount} featured projects. Unfeature ${featuredCount - nextLimit} before lowering the limit to ${nextLimit}.`
       );
+      return;
+    }
+
+    startTransition(async () => {
+      if (!usingDatabase) {
+        saveFeaturedLimitPreview(nextLimit);
+        setFeaturedLimit(nextLimit);
+        setFeaturedLimitInput(String(nextLimit));
+        setMessage(`Featured limit set to ${nextLimit} (preview).`);
+        return;
+      }
+
+      const result = await setFeaturedProjectLimit(nextLimit);
+      if (result.error) {
+        setMessage(result.error);
+        return;
+      }
+
+      setFeaturedLimit(result.limit ?? nextLimit);
+      setFeaturedLimitInput(String(result.limit ?? nextLimit));
+      setMessage(`Featured limit set to ${result.limit ?? nextLimit}.`);
     });
   }
 
@@ -112,7 +341,7 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
         <p className="mt-2 text-sm font-semibold text-sbc-gray">
           {usingDatabase
             ? `${items.length} projects in database (${completedCount} completed)`
-            : `${items.length} projects shown — connect Supabase to save changes`}
+            : `${items.length} projects — preview mode (edits work until refresh; add Supabase env vars to save permanently)`}
         </p>
       </div>
 
@@ -123,11 +352,38 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
       )}
 
       <form
-        onSubmit={handleCreate}
+        onSubmit={handleFeaturedLimitSave}
+        className="mb-6 flex flex-wrap items-end gap-4 border border-sbc-gray-light bg-sbc-white p-4"
+      >
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
+            Homepage featured limit
+          </p>
+          <p className="mt-1 text-xs text-sbc-gray">
+            {featuredCount} of {featuredLimit} slots used on the homepage gallery
+          </p>
+        </div>
+        <Input
+          label="Max featured projects"
+          size="sm"
+          type="number"
+          min={MIN_FEATURED_PROJECT_LIMIT}
+          max={MAX_FEATURED_PROJECT_LIMIT}
+          value={featuredLimitInput}
+          onChange={(e) => setFeaturedLimitInput(e.target.value)}
+          className="w-28"
+        />
+        <Button type="submit" size="sm" disabled={pending}>
+          Save limit
+        </Button>
+      </form>
+
+      <form
+        onSubmit={handleSubmit}
         className="mb-8 grid gap-4 border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
       >
         <p className="md:col-span-2 text-xs font-medium uppercase tracking-widest text-sbc-gold">
-          Add / Update Project
+          {editingId ? "Edit Project" : "Add Project"}
         </p>
         <Input
           label="Project Name"
@@ -150,27 +406,32 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
           onChange={(e) => setForm({ ...form, location: e.target.value })}
           required
         />
-        <Input
-          label="Completion Date"
-          size="sm"
-          value={form.completion}
-          onChange={(e) => setForm({ ...form, completion: e.target.value })}
-          required
-        />
-        <Input
+        <Select
           label="Status"
           size="sm"
-          list="project-status-suggestions"
-          placeholder="e.g. Completed, Ongoing, On hold"
-          value={form.status}
-          onChange={(e) => setForm({ ...form, status: e.target.value })}
-          required
-        />
-        <datalist id="project-status-suggestions">
-          <option value="Completed" />
-          <option value="Ongoing" />
-          <option value="On hold" />
-        </datalist>
+          value={form.statusPreset}
+          onChange={(e) =>
+            setForm({
+              ...form,
+              statusPreset: e.target.value as ProjectStatusPreset,
+              statusOther: e.target.value === "other" ? form.statusOther : "",
+            })
+          }
+        >
+          <option value="Completed">Completed</option>
+          <option value="Ongoing">Ongoing</option>
+          <option value="other">Others — please specify</option>
+        </Select>
+        {form.statusPreset === "other" && (
+          <Input
+            label="Please specify"
+            size="sm"
+            placeholder="e.g. On hold, Delayed"
+            value={form.statusOther}
+            onChange={(e) => setForm({ ...form, statusOther: e.target.value })}
+            required
+          />
+        )}
         <Input
           label="Description (optional)"
           size="sm"
@@ -179,17 +440,22 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
         />
         <div className="md:col-span-2">
           <p className="mb-3 text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
-            Project photos (up to 4)
+            Project photos
           </p>
           <ProjectImagesPicker
             images={form.images}
             onChange={(images) => setForm({ ...form, images })}
           />
         </div>
-        <div className="md:col-span-2">
+        <div className="md:col-span-2 flex flex-wrap gap-3">
           <Button type="submit" disabled={pending}>
-            Save Project
+            {editingId ? "Update Project" : "Save Project"}
           </Button>
+          {editingId && (
+            <Button type="button" variant="ghost" size="sm" onClick={resetForm}>
+              Cancel
+            </Button>
+          )}
         </div>
       </form>
 
@@ -197,31 +463,68 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
         <Table>
           <TableHeader>
             <tr>
-              <TableHead>Project</TableHead>
-              <TableHead>Scope</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Photos</TableHead>
-              <TableHead>Featured</TableHead>
+              <SortableTableHead
+                sortKey="name"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as ProjectSortKey)}
+              >
+                Project
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="scope"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as ProjectSortKey)}
+              >
+                Scope
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="status"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as ProjectSortKey)}
+              >
+                Status
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="photos"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as ProjectSortKey)}
+              >
+                Photos
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="featured"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as ProjectSortKey)}
+              >
+                Featured
+              </SortableTableHead>
               <TableHead align="right">Actions</TableHead>
             </tr>
           </TableHeader>
           <TableBody>
-            {items.map((project) => (
+            {sortedItems.map((project) => (
               <TableRow key={project.id}>
                 <TablePrimaryCell subtitle={project.location}>
                   {project.name}
                 </TablePrimaryCell>
                 <TableCell className="max-w-xs !text-sbc-gray">{project.scope}</TableCell>
                 <TableCell>
-                  <Badge variant={getStatusBadgeVariant(project.status, project.category)}>
+                  <span
+                    className={`text-xs uppercase tracking-widest ${getStatusLabelClass(project.status, project.category)}`}
+                  >
                     {project.status}
-                  </Badge>
+                  </span>
                 </TableCell>
                 <TableCell className="relative">
                   <ProjectImagesEditor
                     projectId={project.id}
                     initialImages={project.images ?? []}
-                    disabled={project.id.startsWith("static-")}
+                    persistToServer={usingDatabase}
                     onSaved={(images) =>
                       setItems((prev) =>
                         prev.map((p) => (p.id === project.id ? { ...p, images } : p))
@@ -233,19 +536,17 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
                   <button
                     type="button"
                     onClick={() => toggleFeatured(project.id, project.featured)}
-                    className="text-xs font-semibold uppercase tracking-widest text-sbc-gold transition-colors hover:text-sbc-gold-dark"
+                    className={textActionGoldClass}
+                    title="Toggle featured"
                   >
                     {project.featured ? "Yes" : "No"}
                   </button>
                 </TableCell>
                 <TableCell align="right">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(project.id)}
-                    className="text-xs font-semibold uppercase tracking-widest text-sbc-gray transition-colors hover:text-sbc-gold-dark"
-                  >
-                    Delete
-                  </button>
+                  <TableRowActions>
+                    <TableEditButton onClick={() => startEdit(project)} />
+                    <TableDeleteButton onClick={() => handleDelete(project.id)} />
+                  </TableRowActions>
                 </TableCell>
               </TableRow>
             ))}
@@ -254,6 +555,7 @@ export function AdminProjectsClient({ projects, usingDatabase }: Props) {
         <TableMeta>
           <span>{items.length} projects</span>
           <span className="text-sbc-gold">
+            {featuredCount}/{featuredLimit} featured ·{" "}
             {usingDatabase ? "Live database" : "Preview mode"}
           </span>
         </TableMeta>

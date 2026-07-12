@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ButtonLink } from "@/components/ui/button-link";
 
 const navLinks = [
   { href: "/#services", label: "Services" },
@@ -43,12 +42,6 @@ export function SiteHeader() {
             </Link>
           ))}
         </nav>
-
-        <div className="flex items-center gap-3">
-          <ButtonLink href="/#contact" tone="dark" size="sm">
-            Get a Quote
-          </ButtonLink>
-        </div>
       </div>
     </header>
   );

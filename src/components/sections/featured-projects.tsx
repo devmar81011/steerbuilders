@@ -1,21 +1,26 @@
+import { getFeaturedProjectLimit } from "@/lib/actions/site-settings";
 import { getProjectsOrFallback } from "@/lib/actions/projects";
 import { getDisplayProjectImages } from "@/lib/sample-project-images";
-import { FeaturedProjectsGallery } from "@/components/sections/featured-projects-gallery";
+import { FeaturedProjectsSectionClient } from "@/components/sections/featured-projects-section-client";
 
 export async function FeaturedProjectsSection() {
-  const portfolio = await getProjectsOrFallback();
-  const featured = portfolio
-    .filter((p) => p.featured)
-    .map((project) => ({
-      id: project.id,
-      name: project.name,
-      scope: project.scope,
-      location: project.location,
-      status: project.status,
-      completion: project.completion,
-      description: project.description,
-      images: getDisplayProjectImages(project.name, project.images),
-    }));
+  const [portfolio, featuredLimit] = await Promise.all([
+    getProjectsOrFallback(),
+    getFeaturedProjectLimit(),
+  ]);
 
-  return <FeaturedProjectsGallery projects={featured} />;
+  const displayImagesById = Object.fromEntries(
+    portfolio.map((project) => [
+      project.id,
+      getDisplayProjectImages(project.name, project.images),
+    ])
+  );
+
+  return (
+    <FeaturedProjectsSectionClient
+      projects={portfolio}
+      displayImagesById={displayImagesById}
+      featuredLimit={featuredLimit}
+    />
+  );
 }

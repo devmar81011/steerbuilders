@@ -2,7 +2,8 @@
 
 import Image from "next/image";
 import { ProjectImageUpload } from "@/components/admin/project-image-upload";
-import { MAX_PROJECT_IMAGES, normalizeProjectImages } from "@/lib/project-images";
+import { IconButton, TrashIcon } from "@/components/ui/icon-button";
+import { normalizeProjectImages } from "@/lib/project-images";
 
 type Props = {
   images: string[];
@@ -42,13 +43,15 @@ export function ProjectImagesPicker({ images, onChange }: Props) {
                 unoptimized
                 className="object-cover"
               />
-              <button
-                type="button"
+              <IconButton
+                label="Remove photo"
+                variant="gallery"
+                size="sm"
                 onClick={() => removeAt(index)}
-                className="absolute right-1 top-1 bg-sbc-gold/90 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-white opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute right-1 top-1 opacity-0 group-hover:opacity-100"
               >
-                Remove
-              </button>
+                <TrashIcon />
+              </IconButton>
             </div>
           ))}
         </div>

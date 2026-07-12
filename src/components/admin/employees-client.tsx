@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { sortRows, useTableSort } from "@/lib/table-sort";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -18,10 +19,15 @@ import {
   TableRow,
   TableShell,
 } from "@/components/ui/table";
-import { createEmployee } from "@/lib/actions/payroll";
+import { createEmployee, updateEmployee } from "@/lib/actions/payroll";
+import {
+  TableEditButton,
+  TableRowActions,
+} from "@/components/admin/table-row-actions";
 import {
   employeeCategories,
   formatEmployeeCategory,
+  getCategoryLabelClass,
   getRolesForCategory,
   type EmployeeCategory,
 } from "@/lib/employee-categories";
@@ -30,25 +36,32 @@ import {
   type DailyRate,
 } from "@/lib/daily-rates";
 import { formatCurrency, type Employee } from "@/lib/mvp-data";
+import { formatRateAmount } from "@/lib/rate-types";
 
 type Props = {
   employees: Employee[];
   dailyRates: DailyRate[];
 };
 
+type EmployeeSortKey = "name" | "category" | "role" | "rate" | "status";
+
 export function EmployeesClient({ employees: initialEmployees, dailyRates }: Props) {
   const [employees, setEmployees] = useState(initialEmployees);
+  const { sort, toggleSort } = useTableSort<EmployeeSortKey>({ defaultKey: "name" });
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [editingId, setEditingId] = useState<string | null>(null);
   const defaultRole = getRolesForCategory("construction")[0];
   const [form, setForm] = useState<{
     name: string;
     category: EmployeeCategory;
     role: string;
+    status: "active" | "inactive";
   }>({
     name: "",
     category: "construction",
     role: defaultRole,
+    status: "active",
   });
 
   const roleOptions = useMemo(
@@ -58,9 +71,39 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
 
   const selectedRate = findDailyRate(dailyRates, form.category, form.role);
 
+  const sortedEmployees = useMemo(
+    () =>
+      sortRows(employees, sort, (row, key) => {
+        if (key === "rate") return row.rate;
+        return row[key];
+      }),
+    [employees, sort]
+  );
+
   function handleCategoryChange(category: EmployeeCategory) {
     const roles = getRolesForCategory(category);
     setForm({ ...form, category, role: roles[0] });
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setForm({
+      name: "",
+      category: "construction",
+      role: getRolesForCategory("construction")[0],
+      status: "active",
+    });
+  }
+
+  function startEdit(emp: Employee) {
+    setEditingId(emp.id);
+    setForm({
+      name: emp.name,
+      category: emp.category,
+      role: emp.role,
+      status: emp.status,
+    });
+    setMessage(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -72,36 +115,64 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
     }
 
     startTransition(async () => {
-      const result = await createEmployee({
+      const payload = {
         name: form.name,
         category: form.category,
         role: form.role,
         rate: selectedRate.rate,
         rate_type: selectedRate.rateType,
-      });
+        status: form.status,
+      };
+
+      const result = editingId
+        ? await updateEmployee(editingId, payload)
+        : await createEmployee({
+            name: form.name,
+            category: form.category,
+            role: form.role,
+            rate: selectedRate.rate,
+            rate_type: selectedRate.rateType,
+          });
 
       if (result.error) {
         setMessage(result.error);
         return;
       }
 
-      const newEmployee: Employee = {
-        id: `emp-${Date.now()}`,
-        name: form.name,
-        category: form.category,
-        role: form.role as Employee["role"],
-        rate: selectedRate.rate,
-        rateType: selectedRate.rateType,
-        status: "active",
-      };
+      if (editingId) {
+        setEmployees((prev) =>
+          prev.map((emp) =>
+            emp.id === editingId
+              ? {
+                  ...emp,
+                  name: form.name,
+                  category: form.category,
+                  role: form.role as Employee["role"],
+                  rate: selectedRate.rate,
+                  rateType: selectedRate.rateType,
+                  status: form.status,
+                }
+              : emp
+          )
+        );
+        setMessage("Employee updated.");
+      } else {
+        setEmployees((prev) => [
+          ...prev,
+          {
+            id: `emp-${Date.now()}`,
+            name: form.name,
+            category: form.category,
+            role: form.role as Employee["role"],
+            rate: selectedRate.rate,
+            rateType: selectedRate.rateType,
+            status: "active",
+          },
+        ]);
+        setMessage("Employee added.");
+      }
 
-      setEmployees((prev) => [...prev, newEmployee]);
-      setMessage("Employee added.");
-      setForm({
-        name: "",
-        category: "construction",
-        role: getRolesForCategory("construction")[0],
-      });
+      resetForm();
     });
   }
 
@@ -125,7 +196,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
 
       <Card className="mb-8">
         <p className="mb-4 text-xs font-medium uppercase tracking-widest text-sbc-gold">
-          Add Employee
+          {editingId ? "Edit Employee" : "Add Employee"}
         </p>
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
           <Input
@@ -171,17 +242,37 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
             </p>
             <p className="border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-medium text-sbc-black">
               {selectedRate
-                ? selectedRate.rateType === "hourly"
-                  ? `${formatCurrency(selectedRate.rate)}/day`
-                  : `${formatCurrency(selectedRate.rate)}/mo`
+                ? formatRateAmount(selectedRate.rate, selectedRate.rateType)
                 : "—"}
             </p>
           </div>
 
-          <div className="md:col-span-2">
+          {editingId && (
+            <Select
+              label="Status"
+              size="sm"
+              value={form.status}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  status: e.target.value as "active" | "inactive",
+                })
+              }
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </Select>
+          )}
+
+          <div className="md:col-span-2 flex flex-wrap gap-3">
             <Button type="submit" size="sm" disabled={pending || !selectedRate}>
-              + Add Employee
+              {editingId ? "Update Employee" : "+ Add Employee"}
             </Button>
+            {editingId && (
+              <Button type="button" variant="ghost" size="sm" onClick={resetForm}>
+                Cancel
+              </Button>
+            )}
           </div>
         </form>
       </Card>
@@ -190,27 +281,64 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
         <Table>
           <TableHeader>
             <tr>
-              <TableHead>Name</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Rate</TableHead>
-              <TableHead align="right">Status</TableHead>
+              <SortableTableHead
+                sortKey="name"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as EmployeeSortKey)}
+              >
+                Name
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="category"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as EmployeeSortKey)}
+              >
+                Category
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="role"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as EmployeeSortKey)}
+              >
+                Role
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="rate"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as EmployeeSortKey)}
+              >
+                Rate
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="status"
+                align="right"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as EmployeeSortKey)}
+              >
+                Status
+              </SortableTableHead>
+              <TableHead align="right">Actions</TableHead>
             </tr>
           </TableHeader>
           <TableBody>
-            {employees.map((emp) => (
+            {sortedEmployees.map((emp) => (
               <TableRow key={emp.id}>
                 <TablePrimaryCell>{emp.name}</TablePrimaryCell>
                 <TableCell>
-                  <Badge variant={emp.category === "construction" ? "dark" : "gold"}>
+                  <span
+                    className={`text-xs font-semibold uppercase tracking-widest ${getCategoryLabelClass(emp.category)}`}
+                  >
                     {formatEmployeeCategory(emp.category)}
-                  </Badge>
+                  </span>
                 </TableCell>
                 <TableCell className="!text-sbc-gray">{emp.role}</TableCell>
                 <TableCell numeric className="!font-semibold !text-sbc-black">
-                  {emp.rateType === "hourly"
-                    ? `${formatCurrency(emp.rate)}/day`
-                    : `${formatCurrency(emp.rate)}/mo`}
+                  {formatRateAmount(emp.rate, emp.rateType)}
                 </TableCell>
                 <TableCell align="right">
                   <span
@@ -220,6 +348,11 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
                   >
                     {emp.status}
                   </span>
+                </TableCell>
+                <TableCell align="right">
+                  <TableRowActions>
+                    <TableEditButton onClick={() => startEdit(emp)} />
+                  </TableRowActions>
                 </TableCell>
               </TableRow>
             ))}

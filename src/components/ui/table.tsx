@@ -4,12 +4,10 @@ type TableShellProps = {
   children: ReactNode;
   className?: string;
   minWidth?: string;
-  /** Sticky header + scroll body for long lists */
   scrollable?: boolean;
   maxHeight?: string;
 };
 
-/** Premium table container — gold accent stripe, shadow, optional scroll */
 export function TableShell({
   children,
   className = "",
@@ -18,10 +16,7 @@ export function TableShell({
   maxHeight = "520px",
 }: TableShellProps) {
   return (
-    <div
-      className={`overflow-hidden border border-sbc-gray-light/80 bg-sbc-white shadow-[0_10px_40px_-16px_rgba(16,16,16,0.18)] ${className}`}
-    >
-      <div className="h-1 bg-linear-to-r from-sbc-gold via-[#d4a647] to-sbc-gold-dark" />
+    <div className={`overflow-hidden border border-sbc-gray-light/80 ${className}`}>
       <div
         className={scrollable ? "overflow-auto" : "overflow-x-auto"}
         style={scrollable ? { maxHeight } : undefined}
@@ -54,11 +49,7 @@ export function TableHeader({
   sticky?: boolean;
 }) {
   return (
-    <thead
-      className={`bg-sbc-off-white ${
-        sticky ? "sticky top-0 z-10 shadow-[0_1px_0_0_rgba(184,143,63,0.2)]" : ""
-      }`}
-    >
+    <thead className={sticky ? "sticky top-0 z-10 bg-sbc-white" : ""}>
       {children}
     </thead>
   );
@@ -78,7 +69,7 @@ export function TableHead({
 
   return (
     <th
-      className={`border-b border-sbc-gold/30 bg-sbc-off-white px-6 py-3.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-sbc-gold-dark ${alignClass} ${className}`}
+      className={`border-b border-sbc-gray-light px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sbc-gray ${alignClass} ${className}`}
     >
       {children}
     </th>
@@ -86,7 +77,7 @@ export function TableHead({
 }
 
 export function TableBody({ children }: { children: ReactNode }) {
-  return <tbody className="divide-y divide-sbc-gray-light/70">{children}</tbody>;
+  return <tbody className="divide-y divide-sbc-gray-light/60">{children}</tbody>;
 }
 
 export function TableRow({
@@ -96,13 +87,7 @@ export function TableRow({
   children: ReactNode;
   className?: string;
 }) {
-  return (
-    <tr
-      className={`group transition-colors odd:bg-sbc-off-white/60 even:bg-sbc-white hover:bg-sbc-gold/[0.06] ${className}`}
-    >
-      {children}
-    </tr>
-  );
+  return <tr className={`group ${className}`}>{children}</tr>;
 }
 
 export function TableCell({
@@ -116,7 +101,6 @@ export function TableCell({
   className?: string;
   align?: "left" | "right" | "center";
   emphasis?: boolean;
-  /** Tabular figures for amounts, dates, counts */
   numeric?: boolean;
 }) {
   const alignClass =
@@ -127,9 +111,7 @@ export function TableCell({
       className={`px-6 py-4 align-middle ${alignClass} ${
         numeric ? "tabular-nums" : ""
       } ${
-        emphasis
-          ? "font-bold text-sbc-black"
-          : "font-medium text-sbc-gray group-hover:text-sbc-black"
+        emphasis ? "font-semibold text-sbc-black" : "font-medium text-sbc-gray"
       } ${className}`}
     >
       {children}
@@ -145,14 +127,11 @@ export function TablePrimaryCell({
   subtitle?: ReactNode;
 }) {
   return (
-    <TableCell emphasis className="relative !text-sbc-black">
-      <span className="absolute inset-y-3 left-0 w-0.5 scale-y-0 bg-sbc-gold transition-transform group-hover:scale-y-100" />
-      <div className="pl-2">
-        <p className="font-semibold text-sbc-black">{children}</p>
-        {subtitle && (
-          <p className="mt-1 text-xs font-medium text-sbc-gray">{subtitle}</p>
-        )}
-      </div>
+    <TableCell emphasis className="!text-sbc-black">
+      <p className="font-semibold text-sbc-black">{children}</p>
+      {subtitle && (
+        <p className="mt-1 text-xs font-medium text-sbc-gray">{subtitle}</p>
+      )}
     </TableCell>
   );
 }
@@ -162,7 +141,7 @@ export function TableEmpty({ colSpan, message }: { colSpan: number; message: str
     <tr>
       <td
         colSpan={colSpan}
-        className="px-6 py-16 text-center text-sm font-semibold text-sbc-gray"
+        className="px-6 py-16 text-center text-sm font-medium text-sbc-gray"
       >
         {message}
       </td>
@@ -170,7 +149,6 @@ export function TableEmpty({ colSpan, message }: { colSpan: number; message: str
   );
 }
 
-/** Footer bar — row counts, totals, pagination hints */
 export function TableMeta({
   children,
   className = "",
@@ -180,7 +158,7 @@ export function TableMeta({
 }) {
   return (
     <div
-      className={`flex flex-wrap items-center justify-between gap-3 border-t border-sbc-gray-light/80 bg-sbc-off-white/80 px-6 py-3 text-xs font-semibold uppercase tracking-widest text-sbc-gray ${className}`}
+      className={`flex flex-wrap items-center justify-between gap-3 border-t border-sbc-gray-light/80 px-6 py-3 text-xs font-medium uppercase tracking-widest text-sbc-gray ${className}`}
     >
       {children}
     </div>

@@ -4,14 +4,16 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { EmployeeCategory } from "@/lib/employee-categories";
 import { mockDailyRates, type DailyRate } from "@/lib/daily-rates";
+import { normalizeRateType, type RateType } from "@/lib/rate-types";
 
 function mapRate(row: Record<string, unknown>): DailyRate {
+  const category = row.category as EmployeeCategory;
   return {
     id: row.id as string,
-    category: row.category as EmployeeCategory,
+    category,
     role: row.role as string,
     rate: Number(row.rate),
-    rateType: (row.rate_type as "hourly" | "salary") ?? "hourly",
+    rateType: normalizeRateType(row.rate_type as string, category),
   };
 }
 
@@ -35,11 +37,33 @@ export async function createDailyRate(input: {
   category: EmployeeCategory;
   role: string;
   rate: number;
-  rate_type: "hourly" | "salary";
+  rate_type: RateType;
 }) {
   try {
     const supabase = await createClient();
     const { error } = await supabase.from("daily_rates").insert(input);
+    if (error) return { error: error.message };
+  } catch {
+    return { success: true };
+  }
+
+  revalidatePath("/admin/rates");
+  revalidatePath("/admin/employees");
+  return { success: true };
+}
+
+export async function updateDailyRate(
+  id: string,
+  input: {
+    category: EmployeeCategory;
+    role: string;
+    rate: number;
+    rate_type: RateType;
+  }
+) {
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("daily_rates").update(input).eq("id", id);
     if (error) return { error: error.message };
   } catch {
     return { success: true };

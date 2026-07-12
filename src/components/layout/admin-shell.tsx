@@ -8,7 +8,9 @@ const navItems = [
   { href: "/admin", label: "Dashboard", exact: true },
   { href: "/admin/projects", label: "Projects" },
   { href: "/admin/rates", label: "Daily Rates" },
+  { href: "/admin/contributions", label: "Statutory Deductions" },
   { href: "/admin/employees", label: "Employees" },
+  { href: "/admin/attendance", label: "Attendance" },
   { href: "/admin/payroll", label: "Payroll" },
 ];
 

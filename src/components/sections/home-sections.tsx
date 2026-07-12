@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { Card } from "@/components/ui/card";
@@ -16,26 +15,25 @@ import { ContactForm } from "@/components/sections/contact-form";
 export function HeroSection() {
   return (
     <section className="relative overflow-hidden bg-sbc-black text-sbc-white">
-      <div className="relative mx-auto max-w-6xl px-6 py-16 md:px-8 md:py-24">
-        <div className="grid gap-12 md:grid-cols-[1.2fr_1fr] md:items-center">
-          <div>
-            <Badge variant="gold">Company Profile</Badge>
-            <h1 className="mt-6 text-4xl font-normal uppercase leading-tight tracking-wide md:text-5xl">
+      <div className="mx-auto max-w-6xl px-6 py-10 md:px-8 md:py-14">
+        <div className="grid w-full items-center gap-8 md:grid-cols-2 md:gap-10 lg:gap-14">
+          <div className="text-center md:text-left">
+            <h1 className="text-4xl font-normal uppercase leading-tight tracking-wide md:text-5xl lg:text-[3.25rem]">
               {company.name}
             </h1>
-            <p className="mt-4 text-2xl font-bold text-sbc-gold md:text-3xl">
+            <p className="mt-3 text-2xl font-bold text-sbc-gold md:mt-4 md:text-3xl">
               {company.mantra}
             </p>
-            <p className="mt-6 max-w-xl text-base font-semibold leading-relaxed text-sbc-gray-light">
+            <p className="mx-auto mt-4 max-w-xl text-base font-semibold leading-relaxed text-sbc-gray-light md:mx-0 md:mt-5">
               {company.tagline}
             </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-            <ButtonLink href="#contact" size="lg">
-              Request a Proposal
-            </ButtonLink>
-            <ButtonLink href="/projects" variant="outline" tone="dark" size="lg">
-              View Portfolio
-            </ButtonLink>
+            <div className="mt-6 flex flex-wrap justify-center gap-4 md:mt-7 md:justify-start">
+              <ButtonLink href="#contact" size="lg">
+                Request a Proposal
+              </ButtonLink>
+              <ButtonLink href="/projects" variant="outline" tone="dark" size="lg">
+                View Portfolio
+              </ButtonLink>
             </div>
           </div>
           <div className="flex justify-center md:justify-end">
@@ -44,7 +42,7 @@ export function HeroSection() {
               alt={company.name}
               width={420}
               height={320}
-              className="w-full max-w-sm md:max-w-md"
+              className="w-full max-w-xs sm:max-w-sm md:max-w-md"
               priority
             />
           </div>
@@ -58,7 +56,7 @@ export function HeroSection() {
 export function StorySection() {
   return (
     <Section id="about">
-      <SectionHeader label="Company Profile" title={story.title} />
+      <SectionHeader title={story.title} />
       <p className="max-w-3xl text-base font-semibold leading-relaxed text-sbc-gray">
         {story.body}
       </p>

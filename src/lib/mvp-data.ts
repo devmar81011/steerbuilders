@@ -1,4 +1,6 @@
 import type { EmployeeCategory, EmployeeRole } from "@/lib/employee-categories";
+import type { DeductionLine } from "@/lib/deduction-lines";
+import type { RateType } from "@/lib/rate-types";
 
 export type Employee = {
   id: string;
@@ -6,7 +8,7 @@ export type Employee = {
   category: EmployeeCategory;
   role: EmployeeRole;
   rate: number;
-  rateType: "hourly" | "salary";
+  rateType: RateType;
   status: "active" | "inactive";
 };
 
@@ -14,10 +16,15 @@ export type PayrollEntry = {
   id: string;
   employeeId: string;
   employeeName: string;
+  category: EmployeeCategory;
+  periodKey: string;
   period: string;
+  /** Admin: hours from time in/out. Construction: stored as days worked. */
   hours: number;
   grossPay: number;
   deductions: number;
+  /** Per-module amounts (SSS, PhilHealth, etc.). Recomputed from rules when empty. */
+  deductionBreakdown?: DeductionLine[];
   netPay: number;
   status: "draft" | "processed";
 };
@@ -30,7 +37,7 @@ export const mockEmployees: Employee[] = [
     category: "construction",
     role: "Foreman",
     rate: 450,
-    rateType: "hourly",
+    rateType: "daily",
     status: "active",
   },
   {
@@ -38,8 +45,8 @@ export const mockEmployees: Employee[] = [
     name: "Maria Santos",
     category: "admin",
     role: "Operations",
-    rate: 65000,
-    rateType: "salary",
+    rate: 406.25,
+    rateType: "hourly",
     status: "active",
   },
   {
@@ -48,7 +55,7 @@ export const mockEmployees: Employee[] = [
     category: "construction",
     role: "Skilled",
     rate: 380,
-    rateType: "hourly",
+    rateType: "daily",
     status: "active",
   },
   {
@@ -56,8 +63,17 @@ export const mockEmployees: Employee[] = [
     name: "Ana Lopez",
     category: "admin",
     role: "Finance/Admin",
-    rate: 55000,
-    rateType: "salary",
+    rate: 343.75,
+    rateType: "hourly",
+    status: "active",
+  },
+  {
+    id: "emp-005",
+    name: "Carlo Mendoza",
+    category: "ojt",
+    role: "Trainee",
+    rate: 150,
+    rateType: "hourly",
     status: "active",
   },
 ];
@@ -67,18 +83,35 @@ export const mockPayroll: PayrollEntry[] = [
     id: "pay-001",
     employeeId: "emp-001",
     employeeName: "Juan Dela Cruz",
-    period: "Jul 1–15, 2026",
-    hours: 88,
-    grossPay: 39600,
-    deductions: 4752,
-    netPay: 34848,
+    category: "construction",
+    periodKey: "w-sample",
+    period: "Weekly",
+    hours: 6,
+    grossPay: 2700,
+    deductions: 324,
+    netPay: 2376,
     status: "processed",
+  },
+  {
+    id: "pay-003",
+    employeeId: "emp-003",
+    employeeName: "Pedro Reyes",
+    category: "construction",
+    periodKey: "w-sample",
+    period: "Weekly",
+    hours: 5,
+    grossPay: 1900,
+    deductions: 228,
+    netPay: 1672,
+    status: "draft",
   },
   {
     id: "pay-002",
     employeeId: "emp-002",
     employeeName: "Maria Santos",
-    period: "Jul 1–15, 2026",
+    category: "admin",
+    periodKey: "s-2026-07-1",
+    period: "Jul 1 – 15, 2026",
     hours: 80,
     grossPay: 32500,
     deductions: 3900,
@@ -86,14 +119,16 @@ export const mockPayroll: PayrollEntry[] = [
     status: "processed",
   },
   {
-    id: "pay-003",
-    employeeId: "emp-003",
-    employeeName: "Pedro Reyes",
-    period: "Jul 1–15, 2026",
-    hours: 92,
-    grossPay: 34960,
-    deductions: 4195,
-    netPay: 30765,
+    id: "pay-004",
+    employeeId: "emp-004",
+    employeeName: "Ana Lopez",
+    category: "admin",
+    periodKey: "s-2026-07-1",
+    period: "Jul 1 – 15, 2026",
+    hours: 72,
+    grossPay: 24750,
+    deductions: 2970,
+    netPay: 21780,
     status: "draft",
   },
 ];

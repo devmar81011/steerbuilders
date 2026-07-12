@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
-import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import {
   IconButton,
@@ -12,7 +11,8 @@ import {
 } from "@/components/ui/circle-button";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { ProjectImageGrid } from "@/components/projects/project-image-grid";
-import { getStatusBadgeVariant } from "@/lib/project-status";
+import { HOMEPAGE_PREVIEW_IMAGE_COUNT } from "@/lib/project-images";
+import { getStatusLabelClass } from "@/lib/project-status";
 
 export type FeaturedProject = {
   id: string;
@@ -20,7 +20,6 @@ export type FeaturedProject = {
   scope: string;
   location: string;
   status: string;
-  completion: string;
   description: string | null;
   images: string[];
 };
@@ -102,6 +101,7 @@ export function FeaturedProjectsGallery({ projects }: Props) {
                 images={project.images}
                 alt={project.name}
                 variant="featured"
+                previewLimit={HOMEPAGE_PREVIEW_IMAGE_COUNT}
               />
               <div className="pointer-events-none absolute inset-0 bg-sbc-black/0 transition-colors group-hover:bg-sbc-black/25" />
               <div className="pointer-events-none absolute bottom-4 left-4 opacity-0 transition-opacity group-hover:opacity-100">
@@ -111,12 +111,11 @@ export function FeaturedProjectsGallery({ projects }: Props) {
               </div>
             </div>
             <div className="border-t border-sbc-gray-light p-6">
-              <div className="mb-3 flex items-center justify-between gap-4">
-                <Badge variant={getStatusBadgeVariant(project.status)}>
+              <div className="mb-3">
+                <span
+                  className={`text-[10px] uppercase tracking-widest ${getStatusLabelClass(project.status)}`}
+                >
                   {project.status}
-                </Badge>
-                <span className="text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
-                  {project.completion}
                 </span>
               </div>
               <h3 className="text-lg font-bold text-sbc-black group-hover:text-sbc-gold">
@@ -149,7 +148,7 @@ export function FeaturedProjectsGallery({ projects }: Props) {
             <div className="h-1 shrink-0 bg-sbc-gold" />
 
             <div className="absolute right-3 top-3 z-20">
-              <IconButton label="Close" onClick={close}>
+              <IconButton label="Close" variant="gallery" size="lg" onClick={close}>
                 <CloseIcon />
               </IconButton>
             </div>
@@ -172,6 +171,8 @@ export function FeaturedProjectsGallery({ projects }: Props) {
                     <div className="absolute left-3 top-1/2 -translate-y-1/2">
                       <IconButton
                         label="Previous photo"
+                        variant="gallery"
+                        size="lg"
                         onClick={() =>
                           setPhotoIndex(
                             (photoIndex - 1 + photos.length) % photos.length
@@ -184,6 +185,8 @@ export function FeaturedProjectsGallery({ projects }: Props) {
                     <div className="absolute right-3 top-1/2 -translate-y-1/2">
                       <IconButton
                         label="Next photo"
+                        variant="gallery"
+                        size="lg"
                         onClick={() =>
                           setPhotoIndex((photoIndex + 1) % photos.length)
                         }
@@ -200,10 +203,10 @@ export function FeaturedProjectsGallery({ projects }: Props) {
                           aria-label={`Photo ${i + 1}`}
                           aria-current={i === photoIndex}
                           onClick={() => setPhotoIndex(i)}
-                          className={`rounded-full transition-colors ${
+                          className={`cursor-pointer rounded-full transition-all duration-150 hover:scale-110 ${
                             i === photoIndex
-                              ? "h-2 w-2 bg-sbc-gold"
-                              : "h-2 w-2 bg-white/50 hover:bg-white/80"
+                              ? "h-2.5 w-2.5 bg-sbc-gold shadow-sm"
+                              : "h-2 w-2 bg-white/50 hover:bg-white hover:shadow-sm"
                           }`}
                         />
                       ))}
@@ -220,12 +223,11 @@ export function FeaturedProjectsGallery({ projects }: Props) {
             )}
 
             <div className="overflow-y-auto p-6 md:p-8">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <Badge variant={getStatusBadgeVariant(activeProject.status)}>
+              <div>
+                <span
+                  className={`text-xs uppercase tracking-widest ${getStatusLabelClass(activeProject.status)}`}
+                >
                   {activeProject.status}
-                </Badge>
-                <span className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                  {activeProject.completion}
                 </span>
               </div>
               <h3 className="mt-4 text-xl font-bold text-sbc-black md:text-2xl">
@@ -246,13 +248,13 @@ export function FeaturedProjectsGallery({ projects }: Props) {
 
             {projects.length > 1 && (
               <div className="flex shrink-0 items-center justify-between border-t border-sbc-gray-light px-5 py-4">
-                <IconButton label="Previous project" onClick={goPrev}>
+                <IconButton label="Previous project" variant="gallery" size="lg" onClick={goPrev}>
                   <ChevronLeftIcon />
                 </IconButton>
                 <p className="text-xs font-medium text-sbc-gray">
                   {(activeIndex ?? 0) + 1} / {projects.length}
                 </p>
-                <IconButton label="Next project" onClick={goNext}>
+                <IconButton label="Next project" variant="gallery" size="lg" onClick={goNext}>
                   <ChevronRightIcon />
                 </IconButton>
               </div>

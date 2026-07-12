@@ -64,7 +64,7 @@ export type PortfolioProject = {
   featured?: boolean;
   description?: string;
   category?: "completed" | "ongoing";
-  /** Up to 4 image URLs for homepage gallery */
+  /** Image URLs for project gallery */
   images?: string[];
 };
 

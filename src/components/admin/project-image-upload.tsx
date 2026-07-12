@@ -2,12 +2,10 @@
 
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { MAX_PROJECT_IMAGES } from "@/lib/project-images";
 
 type Props = {
   onUploaded: (urls: string[]) => void;
   currentCount?: number;
-  max?: number;
   disabled?: boolean;
   label?: string;
 };
@@ -29,7 +27,6 @@ async function uploadFile(file: File): Promise<string> {
 export function ProjectImageUpload({
   onUploaded,
   currentCount = 0,
-  max = MAX_PROJECT_IMAGES,
   disabled,
   label = "Upload Photos",
 }: Props) {
@@ -37,20 +34,16 @@ export function ProjectImageUpload({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const remaining = max - currentCount;
-  const canUpload = remaining > 0;
-
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    if (!files.length || !canUpload) return;
+    if (!files.length) return;
 
-    const batch = files.slice(0, remaining);
     setUploading(true);
     setError(null);
 
     try {
       const urls: string[] = [];
-      for (const file of batch) {
+      for (const file of files) {
         urls.push(await uploadFile(file));
       }
       onUploaded(urls);
@@ -71,24 +64,20 @@ export function ProjectImageUpload({
         multiple
         className="hidden"
         onChange={handleFileChange}
-        disabled={disabled || uploading || !canUpload}
+        disabled={disabled || uploading}
       />
       <Button
         type="button"
         size="sm"
         variant="secondary"
-        disabled={disabled || uploading || !canUpload}
+        disabled={disabled || uploading}
         onClick={() => inputRef.current?.click()}
       >
-        {uploading
-          ? "Uploading…"
-          : canUpload
-            ? `${label} (${currentCount}/${max})`
-            : "Maximum photos reached"}
+        {uploading ? "Uploading…" : label}
       </Button>
-      {canUpload && (
+      {currentCount > 0 && (
         <p className="mt-1 text-[10px] font-medium text-sbc-gray">
-          Select up to {remaining} image{remaining === 1 ? "" : "s"} at once
+          {currentCount} photo{currentCount === 1 ? "" : "s"} uploaded
         </p>
       )}
       {error && (

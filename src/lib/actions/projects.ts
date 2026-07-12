@@ -5,6 +5,17 @@ import { createClient } from "@/lib/supabase/server";
 import type { ProjectInput, ProjectRow } from "@/lib/supabase/types";
 import { portfolio } from "@/lib/company-content";
 import { normalizeProjectImages } from "@/lib/project-images";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getFeaturedProjectLimit } from "@/lib/actions/site-settings";
+
+export async function ensureProjectsSeeded() {
+  if (!isSupabaseConfigured()) return { seeded: false as const };
+
+  const existing = await getProjects();
+  if (existing.length > 0) return { seeded: false as const };
+
+  return seedProjectsFromContent();
+}
 
 export async function getProjects(): Promise<ProjectRow[]> {
   try {
@@ -46,7 +57,47 @@ export async function getProjectsOrFallback(): Promise<ProjectRow[]> {
   }));
 }
 
+async function countFeaturedProjects(excludeId?: string): Promise<number> {
+  try {
+    const supabase = await createClient();
+    let query = supabase
+      .from("projects")
+      .select("id", { count: "exact", head: true })
+      .eq("featured", true);
+
+    if (excludeId) {
+      query = query.neq("id", excludeId);
+    }
+
+    const { count, error } = await query;
+    if (error) return 0;
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function assertFeaturedLimit(
+  featured: boolean | undefined,
+  projectId?: string
+): Promise<{ error?: string }> {
+  if (featured !== true) return {};
+
+  const limit = await getFeaturedProjectLimit();
+  const featuredCount = await countFeaturedProjects(projectId);
+  if (featuredCount >= limit) {
+    return {
+      error: `Featured limit reached (${limit}). Unfeature another project first or increase the limit in project settings.`,
+    };
+  }
+
+  return {};
+}
+
 export async function createProject(input: ProjectInput) {
+  const limitCheck = await assertFeaturedLimit(input.featured);
+  if (limitCheck.error) return { error: limitCheck.error };
+
   const supabase = await createClient();
   const payload = {
     ...input,
@@ -61,6 +112,9 @@ export async function createProject(input: ProjectInput) {
 }
 
 export async function updateProject(id: string, input: Partial<ProjectInput>) {
+  const limitCheck = await assertFeaturedLimit(input.featured, id);
+  if (limitCheck.error) return { error: limitCheck.error };
+
   const supabase = await createClient();
   const payload = {
     ...input,

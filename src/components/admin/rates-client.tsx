@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
+import { SortableTableHead } from "@/components/ui/sortable-table-head";
+import { sortRows, useTableSort } from "@/lib/table-sort";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -16,38 +17,63 @@ import {
   TableRow,
   TableShell,
 } from "@/components/ui/table";
-import { createDailyRate, deleteDailyRate } from "@/lib/actions/rates";
+import { createDailyRate, deleteDailyRate, updateDailyRate } from "@/lib/actions/rates";
+import {
+  TableEditButton,
+  TableDeleteButton,
+  TableRowActions,
+} from "@/components/admin/table-row-actions";
 import {
   employeeCategories,
   formatEmployeeCategory,
+  getCategoryLabelClass,
   getRolesForCategory,
   type EmployeeCategory,
 } from "@/lib/employee-categories";
-import { formatCurrency } from "@/lib/mvp-data";
 import { type DailyRate } from "@/lib/daily-rates";
+import {
+  defaultRateTypeForCategory,
+  formatRateAmount,
+  formatRateTypeLabel,
+  type RateType,
+} from "@/lib/rate-types";
 
 type Props = {
   initialRates: DailyRate[];
 };
 
+type RateSortKey = "category" | "role" | "rate";
+
 export function RatesClient({ initialRates }: Props) {
   const [rates, setRates] = useState(initialRates);
+  const { sort, toggleSort } = useTableSort<RateSortKey>({ defaultKey: "category" });
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [editingId, setEditingId] = useState<string | null>(null);
   const constructionRoles = getRolesForCategory("construction");
   const [form, setForm] = useState<{
     category: EmployeeCategory;
     role: string;
     rate: string;
-    rateType: "hourly" | "salary";
+    rateType: RateType;
   }>({
     category: "construction",
     role: constructionRoles[0],
     rate: "",
-    rateType: "hourly",
+    rateType: "daily",
   });
 
   const roleOptions = getRolesForCategory(form.category);
+
+  const sortedRates = useMemo(
+    () =>
+      sortRows(rates, sort, (row, key) => {
+        if (key === "rate") return row.rate;
+        if (key === "category") return row.category;
+        return row.role;
+      }),
+    [rates, sort]
+  );
 
   function handleCategoryChange(category: EmployeeCategory) {
     const roles = getRolesForCategory(category);
@@ -55,41 +81,81 @@ export function RatesClient({ initialRates }: Props) {
       ...form,
       category,
       role: roles[0],
-      rateType: category === "admin" ? "salary" : "hourly",
+      rateType: defaultRateTypeForCategory(category),
     });
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setForm({
+      category: "construction",
+      role: constructionRoles[0],
+      rate: "",
+      rateType: "daily",
+    });
+  }
+
+  function startEdit(rate: DailyRate) {
+    setEditingId(rate.id);
+    setForm({
+      category: rate.category,
+      role: rate.role,
+      rate: String(rate.rate),
+      rateType: rate.rateType,
+    });
+    setMessage(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await createDailyRate({
+      const rateType = defaultRateTypeForCategory(form.category);
+      const payload = {
         category: form.category,
         role: form.role,
         rate: Number(form.rate),
-        rate_type: form.rateType,
-      });
+        rate_type: rateType,
+      };
+
+      const result = editingId
+        ? await updateDailyRate(editingId, payload)
+        : await createDailyRate(payload);
 
       if (result.error) {
         setMessage(result.error);
         return;
       }
 
-      const newRate: DailyRate = {
-        id: `rate-${Date.now()}`,
-        category: form.category,
-        role: form.role,
-        rate: Number(form.rate),
-        rateType: form.rateType,
-      };
+      if (editingId) {
+        setRates((prev) =>
+          prev.map((r) =>
+            r.id === editingId
+              ? {
+                  id: editingId,
+                  category: form.category,
+                  role: form.role,
+                  rate: Number(form.rate),
+                  rateType,
+                }
+              : r
+          )
+        );
+        setMessage("Rate updated.");
+      } else {
+        setRates((prev) => [
+          ...prev,
+          {
+            id: `rate-${Date.now()}`,
+            category: form.category,
+            role: form.role,
+            rate: Number(form.rate),
+            rateType,
+          },
+        ]);
+        setMessage("Rate added.");
+      }
 
-      setRates((prev) => [...prev, newRate]);
-      setMessage("Rate added.");
-      setForm({
-        category: "construction",
-        role: constructionRoles[0],
-        rate: "",
-        rateType: "hourly",
-      });
+      resetForm();
     });
   }
 
@@ -128,7 +194,7 @@ export function RatesClient({ initialRates }: Props) {
         className="mb-8 grid gap-4 border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
       >
         <p className="md:col-span-2 text-xs font-medium uppercase tracking-widest text-sbc-gold">
-          Add Rate
+          {editingId ? "Edit Rate" : "Add Rate"}
         </p>
         <Select
           label="Category"
@@ -163,24 +229,31 @@ export function RatesClient({ initialRates }: Props) {
           type="number"
           value={form.rate}
           onChange={(e) => setForm({ ...form, rate: e.target.value })}
-          placeholder={form.rateType === "hourly" ? "450" : "55000"}
+          placeholder={
+            defaultRateTypeForCategory(form.category) === "daily" ? "450" : "150"
+          }
           required
         />
-        <Select
-          label="Rate Type"
-          size="sm"
-          value={form.rateType}
-          onChange={(e) =>
-            setForm({ ...form, rateType: e.target.value as "hourly" | "salary" })
-          }
-        >
-          <option value="hourly">Hourly / Daily</option>
-          <option value="salary">Monthly Salary</option>
-        </Select>
-        <div className="md:col-span-2">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
+            Rate Type
+          </p>
+          <p className="border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-medium text-sbc-black">
+            {formatRateTypeLabel(defaultRateTypeForCategory(form.category))}
+            <span className="ml-2 text-xs text-sbc-gray">
+              ({form.category === "construction" ? "fixed" : "fixed hourly"})
+            </span>
+          </p>
+        </div>
+        <div className="md:col-span-2 flex flex-wrap gap-3">
           <Button type="submit" size="sm" disabled={pending}>
-            Add Rate
+            {editingId ? "Update Rate" : "Add Rate"}
           </Button>
+          {editingId && (
+            <Button type="button" variant="ghost" size="sm" onClick={resetForm}>
+              Cancel
+            </Button>
+          )}
         </div>
       </form>
 
@@ -188,34 +261,56 @@ export function RatesClient({ initialRates }: Props) {
         <Table>
           <TableHeader>
             <tr>
-              <TableHead>Category</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead align="right">Rate</TableHead>
+              <SortableTableHead
+                sortKey="category"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as RateSortKey)}
+              >
+                Category
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="role"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as RateSortKey)}
+              >
+                Role
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="rate"
+                align="right"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as RateSortKey)}
+              >
+                Rate
+              </SortableTableHead>
               <TableHead align="right">Actions</TableHead>
             </tr>
           </TableHeader>
           <TableBody>
-            {rates.map((rate) => (
+            {sortedRates.map((rate) => (
               <TableRow key={rate.id}>
                 <TableCell>
-                  <Badge variant={rate.category === "construction" ? "dark" : "gold"}>
+                  <span
+                    className={`text-xs font-semibold uppercase tracking-widest ${getCategoryLabelClass(rate.category)}`}
+                  >
                     {formatEmployeeCategory(rate.category)}
-                  </Badge>
+                  </span>
                 </TableCell>
                 <TablePrimaryCell>{rate.role}</TablePrimaryCell>
                 <TableCell align="right" numeric className="!font-semibold !text-sbc-black">
-                  {rate.rateType === "hourly"
-                    ? `${formatCurrency(rate.rate)}/day`
-                    : `${formatCurrency(rate.rate)}/mo`}
+                  {formatRateAmount(rate.rate, rate.rateType)}
                 </TableCell>
                 <TableCell align="right">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(rate.id)}
-                    className="text-xs font-semibold uppercase tracking-widest text-sbc-gray transition-colors hover:text-sbc-gold-dark"
-                  >
-                    Remove
-                  </button>
+                  <TableRowActions>
+                    <TableEditButton onClick={() => startEdit(rate)} />
+                    <TableDeleteButton
+                      label="Remove"
+                      onClick={() => handleDelete(rate.id)}
+                    />
+                  </TableRowActions>
                 </TableCell>
               </TableRow>
             ))}
