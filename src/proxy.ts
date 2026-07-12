@@ -1,8 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { getSupabaseEnv } from "@/lib/supabase/config";
+import {
+  getAdminHost,
+  getSupabaseEnv,
+  shouldRedirectToConfiguredAdminHost,
+} from "@/lib/supabase/config";
 
 export async function proxy(request: NextRequest) {
+  const host = request.headers.get("host");
+
+  if (shouldRedirectToConfiguredAdminHost(host)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.protocol = "https";
+    redirectUrl.host = getAdminHost();
+    return NextResponse.redirect(redirectUrl);
+  }
+
   const env = getSupabaseEnv();
   const isLoginPage = request.nextUrl.pathname === "/admin/login";
 

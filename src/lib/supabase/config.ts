@@ -17,3 +17,14 @@ export function getSupabaseEnv() {
     key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   };
 }
+
+/** Production admin host with Supabase env vars configured. */
+export function getAdminHost() {
+  return process.env.NEXT_PUBLIC_ADMIN_HOST ?? "steerbuilders-psi.vercel.app";
+}
+
+export function shouldRedirectToConfiguredAdminHost(host: string | null) {
+  if (!host || host.includes("localhost")) return false;
+  if (isSupabaseConfigured()) return false;
+  return host !== getAdminHost();
+}

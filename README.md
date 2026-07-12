@@ -3,7 +3,8 @@
 Website and admin payroll system for **Steer Builders Corporation (SBC)**.
 
 - **GitHub:** https://github.com/devmar81011/steerbuilders
-- **Vercel:** https://vercel.com/mar-projects81011/steerbuilders
+- **Vercel (live admin):** https://steerbuilders-psi.vercel.app/admin
+- **Vercel dashboard:** https://vercel.com/mar81011s-projects/steerbuilders
 - **Supabase:** https://supabase.com/dashboard/project/stoocngdvtgvbbvdjmdo
 - **MVP status:** `/mvp` (live roadmap)
 - **Stack:** Next.js, Tailwind CSS, Supabase, Vercel
@@ -38,9 +39,10 @@ Add your Supabase anon key to `.env.local` from **Supabase → Project Settings 
    - `src/lib/mvp-status.ts` — feature status
    - `CHANGELOG.md` — what changed
    - `MVP.md` — checklist
-3. Add env vars in [Vercel settings](https://vercel.com/mar-projects81011/steerbuilders/settings/environment-variables):
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. Add env vars in [Vercel settings](https://vercel.com/mar81011s-projects/steerbuilders/settings/environment-variables):
+   - `NEXT_PUBLIC_SUPABASE_URL` → `https://stoocngdvtgvbbvdjmdo.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → your Supabase publishable/anon key
+   - `NEXT_PUBLIC_ADMIN_HOST` → `steerbuilders-psi.vercel.app` (optional; used to redirect legacy deployments)
 
 ## Database
 

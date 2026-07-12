@@ -1,11 +1,23 @@
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import { LoginForm } from "@/components/admin/login-form";
 import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import {
+  getAdminHost,
+  isSupabaseConfigured,
+  shouldRedirectToConfiguredAdminHost,
+} from "@/lib/supabase/config";
 import Image from "next/image";
 
 export default async function AdminLoginPage() {
+  const host = (await headers()).get("host");
+
+  if (shouldRedirectToConfiguredAdminHost(host)) {
+    redirect(`https://${getAdminHost()}/admin/login`);
+  }
+
   if (isSupabaseConfigured()) {
     const supabase = await createClient();
     const {
@@ -14,6 +26,8 @@ export default async function AdminLoginPage() {
 
     if (user?.app_metadata.role === "admin") redirect("/admin");
   }
+
+  const adminUrl = `https://${getAdminHost()}/admin/login`;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-sbc-off-white px-6">
@@ -33,10 +47,11 @@ export default async function AdminLoginPage() {
 
         {!isSupabaseConfigured() && (
           <p className="mt-4 border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
-            Supabase is not configured on this deployment. Add{" "}
-            <code className="text-xs">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-            <code className="text-xs">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in
-            Vercel, then redeploy.
+            This deployment is missing Supabase settings. Use the live admin URL
+            instead:{" "}
+            <Link href={adminUrl} className="text-sbc-gold hover:underline">
+              {adminUrl}
+            </Link>
           </p>
         )}
 
