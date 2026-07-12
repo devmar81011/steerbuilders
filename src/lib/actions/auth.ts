@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export type LoginState = {
   error?: string;
@@ -16,6 +17,13 @@ export async function login(
 
   if (!email || !password) {
     return { error: "Enter your email and password." };
+  }
+
+  if (!isSupabaseConfigured()) {
+    return {
+      error:
+        "Supabase is not configured on this server. Add the Supabase env vars in Vercel and redeploy.",
+    };
   }
 
   const supabase = await createClient();
@@ -37,7 +45,9 @@ export async function login(
 }
 
 export async function logout() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  if (isSupabaseConfigured()) {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+  }
   redirect("/admin/login");
 }

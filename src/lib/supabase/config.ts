@@ -8,3 +8,12 @@ export function isSupabaseConfigured() {
       key !== "your-publishable-anon-key"
   );
 }
+
+export function getSupabaseEnv() {
+  if (!isSupabaseConfigured()) return null;
+
+  return {
+    url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  };
+}

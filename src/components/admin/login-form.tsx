@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 
 const initialState: LoginState = {};
 
-export function LoginForm() {
+export function LoginForm({ supabaseConfigured = true }: { supabaseConfigured?: boolean }) {
   const [state, action, pending] = useActionState(login, initialState);
 
   return (
@@ -34,7 +34,7 @@ export function LoginForm() {
           {state.error}
         </p>
       )}
-      <Button type="submit" className="w-full" disabled={pending}>
+      <Button type="submit" className="w-full" disabled={pending || !supabaseConfigured}>
         {pending ? "Signing in…" : "Sign In"}
       </Button>
     </form>
