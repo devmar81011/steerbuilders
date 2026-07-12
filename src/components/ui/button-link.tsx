@@ -1,4 +1,5 @@
-import { type ButtonHTMLAttributes, type ReactNode } from "react";
+import Link from "next/link";
+import { type ComponentProps, type ReactNode } from "react";
 
 type Variant = "primary" | "secondary" | "outline" | "ghost";
 type Size = "sm" | "md" | "lg";
@@ -33,27 +34,27 @@ const sizeStyles: Record<Size, string> = {
   lg: "px-8 py-4 text-base",
 };
 
-type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonLinkProps = ComponentProps<typeof Link> & {
   variant?: Variant;
   size?: Size;
   tone?: Tone;
   children: ReactNode;
 };
 
-export function Button({
+export function ButtonLink({
   variant = "primary",
   size = "md",
   tone = "light",
   className = "",
   children,
   ...props
-}: ButtonProps) {
+}: ButtonLinkProps) {
   return (
-    <button
-      className={`inline-flex items-center justify-center font-semibold uppercase tracking-wider transition-colors duration-200 disabled:cursor-not-allowed disabled:opacity-50 ${variantStyles[tone][variant]} ${sizeStyles[size]} ${className}`}
+    <Link
+      className={`inline-flex items-center justify-center font-semibold uppercase tracking-wider transition-colors duration-200 ${variantStyles[tone][variant]} ${sizeStyles[size]} ${className}`}
       {...props}
     >
       {children}
-    </button>
+    </Link>
   );
 }

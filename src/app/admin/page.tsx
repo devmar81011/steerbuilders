@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { AdminShell } from "@/components/layout/admin-shell";
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 import { mockEmployees, mockPayroll, formatCurrency } from "@/lib/mvp-data";
 
 export default function AdminDashboardPage() {
@@ -42,19 +41,21 @@ export default function AdminDashboardPage() {
         <Card>
           <h2 className="font-bold text-sbc-black">Quick Actions</h2>
           <div className="mt-4 flex flex-wrap gap-3">
-            <Link href="/admin/employees">
-              <Button size="sm">Manage Employees</Button>
-            </Link>
-            <Link href="/admin/payroll">
-              <Button size="sm" variant="secondary">
-                Run Payroll
-              </Button>
-            </Link>
-            <Link href="/mvp">
-              <Button size="sm" variant="outline">
-                View MVP Roadmap
-              </Button>
-            </Link>
+            <ButtonLink href="/admin/employees" size="sm">
+              Manage Employees
+            </ButtonLink>
+            <ButtonLink href="/admin/projects" size="sm" variant="secondary">
+              Manage Projects
+            </ButtonLink>
+            <ButtonLink href="/admin/payroll" size="sm" variant="secondary">
+              Run Payroll
+            </ButtonLink>
+            <ButtonLink href="/admin/review" size="sm" variant="outline">
+              PDF Review
+            </ButtonLink>
+            <ButtonLink href="/admin/design" size="sm" variant="outline">
+              Admin Design
+            </ButtonLink>
           </div>
         </Card>
 

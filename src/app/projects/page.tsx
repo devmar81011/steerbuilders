@@ -1,17 +1,22 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { Badge } from "@/components/ui/badge";
-import { portfolio } from "@/lib/company-content";
+import { ButtonLink } from "@/components/ui/button-link";
+import { Card } from "@/components/ui/card";
+import { getProjectsOrFallback } from "@/lib/actions/projects";
 
 type Filter = "all" | "Completed" | "Ongoing";
 
-export default function ProjectsPage() {
-  const [filter, setFilter] = useState<Filter>("all");
+export default async function ProjectsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
+  const params = await searchParams;
+  const filter = (params.filter as Filter) || "all";
+  const portfolio = await getProjectsOrFallback();
 
   const filtered =
     filter === "all"
@@ -21,6 +26,12 @@ export default function ProjectsPage() {
             ? p.status === "Ongoing" || p.status === "Put on hold in 2025"
             : p.status === "Completed"
         );
+
+  const tabs: { key: Filter; label: string }[] = [
+    { key: "all", label: "All Projects" },
+    { key: "Completed", label: "Completed" },
+    { key: "Ongoing", label: "Ongoing" },
+  ];
 
   return (
     <>
@@ -43,19 +54,15 @@ export default function ProjectsPage() {
 
         <Section>
           <div className="mb-8 flex flex-wrap gap-3">
-            {(["all", "Completed", "Ongoing"] as Filter[]).map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setFilter(item)}
-                className={`px-4 py-2 text-xs font-medium uppercase tracking-widest transition-colors ${
-                  filter === item
-                    ? "bg-sbc-gold text-sbc-white"
-                    : "border border-sbc-gray-light text-sbc-gray hover:border-sbc-gold hover:text-sbc-gold"
-                }`}
+            {tabs.map((tab) => (
+              <ButtonLink
+                key={tab.key}
+                href={`/projects?filter=${tab.key}`}
+                variant={filter === tab.key ? "primary" : "outline"}
+                size="sm"
               >
-                {item === "all" ? "All Projects" : item}
-              </button>
+                {tab.label}
+              </ButtonLink>
             ))}
           </div>
 
@@ -83,7 +90,7 @@ export default function ProjectsPage() {
               <tbody>
                 {filtered.map((project) => (
                   <tr
-                    key={`${project.name}-${project.location}`}
+                    key={`${project.id}-${project.name}`}
                     className="border-b border-sbc-gray-light"
                   >
                     <td className="px-4 py-3 font-semibold">{project.name}</td>

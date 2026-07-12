@@ -2,6 +2,19 @@
 
 All notable changes to Steer Builders. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.4.0] - 2026-07-12
+
+### Added
+- Button hover fix with light/dark tone variants and `ButtonLink` component
+- Supabase projects table migration (`002_projects.sql`)
+- Admin projects CRUD with PDF seed action
+- PDF content reviewer agent at `/admin/review`
+- Admin design spec at `/admin/design`
+- Public `/projects` and homepage featured projects read from Supabase with PDF fallback
+
+### Changed
+- Admin navigation expanded for projects, review, and design modules
+
 ## [0.3.0] - 2026-07-12
 
 ### Added

@@ -18,7 +18,7 @@ export type MvpPhase = {
   features: MvpFeature[];
 };
 
-export const MVP_VERSION = "0.3.0";
+export const MVP_VERSION = "0.4.0";
 
 export const MVP_UPDATED = "2026-07-12";
 
@@ -89,9 +89,23 @@ export const mvpPhases: MvpPhase[] = [
         notes: "Calculate and view payslips",
       },
       {
-        id: "payslips",
-        name: "Payslip Export (PDF)",
-        status: "planned",
+        id: "projects-db",
+        name: "Projects in Database",
+        status: "in_progress",
+        route: "/admin/projects",
+        notes: "Supabase projects table + seed from PDF",
+      },
+      {
+        id: "content-reviewer",
+        name: "PDF Content Reviewer Agent",
+        status: "done",
+        route: "/admin/review",
+      },
+      {
+        id: "admin-design",
+        name: "Admin Design Spec",
+        status: "done",
+        route: "/admin/design",
       },
     ],
   },

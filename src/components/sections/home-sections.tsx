@@ -1,6 +1,6 @@
 import Image from "next/image";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button-link";
 import { Button } from "@/components/ui/button";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { Card } from "@/components/ui/card";
@@ -11,7 +11,6 @@ import {
   mission,
   services,
   proposalStats,
-  portfolio,
 } from "@/lib/company-content";
 
 export function HeroSection() {
@@ -31,18 +30,12 @@ export function HeroSection() {
               {company.tagline}
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
-              <Link href="#contact">
-                <Button size="lg">Request a Proposal</Button>
-              </Link>
-              <Link href="/projects">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-sbc-white text-sbc-white hover:bg-sbc-white hover:text-sbc-black"
-                >
-                  View Portfolio
-                </Button>
-              </Link>
+            <ButtonLink href="#contact" size="lg">
+              Request a Proposal
+            </ButtonLink>
+            <ButtonLink href="/projects" variant="outline" tone="dark" size="lg">
+              View Portfolio
+            </ButtonLink>
             </div>
           </div>
           <div className="flex justify-center md:justify-end">
@@ -131,47 +124,6 @@ export function StatsSection() {
             </p>
           </div>
         ))}
-      </div>
-    </Section>
-  );
-}
-
-export function FeaturedProjectsSection() {
-  const featured = portfolio.filter((p) => p.featured);
-
-  return (
-    <Section id="projects">
-      <SectionHeader
-        label="Portfolio"
-        title="Featured Projects"
-        description="A selection of completed and ongoing engagements across Cebu, Bohol, Iloilo, and Cagayan de Oro."
-      />
-      <div className="grid gap-6 md:grid-cols-2">
-        {featured.map((project) => (
-          <Card key={project.name + project.location}>
-            <div className="mb-3 flex items-center justify-between gap-4">
-              <Badge variant={project.status === "Completed" ? "gold" : "dark"}>
-                {project.status}
-              </Badge>
-              <span className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
-                {project.completion}
-              </span>
-            </div>
-            <h3 className="text-lg font-bold text-sbc-black">{project.name}</h3>
-            <p className="mt-2 text-sm font-semibold text-sbc-gold">{project.scope}</p>
-            <p className="mt-2 text-sm font-medium text-sbc-gray">{project.location}</p>
-            {project.description && (
-              <p className="mt-4 text-sm font-semibold leading-relaxed text-sbc-gray">
-                {project.description}
-              </p>
-            )}
-          </Card>
-        ))}
-      </div>
-      <div className="mt-8">
-        <Link href="/projects">
-          <Button variant="outline">View Full Portfolio</Button>
-        </Link>
       </div>
     </Section>
   );

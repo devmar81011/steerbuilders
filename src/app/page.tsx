@@ -1,14 +1,7 @@
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
-import {
-  HeroSection,
-  StorySection,
-  VisionMissionSection,
-  ServicesSection,
-  StatsSection,
-  FeaturedProjectsSection,
-  ContactSection,
-} from "@/components/sections/home-sections";
+import { ContactSection, HeroSection, ServicesSection, StatsSection, StorySection, VisionMissionSection } from "@/components/sections/home-sections";
+import { FeaturedProjectsSection } from "@/components/sections/featured-projects";
 
 export default function Home() {
   return (

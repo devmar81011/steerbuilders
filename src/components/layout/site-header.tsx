@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button-link";
 
 const navLinks = [
   { href: "/#services", label: "Services" },
@@ -45,14 +45,12 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link href="/design-system" className="hidden lg:block">
-            <Button variant="ghost" size="sm">
-              Design System
-            </Button>
-          </Link>
-          <Link href="/#contact">
-            <Button size="sm">Get a Quote</Button>
-          </Link>
+          <ButtonLink href="/design-system" variant="ghost" tone="dark" size="sm" className="hidden lg:inline-flex">
+            Design System
+          </ButtonLink>
+          <ButtonLink href="/#contact" tone="dark" size="sm">
+            Get a Quote
+          </ButtonLink>
         </div>
       </div>
     </header>

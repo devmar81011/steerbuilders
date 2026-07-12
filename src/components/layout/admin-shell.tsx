@@ -7,9 +7,11 @@ import { MVP_VERSION } from "@/lib/mvp-status";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", exact: true },
+  { href: "/admin/projects", label: "Projects" },
   { href: "/admin/employees", label: "Employees" },
   { href: "/admin/payroll", label: "Payroll" },
-  { href: "/mvp", label: "MVP Status" },
+  { href: "/admin/review", label: "PDF Review" },
+  { href: "/admin/design", label: "Design Spec" },
 ];
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
