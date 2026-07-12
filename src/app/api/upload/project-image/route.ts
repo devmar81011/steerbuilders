@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdminApi } from "@/lib/auth/require-admin";
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -11,6 +12,11 @@ const ALLOWED_TYPES = new Set([
 ]);
 
 export async function POST(request: NextRequest) {
+  const admin = await requireAdminApi();
+  if (!admin) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
   try {
     const formData = await request.formData();
     const file = formData.get("file");

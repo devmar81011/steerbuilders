@@ -18,6 +18,7 @@ import {
   type PayrollTab,
 } from "@/lib/payroll-periods";
 import { getPayrollAdjustments } from "@/lib/actions/adjustments";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 function mapEmployee(row: Record<string, unknown>): Employee {
   return {
@@ -295,6 +296,7 @@ export async function createEmployee(input: {
   rate: number;
   rate_type: RateType;
 }) {
+  await requireAdmin();
   try {
     const supabase = await createClient();
     const { error } = await supabase.from("employees").insert({
@@ -326,6 +328,7 @@ export async function updateEmployee(
     status: "active" | "inactive";
   }
 ) {
+  await requireAdmin();
   try {
     const supabase = await createClient();
     const { error } = await supabase.from("employees").update(input).eq("id", id);
@@ -349,6 +352,7 @@ export async function updatePayrollEntry(
     status: "draft" | "processed";
   }
 ) {
+  await requireAdmin();
   if (isPreviewPayrollEntryId(id)) {
     return { success: true, preview: true };
   }

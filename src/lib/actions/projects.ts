@@ -7,6 +7,7 @@ import { portfolio } from "@/lib/company-content";
 import { normalizeProjectImages } from "@/lib/project-images";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getFeaturedProjectLimit } from "@/lib/actions/site-settings";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function ensureProjectsSeeded() {
   if (!isSupabaseConfigured()) return { seeded: false as const };
@@ -95,6 +96,7 @@ async function assertFeaturedLimit(
 }
 
 export async function createProject(input: ProjectInput) {
+  await requireAdmin();
   const limitCheck = await assertFeaturedLimit(input.featured);
   if (limitCheck.error) return { error: limitCheck.error };
 
@@ -112,6 +114,7 @@ export async function createProject(input: ProjectInput) {
 }
 
 export async function updateProject(id: string, input: Partial<ProjectInput>) {
+  await requireAdmin();
   const limitCheck = await assertFeaturedLimit(input.featured, id);
   if (limitCheck.error) return { error: limitCheck.error };
 
@@ -131,6 +134,7 @@ export async function updateProject(id: string, input: Partial<ProjectInput>) {
 }
 
 export async function deleteProject(id: string) {
+  await requireAdmin();
   const supabase = await createClient();
   const { error } = await supabase.from("projects").delete().eq("id", id);
   if (error) return { error: error.message };
@@ -141,6 +145,7 @@ export async function deleteProject(id: string) {
 }
 
 export async function seedProjectsFromContent() {
+  await requireAdmin();
   const existing = await getProjects();
   if (existing.length > 0) {
     return { error: "Projects table already has data. Clear it first or add manually." };

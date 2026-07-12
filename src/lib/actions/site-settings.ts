@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import {
   clampFeaturedProjectLimit,
   DEFAULT_FEATURED_PROJECT_LIMIT,
@@ -32,6 +33,7 @@ export async function getFeaturedProjectLimit(): Promise<number> {
 }
 
 export async function setFeaturedProjectLimit(limit: number) {
+  await requireAdmin();
   const value = clampFeaturedProjectLimit(limit);
 
   try {

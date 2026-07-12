@@ -13,6 +13,7 @@ import {
   type PayrollAdjustment,
 } from "@/lib/payroll-adjustments";
 import type { EmployeeCategory } from "@/lib/employee-categories";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 function mapAdjustment(row: Record<string, unknown>): PayrollAdjustment | null {
   const kind = row.kind as string;
@@ -141,6 +142,7 @@ export async function createPayrollAdjustment(input: {
     value: number;
   }[];
 }) {
+  await requireAdmin();
   const code = slugifyDeductionCode(input.code || input.label);
   if (!code) return { error: "Deduction code is required." };
 
@@ -193,6 +195,7 @@ export async function updatePayrollAdjustment(
     }[];
   }
 ) {
+  await requireAdmin();
   try {
     const supabase = await createClient();
     const { error } = await supabase
@@ -222,6 +225,7 @@ export async function updatePayrollAdjustment(
 }
 
 export async function deletePayrollAdjustment(id: string) {
+  await requireAdmin();
   try {
     const supabase = await createClient();
     const { error } = await supabase

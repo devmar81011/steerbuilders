@@ -16,6 +16,7 @@ import {
 import { getEmployees } from "@/lib/actions/payroll";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { isPreviewEmployeeId } from "@/lib/preview-mode";
+import { requireAdmin } from "@/lib/auth/require-admin";
 import type {
   AdminAttendanceWeekRow,
   AttendanceWeekRow,
@@ -209,6 +210,7 @@ export async function updateAttendanceDay(
   dayKey: AttendanceDayKey,
   present: boolean
 ): Promise<{ error?: string; success?: boolean; preview?: boolean }> {
+  await requireAdmin();
   if (!isSupabaseConfigured() || isPreviewEmployeeId(employeeId)) {
     return { success: true, preview: true };
   }
@@ -271,6 +273,7 @@ export async function updateAdminAttendanceTime(
   field: AdminTimeField,
   value: string
 ): Promise<{ error?: string; success?: boolean; preview?: boolean }> {
+  await requireAdmin();
   if (!isSupabaseConfigured() || isPreviewEmployeeId(employeeId)) {
     return { success: true, preview: true };
   }
@@ -324,6 +327,7 @@ export async function updateAdminAttendanceTime(
 export async function saveAdminAttendanceRow(
   row: AdminAttendanceRow
 ): Promise<{ error?: string; success?: boolean }> {
+  await requireAdmin();
   if (!isSupabaseConfigured()) {
     return { success: true };
   }
