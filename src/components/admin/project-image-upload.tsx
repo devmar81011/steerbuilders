@@ -2,6 +2,7 @@
 
 import { useRef, useState, type DragEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { prepareUploadImageFile } from "@/lib/prepare-upload-image";
 import { isAllowedUploadImage, UPLOAD_IMAGE_ACCEPT } from "@/lib/upload-image-types";
 
 type Props = {
@@ -82,11 +83,17 @@ export function ProjectImageUpload({
     try {
       const urls: string[] = [];
       for (const file of files) {
-        urls.push(await uploadFile(file));
+        const prepared = await prepareUploadImageFile(file);
+        urls.push(await uploadFile(prepared));
       }
       onUploaded(urls);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed.");
+      const message = err instanceof Error ? err.message : "Upload failed.";
+      setError(
+        message.includes("heic") || message.includes("HEIC")
+          ? "Could not convert this HEIC photo. Try AirDrop/export as JPG, or take the photo in “Most Compatible” format on iPhone."
+          : message
+      );
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";

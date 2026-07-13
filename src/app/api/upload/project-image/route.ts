@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/require-admin";
 import { normalizeUploadImage } from "@/lib/normalize-upload-image";
-import { resolveUploadContentType } from "@/lib/upload-image-types";
+import { resolveUploadContentType, isHeicUpload } from "@/lib/upload-image-types";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -85,8 +85,13 @@ export async function POST(request: NextRequest) {
         file.name
       ));
     } catch {
+      const isHeic = isHeicUpload(contentType, file.name);
       return NextResponse.json(
-        { error: "Could not process this image. Try JPG or PNG instead." },
+        {
+          error: isHeic
+            ? "Could not convert this HEIC photo. Try exporting it as JPG from your phone."
+            : "Could not process this image. Try JPG or PNG instead.",
+        },
         { status: 400 }
       );
     }
