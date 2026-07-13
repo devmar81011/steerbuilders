@@ -20,7 +20,7 @@ export function getSupabaseEnv() {
 
 /** Production admin host with Supabase env vars configured. */
 export function getAdminHost() {
-  return process.env.NEXT_PUBLIC_ADMIN_HOST ?? "steerbuilders-psi.vercel.app";
+  return process.env.NEXT_PUBLIC_ADMIN_HOST ?? "steerbuilders.vercel.app";
 }
 
 export function shouldRedirectToConfiguredAdminHost(host: string | null) {

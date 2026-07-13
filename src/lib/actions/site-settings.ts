@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { requireAdminForAction } from "@/lib/auth/require-admin";
 import {
   clampFeaturedProjectLimit,
   DEFAULT_FEATURED_PROJECT_LIMIT,
@@ -32,22 +32,27 @@ export async function getFeaturedProjectLimit(): Promise<number> {
   }
 }
 
-export async function setFeaturedProjectLimit(limit: number) {
-  await requireAdmin();
+export async function setFeaturedProjectLimit(
+  limit: number,
+  accessToken?: string | null
+) {
+  const admin = await requireAdminForAction(accessToken);
   const value = clampFeaturedProjectLimit(limit);
 
   try {
-    const supabase = await createClient();
-    const { error } = await supabase.from("site_settings").upsert(
+    const { data, error } = await admin.supabase.from("site_settings").upsert(
       {
         key: FEATURED_PROJECT_LIMIT_KEY,
         value,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "key" }
-    );
+    ).select("key");
 
     if (error) return { error: error.message };
+    if (!data?.length) {
+      return { error: "Could not save featured limit. Please sign in again and retry." };
+    }
   } catch {
     return { success: true, preview: true, limit: value };
   }

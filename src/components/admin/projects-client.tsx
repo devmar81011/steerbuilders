@@ -51,6 +51,7 @@ import {
   resolveProjectStatus,
   type ProjectStatusPreset,
 } from "@/lib/project-status";
+import { getAdminAccessToken } from "@/lib/auth/admin-session";
 import type { ProjectRow } from "@/lib/supabase/types";
 
 type Props = {
@@ -252,9 +253,10 @@ export function AdminProjectsClient({
         return;
       }
 
+      const accessToken = await getAdminAccessToken();
       const result = editingId
-        ? await updateProject(editingId, payload)
-        : await createProject(payload);
+        ? await updateProject(editingId, payload, accessToken)
+        : await createProject(payload, accessToken);
 
       if (result.error) {
         setMessage(result.error);
@@ -275,7 +277,8 @@ export function AdminProjectsClient({
     }
 
     startTransition(async () => {
-      const result = await deleteProject(id);
+      const accessToken = await getAdminAccessToken();
+      const result = await deleteProject(id, accessToken);
       setMessage(result.error ?? "Project deleted.");
       if (result.success) setItems((prev) => prev.filter((p) => p.id !== id));
     });
@@ -301,7 +304,8 @@ export function AdminProjectsClient({
     }
 
     startTransition(async () => {
-      const result = await updateProject(id, { featured: next });
+      const accessToken = await getAdminAccessToken();
+      const result = await updateProject(id, { featured: next }, accessToken);
       if (result.error) {
         setItems((prev) =>
           prev.map((p) => (p.id === id ? { ...p, featured } : p))
@@ -343,7 +347,8 @@ export function AdminProjectsClient({
         return;
       }
 
-      const result = await setFeaturedProjectLimit(nextLimit);
+      const accessToken = await getAdminAccessToken();
+      const result = await setFeaturedProjectLimit(nextLimit, accessToken);
       if (result.error) {
         setMessage(result.error);
         return;

@@ -112,7 +112,7 @@ export function ProjectImagesEditor({
                 <p className="mt-1 text-sm font-medium text-sbc-gray">
                   {images.length === 0
                     ? "Add photos for the portfolio and homepage featured section."
-                    : `${images.length} photo${images.length === 1 ? "" : "s"} in this gallery`}
+                    : `${images.length} photo${images.length === 1 ? "" : "s"} — drag to arrange order`}
                 </p>
               </div>
               <IconButton

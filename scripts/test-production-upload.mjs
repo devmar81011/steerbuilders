@@ -6,7 +6,7 @@ const url = "https://stoocngdvtgvbbvdjmdo.supabase.co";
 const key = "sb_publishable_DRiclP8oRtQvspRQ2rPelg_OcVtpSNs";
 const email = "info@steerbuilderscorporation.com";
 const password = process.env.TEST_ADMIN_PASSWORD;
-const baseUrl = process.env.TEST_BASE_URL ?? "https://steerbuilders-psi.vercel.app";
+const baseUrl = process.env.TEST_BASE_URL ?? "https://steerbuilders.vercel.app";
 
 const png = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",

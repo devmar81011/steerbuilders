@@ -71,6 +71,41 @@ export async function requireAdmin() {
   return admin.user;
 }
 
+/** Server actions: prefer Bearer token from the browser when cookies are unavailable. */
+export async function requireAdminForAction(accessToken?: string | null) {
+  const admin = await getAdminContextForAction(accessToken);
+  if (!admin) {
+    redirect("/admin/login");
+  }
+
+  return admin;
+}
+
+async function getAdminContextForAction(
+  accessToken?: string | null
+): Promise<AdminContext | null> {
+  if (accessToken) {
+    const env = getSupabaseEnv();
+    if (!env) return null;
+
+    const supabase = createSupabaseClient(env.url, env.key, {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user || user.app_metadata.role !== "admin") {
+      return null;
+    }
+
+    return { user, supabase, accessToken };
+  }
+
+  return getAdminContext();
+}
+
 export async function requireAdminApi(request?: NextRequest) {
   return getAdminContext(request);
 }

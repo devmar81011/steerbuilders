@@ -7,7 +7,7 @@ import { portfolio } from "@/lib/company-content";
 import { normalizeProjectImages } from "@/lib/project-images";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getFeaturedProjectLimit } from "@/lib/actions/site-settings";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { requireAdmin, requireAdminForAction } from "@/lib/auth/require-admin";
 
 export async function ensureProjectsSeeded() {
   if (!isSupabaseConfigured()) return { seeded: false as const };
@@ -95,49 +95,73 @@ async function assertFeaturedLimit(
   return {};
 }
 
-export async function createProject(input: ProjectInput) {
-  await requireAdmin();
+export async function createProject(
+  input: ProjectInput,
+  accessToken?: string | null
+) {
+  const admin = await requireAdminForAction(accessToken);
   const limitCheck = await assertFeaturedLimit(input.featured);
   if (limitCheck.error) return { error: limitCheck.error };
 
-  const supabase = await createClient();
   const payload = {
     ...input,
     images: normalizeProjectImages(input.images),
   };
-  const { error } = await supabase.from("projects").insert(payload);
+  const { data, error } = await admin.supabase
+    .from("projects")
+    .insert(payload)
+    .select("id");
   if (error) return { error: error.message };
+  if (!data?.length) {
+    return { error: "Could not save project. Please sign in again and retry." };
+  }
   revalidatePath("/projects");
   revalidatePath("/admin/projects");
   revalidatePath("/");
   return { success: true };
 }
 
-export async function updateProject(id: string, input: Partial<ProjectInput>) {
-  await requireAdmin();
+export async function updateProject(
+  id: string,
+  input: Partial<ProjectInput>,
+  accessToken?: string | null
+) {
+  const admin = await requireAdminForAction(accessToken);
   const limitCheck = await assertFeaturedLimit(input.featured, id);
   if (limitCheck.error) return { error: limitCheck.error };
 
-  const supabase = await createClient();
   const payload = {
     ...input,
     ...(input.images !== undefined
       ? { images: normalizeProjectImages(input.images) }
       : {}),
   };
-  const { error } = await supabase.from("projects").update(payload).eq("id", id);
+  const { data, error } = await admin.supabase
+    .from("projects")
+    .update(payload)
+    .eq("id", id)
+    .select("id");
   if (error) return { error: error.message };
+  if (!data?.length) {
+    return { error: "Update did not save. Please sign in again and retry." };
+  }
   revalidatePath("/projects");
   revalidatePath("/admin/projects");
   revalidatePath("/");
   return { success: true };
 }
 
-export async function deleteProject(id: string) {
-  await requireAdmin();
-  const supabase = await createClient();
-  const { error } = await supabase.from("projects").delete().eq("id", id);
+export async function deleteProject(id: string, accessToken?: string | null) {
+  const admin = await requireAdminForAction(accessToken);
+  const { data, error } = await admin.supabase
+    .from("projects")
+    .delete()
+    .eq("id", id)
+    .select("id");
   if (error) return { error: error.message };
+  if (!data?.length) {
+    return { error: "Could not delete project. Please sign in again and retry." };
+  }
   revalidatePath("/projects");
   revalidatePath("/admin/projects");
   revalidatePath("/");
