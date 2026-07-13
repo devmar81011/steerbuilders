@@ -1,5 +1,7 @@
 export const ADMIN_TOUR_STORAGE_KEY = "sbc-admin-tour-completed";
 export const ADMIN_TOUR_DISMISSED_KEY = "sbc-admin-tour-dismissed";
+export const ADMIN_TOUR_SESSION_ACTIVE_KEY = "sbc-admin-tour-active";
+export const ADMIN_TOUR_SESSION_STEP_KEY = "sbc-admin-tour-step";
 
 export type AdminTourStep = {
   id: string;
@@ -110,4 +112,33 @@ export function markAdminTourCompleted() {
 export function dismissAdminTourPrompt() {
   if (typeof window === "undefined") return;
   localStorage.setItem(ADMIN_TOUR_DISMISSED_KEY, "true");
+}
+
+export function readTourSession(): { active: boolean; stepIndex: number } {
+  if (typeof window === "undefined") {
+    return { active: false, stepIndex: 0 };
+  }
+
+  const stepIndex = Number.parseInt(
+    sessionStorage.getItem(ADMIN_TOUR_SESSION_STEP_KEY) ?? "0",
+    10
+  );
+
+  return {
+    active: sessionStorage.getItem(ADMIN_TOUR_SESSION_ACTIVE_KEY) === "true",
+    stepIndex: Number.isFinite(stepIndex) ? stepIndex : 0,
+  };
+}
+
+export function persistTourSession(active: boolean, stepIndex: number) {
+  if (typeof window === "undefined") return;
+
+  if (active) {
+    sessionStorage.setItem(ADMIN_TOUR_SESSION_ACTIVE_KEY, "true");
+    sessionStorage.setItem(ADMIN_TOUR_SESSION_STEP_KEY, String(stepIndex));
+    return;
+  }
+
+  sessionStorage.removeItem(ADMIN_TOUR_SESSION_ACTIVE_KEY);
+  sessionStorage.removeItem(ADMIN_TOUR_SESSION_STEP_KEY);
 }

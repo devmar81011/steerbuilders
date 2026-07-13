@@ -1,4 +1,3 @@
-import { AdminShell } from "@/components/layout/admin-shell";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { runContentReview, getReviewSummary } from "@/lib/content-reviewer";
@@ -14,7 +13,7 @@ export default function AdminReviewPage() {
   const summary = getReviewSummary(findings);
 
   return (
-    <AdminShell>
+    <>
       <div className="mb-8">
         <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
           Content Reviewer Agent
@@ -70,6 +69,6 @@ export default function AdminReviewPage() {
           </Card>
         ))}
       </div>
-    </AdminShell>
+    </>
   );
 }

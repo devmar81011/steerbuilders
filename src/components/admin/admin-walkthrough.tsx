@@ -17,6 +17,8 @@ import {
   hasCompletedAdminTour,
   hasDismissedAdminTourPrompt,
   markAdminTourCompleted,
+  persistTourSession,
+  readTourSession,
   type AdminTourStep,
 } from "@/lib/admin-walkthrough";
 
@@ -102,6 +104,7 @@ export function AdminTourProvider({ children, openNav }: ProviderProps) {
 
   const finishTour = useCallback(() => {
     markAdminTourCompleted();
+    persistTourSession(false, 0);
     setMode("closed");
     setStepIndex(0);
     setTargetRect(null);
@@ -110,6 +113,7 @@ export function AdminTourProvider({ children, openNav }: ProviderProps) {
 
   const startTour = useCallback(() => {
     dismissAdminTourPrompt();
+    persistTourSession(true, 0);
     setStepIndex(0);
     setMode("touring");
     setReady(false);
@@ -130,6 +134,7 @@ export function AdminTourProvider({ children, openNav }: ProviderProps) {
       const nextStep = adminTourSteps[index];
       if (!nextStep) return;
 
+      persistTourSession(true, index);
       setReady(false);
       setStepIndex(index);
 
@@ -139,6 +144,14 @@ export function AdminTourProvider({ children, openNav }: ProviderProps) {
     },
     [pathname, router]
   );
+
+  useEffect(() => {
+    const session = readTourSession();
+    if (session.active) {
+      setMode("touring");
+      setStepIndex(session.stepIndex);
+    }
+  }, []);
 
   useEffect(() => {
     if (!touring || !step) return;
@@ -204,6 +217,7 @@ export function AdminTourProvider({ children, openNav }: ProviderProps) {
   }, [touring, step]);
 
   useEffect(() => {
+    if (readTourSession().active) return;
     if (hasCompletedAdminTour() || hasDismissedAdminTourPrompt()) return;
     const timer = window.setTimeout(() => setMode("prompt"), 800);
     return () => window.clearTimeout(timer);

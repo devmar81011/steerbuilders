@@ -1,4 +1,3 @@
-import { AdminShell } from "@/components/layout/admin-shell";
 import { PayrollClient } from "@/components/admin/payroll-client";
 import {
   getConstructionAttendanceForWeek,
@@ -40,8 +39,7 @@ export default async function PayrollPage() {
   ).flatMap((result) => result.rows);
 
   return (
-    <AdminShell>
-      <PayrollClient
+    <PayrollClient
         initialConstructionEntries={payroll.constructionEntries}
         initialAdminEntries={payroll.adminEntries}
         initialOjtEntries={payroll.ojtEntries}
@@ -55,7 +53,6 @@ export default async function PayrollPage() {
         adminAttendance={adminAttendance}
         ojtAttendance={ojtAttendance}
         payrollAdjustments={payrollAdjustments}
-      />
-    </AdminShell>
+    />
   );
 }

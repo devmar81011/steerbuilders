@@ -3,7 +3,6 @@
 import { useMemo, useState, useTransition } from "react";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { sortRows, useTableSort } from "@/lib/table-sort";
-import { AdminShell } from "@/components/layout/admin-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -357,7 +356,7 @@ export function AdminProjectsClient({
   }
 
   return (
-    <AdminShell>
+    <>
       <div className="mb-8">
         <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
           Admin
@@ -614,6 +613,6 @@ export function AdminProjectsClient({
           </span>
         </TableMeta>
       </TableShell>
-    </AdminShell>
+    </>
   );
 }

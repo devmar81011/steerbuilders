@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { AdminShell } from "@/components/layout/admin-shell";
 import { Button } from "@/components/ui/button";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import {
@@ -300,7 +299,7 @@ export function AttendanceClient({
   const isBusy = pending || loadingWeek;
 
   return (
-    <AdminShell>
+    <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-sbc-black">Attendance</h1>
@@ -484,6 +483,6 @@ export function AttendanceClient({
           </Table>
         </TableShell>
       ) : null}
-    </AdminShell>
+    </>
   );
 }

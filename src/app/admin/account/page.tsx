@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { AdminShell } from "@/components/layout/admin-shell";
 import { AccountSettingsClient } from "@/components/admin/account-settings-client";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -19,7 +18,7 @@ export default async function AdminAccountPage() {
   }
 
   return (
-    <AdminShell>
+    <>
       <div className="mb-8">
         <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
           Admin
@@ -31,6 +30,6 @@ export default async function AdminAccountPage() {
       </div>
 
       <AccountSettingsClient email={user.email ?? "Administrator"} />
-    </AdminShell>
+    </>
   );
 }

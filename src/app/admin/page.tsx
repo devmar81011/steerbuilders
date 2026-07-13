@@ -1,4 +1,3 @@
-import { AdminShell } from "@/components/layout/admin-shell";
 import { DashboardPayrollSummary } from "@/components/admin/dashboard-payroll-summary";
 import { getEmployees, getPayrollEntries } from "@/lib/actions/payroll";
 
@@ -11,7 +10,7 @@ export default async function AdminDashboardPage() {
   const activeEmployees = employees.filter((e) => e.status === "active").length;
 
   return (
-    <AdminShell>
+    <>
       <div className="mb-8">
         <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
           Overview
@@ -26,6 +25,6 @@ export default async function AdminDashboardPage() {
         initialPayroll={payroll}
         activeEmployees={activeEmployees}
       />
-    </AdminShell>
+    </>
   );
 }
