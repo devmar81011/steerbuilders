@@ -71,23 +71,8 @@ async function uploadWithSession(
   return { error: null as string | null };
 }
 
-async function getAccessToken(
-  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>
-) {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (session?.access_token) return session.access_token;
-
-  await supabase.auth.getUser();
-  const {
-    data: { session: refreshed },
-  } = await supabase.auth.getSession();
-  return refreshed?.access_token ?? null;
-}
-
 export async function POST(request: NextRequest) {
-  const admin = await requireAdminApi();
+  const admin = await requireAdminApi(request);
   if (!admin) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
@@ -130,7 +115,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: uploadError.message }, { status: 500 });
       }
     } else {
-      const accessToken = await getAccessToken(admin.supabase);
+      const accessToken = admin.accessToken;
 
       if (!accessToken) {
         return NextResponse.json(

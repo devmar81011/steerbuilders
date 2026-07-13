@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type DragEvent } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 type Props = {
   onUploaded: (urls: string[]) => void;
@@ -13,10 +14,21 @@ async function uploadFile(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
 
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const headers: HeadersInit = {};
+  if (session?.access_token) {
+    headers.Authorization = `Bearer ${session.access_token}`;
+  }
+
   const res = await fetch("/api/upload/project-image", {
     method: "POST",
     body: formData,
     credentials: "include",
+    headers,
   });
 
   let data: { error?: string; url?: string };

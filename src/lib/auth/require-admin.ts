@@ -1,17 +1,46 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
+import type { NextRequest } from "next/server";
 import type { User } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getSupabaseEnv, isSupabaseConfigured } from "@/lib/supabase/config";
 
-type AdminContext = {
+export type AdminContext = {
   user: User;
   supabase: Awaited<ReturnType<typeof createClient>>;
+  accessToken: string | null;
 };
 
-async function getAdminContext(): Promise<AdminContext | null> {
+function getBearerToken(request?: NextRequest) {
+  const header = request?.headers.get("Authorization");
+  if (!header?.startsWith("Bearer ")) return null;
+  const token = header.slice("Bearer ".length).trim();
+  return token || null;
+}
+
+async function getAdminContext(request?: NextRequest): Promise<AdminContext | null> {
   if (!isSupabaseConfigured()) return null;
+
+  const bearer = getBearerToken(request);
+  const env = getSupabaseEnv();
+
+  if (bearer && env) {
+    const supabase = createSupabaseClient(env.url, env.key, {
+      global: { headers: { Authorization: `Bearer ${bearer}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user || user.app_metadata.role !== "admin") {
+      return null;
+    }
+
+    return { user, supabase, accessToken: bearer };
+  }
 
   const supabase = await createClient();
   const {
@@ -22,7 +51,15 @@ async function getAdminContext(): Promise<AdminContext | null> {
     return null;
   }
 
-  return { user, supabase };
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  return {
+    user,
+    supabase,
+    accessToken: session?.access_token ?? null,
+  };
 }
 
 export async function requireAdmin() {
@@ -34,6 +71,6 @@ export async function requireAdmin() {
   return admin.user;
 }
 
-export async function requireAdminApi() {
-  return getAdminContext();
+export async function requireAdminApi(request?: NextRequest) {
+  return getAdminContext(request);
 }
