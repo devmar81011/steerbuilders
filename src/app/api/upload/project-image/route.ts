@@ -1,8 +1,7 @@
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/require-admin";
+import { createClient } from "@/lib/supabase/server";
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -10,6 +9,8 @@ const ALLOWED_TYPES = new Set([
   "image/png",
   "image/webp",
 ]);
+
+const BUCKET = "project-images";
 
 export async function POST(request: NextRequest) {
   const admin = await requireAdminApi();
@@ -38,14 +39,25 @@ export async function POST(request: NextRequest) {
 
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const filename = `${randomUUID()}.${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "projects");
-    await mkdir(uploadDir, { recursive: true });
+    const storagePath = `projects/${filename}`;
 
+    const supabase = await createClient();
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(path.join(uploadDir, filename), buffer);
+    const { error: uploadError } = await supabase.storage
+      .from(BUCKET)
+      .upload(storagePath, buffer, {
+        contentType: file.type,
+        upsert: false,
+      });
 
-    return NextResponse.json({ url: `/uploads/projects/${filename}` });
-  } catch {
-    return NextResponse.json({ error: "Upload failed." }, { status: 500 });
+    if (uploadError) {
+      return NextResponse.json({ error: uploadError.message }, { status: 500 });
+    }
+
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
+    return NextResponse.json({ url: data.publicUrl });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Upload failed.";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
