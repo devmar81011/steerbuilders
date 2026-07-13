@@ -1,20 +1,29 @@
-export function isSupabaseConfigured() {
+const DEFAULT_SUPABASE_URL = "https://stoocngdvtgvbbvdjmdo.supabase.co";
+const DEFAULT_SUPABASE_ANON_KEY =
+  "sb_publishable_DRiclP8oRtQvspRQ2rPelg_OcVtpSNs";
+
+function resolveSupabaseUrl() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (url && !url.includes("your-project")) return url;
+  return DEFAULT_SUPABASE_URL;
+}
+
+function resolveSupabaseAnonKey() {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return Boolean(
-    url &&
-      key &&
-      !url.includes("your-project") &&
-      key !== "your-publishable-anon-key"
-  );
+  if (key && key !== "your-publishable-anon-key") return key;
+  return DEFAULT_SUPABASE_ANON_KEY;
+}
+
+export function isSupabaseConfigured() {
+  return Boolean(resolveSupabaseUrl() && resolveSupabaseAnonKey());
 }
 
 export function getSupabaseEnv() {
   if (!isSupabaseConfigured()) return null;
 
   return {
-    url: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    key: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url: resolveSupabaseUrl(),
+    key: resolveSupabaseAnonKey(),
   };
 }
 
