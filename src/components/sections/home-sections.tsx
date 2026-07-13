@@ -14,20 +14,20 @@ import { ContactForm } from "@/components/sections/contact-form";
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-sbc-black text-sbc-white">
-      <div className="mx-auto max-w-6xl px-6 py-10 md:px-8 md:py-14">
-        <div className="grid w-full items-center gap-8 md:grid-cols-2 md:gap-10 lg:gap-14">
-          <div className="text-center md:text-left">
-            <h1 className="text-4xl font-normal uppercase leading-tight tracking-wide md:text-5xl lg:text-[3.25rem]">
+    <section className="relative flex min-h-[calc(100svh-4.5rem)] items-center overflow-hidden bg-sbc-black text-sbc-white">
+      <div className="mx-auto w-full max-w-6xl px-6 py-16 md:px-8 md:py-20">
+        <div className="grid w-full items-center gap-10 lg:grid-cols-2 lg:gap-14">
+          <div className="text-center lg:text-left">
+            <h1 className="text-4xl font-normal uppercase leading-tight tracking-wide md:text-5xl lg:text-6xl">
               {company.name}
             </h1>
-            <p className="mt-3 text-2xl font-bold text-sbc-gold md:mt-4 md:text-3xl">
+            <p className="mt-4 text-2xl font-bold text-sbc-gold md:mt-5 md:text-3xl lg:text-4xl">
               {company.mantra}
             </p>
-            <p className="mx-auto mt-4 max-w-xl text-base font-semibold leading-relaxed text-sbc-gray-light md:mx-0 md:mt-5">
+            <p className="mx-auto mt-5 max-w-xl text-base font-semibold leading-relaxed text-sbc-gray-light md:text-lg lg:mx-0">
               {company.tagline}
             </p>
-            <div className="mt-6 flex flex-wrap justify-center gap-4 md:mt-7 md:justify-start">
+            <div className="mt-8 flex flex-wrap justify-center gap-4 lg:justify-start">
               <ButtonLink href="#contact" size="lg">
                 Request a Proposal
               </ButtonLink>
@@ -36,19 +36,19 @@ export function HeroSection() {
               </ButtonLink>
             </div>
           </div>
-          <div className="flex justify-center md:justify-end">
+          <div className="flex justify-center lg:justify-end">
             <Image
               src="/brand/logo-full.png"
               alt={company.name}
               width={420}
               height={320}
-              className="w-full max-w-xs sm:max-w-sm md:max-w-md"
+              className="w-full max-w-xs sm:max-w-sm lg:max-w-md"
               priority
             />
           </div>
         </div>
       </div>
-      <div className="h-1 bg-sbc-gold" />
+      <div className="absolute inset-x-0 bottom-0 h-1 bg-sbc-gold" />
     </section>
   );
 }

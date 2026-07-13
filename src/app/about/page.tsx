@@ -10,19 +10,22 @@ export default function AboutPage() {
     <>
       <SiteHeader />
       <main className="flex-1">
-        <Section dark>
+        <Section dark className="min-h-[calc(100svh-4.5rem)] flex flex-col justify-center">
           <Link
             href="/"
             className="mb-6 inline-block text-xs font-medium uppercase tracking-widest text-sbc-gold hover:underline"
           >
             ← Back to Home
           </Link>
-          <SectionHeader
-            label="Company Profile"
-            title="About Steer Builders"
-            description={company.mantra}
-            light
-          />
+          <h1 className="text-4xl font-normal uppercase leading-tight tracking-wide text-sbc-white md:text-5xl lg:text-6xl">
+            {company.name}
+          </h1>
+          <p className="mt-4 text-2xl font-bold text-sbc-gold md:mt-5 md:text-3xl">
+            {company.mantra}
+          </p>
+          <p className="mt-5 max-w-2xl text-base font-semibold leading-relaxed text-sbc-gray-light md:text-lg">
+            {company.tagline}
+          </p>
         </Section>
 
         <Section>
