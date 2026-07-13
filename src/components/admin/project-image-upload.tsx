@@ -180,7 +180,7 @@ export function ProjectImageUpload({
           </div>
 
           <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-sbc-gray">
-            JPG · PNG · WebP · HEIC · up to 5 MB
+            JPG · PNG · WebP · HEIC · up to 10 MB
           </p>
         </div>
       </button>
