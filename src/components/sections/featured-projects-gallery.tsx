@@ -90,7 +90,7 @@ export function FeaturedProjectsGallery({ projects }: Props) {
           <button
             key={project.id}
             type="button"
-            className="group w-full cursor-pointer overflow-hidden border border-sbc-gray-light bg-sbc-white text-left transition-colors hover:border-sbc-gold/50"
+            className="group w-full cursor-pointer overflow-hidden rounded-lg border border-sbc-gray-light bg-sbc-white text-left transition-colors hover:border-sbc-gold/50"
             onClick={() => {
               setActiveIndex(index);
               setPhotoIndex(0);

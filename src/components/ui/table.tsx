@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { radii } from "@/lib/design-tokens";
 
 type TableShellProps = {
   children: ReactNode;
@@ -16,7 +17,7 @@ export function TableShell({
   maxHeight = "520px",
 }: TableShellProps) {
   return (
-    <div className={`overflow-hidden border border-sbc-gray-light/80 ${className}`}>
+    <div className={`overflow-hidden ${radii.surface} border border-sbc-gray-light/80 ${className}`}>
       <div
         className={scrollable ? "overflow-auto" : "overflow-x-auto"}
         style={scrollable ? { maxHeight } : undefined}

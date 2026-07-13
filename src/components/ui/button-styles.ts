@@ -1,9 +1,11 @@
+import { radii } from "@/lib/design-tokens";
+
 export type ButtonVariant = "primary" | "secondary" | "outline" | "ghost";
 export type ButtonSize = "sm" | "md" | "lg";
 export type ButtonTone = "light" | "dark";
 
 export const buttonBase =
-  "relative inline-flex cursor-pointer items-center justify-center gap-2 font-semibold uppercase tracking-[0.12em] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]";
+  `relative inline-flex cursor-pointer items-center justify-center gap-2 ${radii.control} font-semibold uppercase tracking-[0.12em] transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98]`;
 
 export const buttonSizes: Record<ButtonSize, string> = {
   sm: "min-h-9 px-4 text-[11px]",

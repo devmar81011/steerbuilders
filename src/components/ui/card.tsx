@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { radii } from "@/lib/design-tokens";
 
 type CardProps = {
   children: ReactNode;
@@ -13,6 +14,6 @@ export function Card({ children, className = "", variant = "default" }: CardProp
       : "bg-sbc-white text-sbc-black border-sbc-gray-light";
 
   return (
-    <div className={`border p-6 md:p-8 ${base} ${className}`}>{children}</div>
+    <div className={`${radii.surface} border p-6 md:p-8 ${base} ${className}`}>{children}</div>
   );
 }

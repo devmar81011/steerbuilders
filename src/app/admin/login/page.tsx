@@ -46,7 +46,7 @@ export default async function AdminLoginPage() {
         </p>
 
         {!isSupabaseConfigured() && (
-          <p className="mt-4 border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
+          <p className="mt-4 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
             This deployment is missing Supabase settings. Use the live admin URL
             instead:{" "}
             <Link href={adminUrl} className="text-sbc-gold hover:underline">

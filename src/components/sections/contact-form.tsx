@@ -53,7 +53,7 @@ export function ContactForm() {
 
   if (status === "success") {
     return (
-      <div className="border border-sbc-gold/40 bg-sbc-gold/10 px-6 py-8 text-center">
+      <div className="rounded-lg border border-sbc-gold/40 bg-sbc-gold/10 px-6 py-8 text-center">
         <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
           Inquiry received
         </p>

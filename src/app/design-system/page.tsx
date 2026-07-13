@@ -104,7 +104,7 @@ export default function DesignSystemPage() {
             {swatches.map((swatch) => (
               <div key={swatch.token}>
                 <div
-                  className="mb-3 aspect-square border border-sbc-gray-light"
+                  className="mb-3 aspect-square rounded-lg border border-sbc-gray-light"
                   style={{ backgroundColor: swatch.hex }}
                 />
                 <p className="text-sm font-bold">{swatch.name}</p>

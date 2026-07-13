@@ -1,4 +1,5 @@
 import { type TextareaHTMLAttributes } from "react";
+import { radii } from "@/lib/design-tokens";
 
 type TextareaTone = "light" | "dark";
 type TextareaSize = "sm" | "md";
@@ -57,7 +58,7 @@ export function Textarea({
       )}
       <textarea
         id={inputId}
-        className={`resize-y leading-relaxed transition-all duration-200 focus:outline-none focus:ring-2 ${styles.input} ${sizing.field} ${className}`}
+        className={`${radii.control} resize-y leading-relaxed transition-all duration-200 focus:outline-none focus:ring-2 ${styles.input} ${sizing.field} ${className}`}
         {...props}
       />
     </div>

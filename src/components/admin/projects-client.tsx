@@ -376,7 +376,7 @@ export function AdminProjectsClient({
 
       {!usingDatabase && (
         <p
-          className="mb-6 border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800"
+          className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800"
           role="status"
         >
           Projects are in preview mode on this device only. Featured Yes/No changes will not
@@ -386,7 +386,7 @@ export function AdminProjectsClient({
 
       {overFeaturedLimit && (
         <p
-          className="mb-6 border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900"
+          className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900"
           role="status"
         >
           {featuredCount} projects are marked featured, but only {featuredLimit} can appear
@@ -396,14 +396,14 @@ export function AdminProjectsClient({
       )}
 
       {message && (
-        <p className="mb-6 border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
+        <p className="mb-6 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
           {message}
         </p>
       )}
 
       <form
         onSubmit={handleFeaturedLimitSave}
-        className="mb-6 border border-sbc-gray-light bg-sbc-white p-4"
+        className="mb-6 rounded-lg border border-sbc-gray-light bg-sbc-white p-4"
       >
         <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
           Homepage featured limit
@@ -438,7 +438,7 @@ export function AdminProjectsClient({
 
       <form
         onSubmit={handleSubmit}
-        className="mb-8 grid gap-4 border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
+        className="mb-8 grid gap-4 rounded-lg border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
       >
         <p className="md:col-span-2 text-xs font-medium uppercase tracking-widest text-sbc-gold">
           {editingId ? "Edit Project" : "Add Project"}
@@ -497,7 +497,7 @@ export function AdminProjectsClient({
           onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
         <div className="md:col-span-2">
-          <div className="border border-sbc-gray-light bg-sbc-off-white/60 p-4 md:p-5">
+          <div className="rounded-lg border border-sbc-gray-light bg-sbc-off-white/60 p-4 md:p-5">
             <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-sbc-gold">
               Project Gallery
             </p>

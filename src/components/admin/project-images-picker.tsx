@@ -97,7 +97,7 @@ export function ProjectImagesPicker({
                   onDrop={(event) => handleDrop(index, event)}
                   onDragEnd={handleDragEnd}
                   className={`group relative cursor-grab overflow-hidden bg-sbc-black active:cursor-grabbing ${
-                    isModal ? "aspect-[4/3]" : "aspect-video border border-sbc-gray-light bg-sbc-off-white"
+                    isModal ? "aspect-[4/3] rounded-lg" : "aspect-video rounded-lg border border-sbc-gray-light bg-sbc-off-white"
                   } ${isDragging ? "opacity-40" : ""} ${
                     isDropTarget ? "ring-2 ring-sbc-gold ring-offset-2 ring-offset-sbc-white" : ""
                   }`}
@@ -136,7 +136,7 @@ export function ProjectImagesPicker({
         </div>
       ) : (
         isModal && (
-          <div className="border border-sbc-gray-light/80 bg-sbc-off-white px-4 py-6 text-center">
+          <div className="rounded-lg border border-sbc-gray-light/80 bg-sbc-off-white px-4 py-6 text-center">
             <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-sbc-gold">
               No photos yet
             </p>

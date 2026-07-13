@@ -25,3 +25,9 @@ export const typography = {
   bodySmall: "text-sm font-medium text-sbc-gray leading-relaxed",
   label: "text-xs font-medium uppercase tracking-widest text-sbc-gray",
 } as const;
+
+/** Shared corner radius for controls (buttons, inputs) and surfaces (cards, panels). */
+export const radii = {
+  control: "rounded-md",
+  surface: "rounded-lg",
+} as const;

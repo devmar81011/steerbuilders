@@ -1,4 +1,5 @@
 import { type ReactNode } from "react";
+import { radii } from "@/lib/design-tokens";
 
 type BadgeProps = {
   children: ReactNode;
@@ -14,7 +15,7 @@ const variants = {
 export function Badge({ children, variant = "gold" }: BadgeProps) {
   return (
     <span
-      className={`inline-block border px-3 py-1 text-xs font-medium uppercase tracking-widest ${variants[variant]}`}
+      className={`inline-block ${radii.control} border px-3 py-1 text-xs font-medium uppercase tracking-widest ${variants[variant]}`}
     >
       {children}
     </span>

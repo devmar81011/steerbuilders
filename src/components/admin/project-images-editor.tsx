@@ -83,7 +83,7 @@ export function ProjectImagesEditor({
         onClick={() => setOpen(true)}
         className={`${textActionGoldClass} inline-flex items-center gap-2`}
       >
-        <span className="inline-flex h-6 min-w-6 items-center justify-center border border-sbc-gold/30 bg-sbc-gold/10 px-1.5 text-[10px] font-bold text-sbc-gold-dark">
+        <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-md border border-sbc-gold/30 bg-sbc-gold/10 px-1.5 text-[10px] font-bold text-sbc-gold-dark">
           {count}
         </span>
         {count === 0 ? "Add photos" : count === 1 ? "Manage photo" : "Manage photos"}

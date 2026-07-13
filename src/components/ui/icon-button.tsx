@@ -48,7 +48,7 @@ export function IconButton({
 }
 
 export const textActionClass =
-  "cursor-pointer rounded-sm px-2 py-1 transition-colors duration-150 hover:bg-sbc-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/30";
+  "cursor-pointer rounded-md px-2 py-1 transition-colors duration-150 hover:bg-sbc-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/30";
 
 export const textActionGoldClass = `${textActionClass} text-xs font-semibold uppercase tracking-widest text-sbc-gold hover:text-sbc-gold-dark`;
 

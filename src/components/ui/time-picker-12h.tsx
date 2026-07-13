@@ -40,7 +40,7 @@ export function TimePicker12h({ value, onChange, label, disabled }: Props) {
   }
 
   const selectClass =
-    "h-7 cursor-pointer border border-sbc-gray-light/90 bg-sbc-white px-1 text-[10px] font-medium text-sbc-black transition-colors hover:border-sbc-gold/45 focus:border-sbc-gold focus:outline-none focus:ring-2 focus:ring-sbc-gold/20 disabled:cursor-not-allowed disabled:opacity-60";
+    "h-7 cursor-pointer rounded-md border border-sbc-gray-light/90 bg-sbc-white px-1 text-[10px] font-medium text-sbc-black transition-colors hover:border-sbc-gold/45 focus:border-sbc-gold focus:outline-none focus:ring-2 focus:ring-sbc-gold/20 disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
     <label className="block">

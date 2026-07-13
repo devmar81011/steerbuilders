@@ -303,21 +303,21 @@ export function ContributionsClient({ initialAdjustments }: Props) {
 
       <p className="mb-4 text-sm text-sbc-gray">{activeTabMeta.description}</p>
 
-      <p className="mb-6 rounded-md border border-sbc-gold/25 bg-sbc-gold/5 px-4 py-3 text-sm text-sbc-gray">
+      <p className="mb-6 rounded-lg border border-sbc-gold/25 bg-sbc-gold/5 px-4 py-3 text-sm text-sbc-gray">
         Set a <span className="font-medium">default</span> for all roles, then
         optional overrides per role on this tab. Blank role fields use the
         default. PhilHealth (% of gross) usually stays one default for everyone.
       </p>
 
       {message && (
-        <p className="mb-6 border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
+        <p className="mb-6 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
           {message}
         </p>
       )}
 
       <form
         onSubmit={handleSubmit}
-        className="mb-8 grid gap-4 border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
+        className="mb-8 grid gap-4 rounded-lg border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
       >
         <p className="md:col-span-2 text-xs font-medium uppercase tracking-widest text-sbc-gold">
           {editingId
@@ -387,7 +387,7 @@ export function ContributionsClient({ initialAdjustments }: Props) {
         </label>
 
         {editingId && (
-          <div className="md:col-span-2 border border-sbc-gray-light p-4">
+          <div className="md:col-span-2 rounded-lg border border-sbc-gray-light p-4">
             <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
               {activeTabMeta.label} role overrides
             </p>

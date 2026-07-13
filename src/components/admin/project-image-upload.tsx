@@ -2,6 +2,7 @@
 
 import { useRef, useState, type DragEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { isAllowedUploadImage, UPLOAD_IMAGE_ACCEPT } from "@/lib/upload-image-types";
 
 type Props = {
   onUploaded: (urls: string[]) => void;
@@ -119,9 +120,7 @@ export function ProjectImageUpload({
     setDragging(false);
     if (disabled || uploading) return;
 
-    const files = Array.from(e.dataTransfer.files).filter((file) =>
-      file.type.startsWith("image/")
-    );
+    const files = Array.from(e.dataTransfer.files).filter(isAllowedUploadImage);
     await uploadFiles(files);
   }
 
@@ -130,7 +129,7 @@ export function ProjectImageUpload({
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp"
+        accept={UPLOAD_IMAGE_ACCEPT}
         multiple
         className="hidden"
         onChange={handleFileChange}
@@ -145,7 +144,7 @@ export function ProjectImageUpload({
         onDragLeave={handleDragLeave}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
-        className={`group relative w-full overflow-hidden border-2 border-dashed px-6 py-8 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/40 disabled:cursor-not-allowed disabled:opacity-60 ${
+        className={`group relative w-full overflow-hidden rounded-lg border-2 border-dashed px-6 py-8 text-center transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/40 disabled:cursor-not-allowed disabled:opacity-60 ${
           dragging
             ? "border-sbc-gold bg-sbc-gold/10"
             : "border-sbc-gray-light/80 bg-linear-to-br from-sbc-off-white via-sbc-white to-sbc-gold/5 hover:border-sbc-gold/50 hover:bg-sbc-gold/5"
@@ -178,13 +177,13 @@ export function ProjectImageUpload({
           </div>
 
           <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-sbc-gray">
-            JPG · PNG · WebP · up to 5 MB
+            JPG · PNG · WebP · HEIC · up to 5 MB
           </p>
         </div>
       </button>
 
       {error && (
-        <div className="mt-3 border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+        <div className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
           {error}
         </div>
       )}

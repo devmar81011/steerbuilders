@@ -188,14 +188,14 @@ export function RatesClient({ initialRates }: Props) {
       </div>
 
       {message && (
-        <p className="mb-6 border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
+        <p className="mb-6 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
           {message}
         </p>
       )}
 
       <form
         onSubmit={handleSubmit}
-        className="mb-8 grid gap-4 border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
+        className="mb-8 grid gap-4 rounded-lg border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
       >
         <p className="md:col-span-2 text-xs font-medium uppercase tracking-widest text-sbc-gold">
           {editingId ? "Edit Rate" : "Add Rate"}
@@ -242,7 +242,7 @@ export function RatesClient({ initialRates }: Props) {
           <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
             Rate Type
           </p>
-          <p className="border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-medium text-sbc-black">
+          <p className="rounded-lg border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-medium text-sbc-black">
             {formatRateTypeLabel(defaultRateTypeForCategory(form.category))}
             <span className="ml-2 text-xs text-sbc-gray">
               ({form.category === "construction" ? "fixed" : "fixed hourly"})

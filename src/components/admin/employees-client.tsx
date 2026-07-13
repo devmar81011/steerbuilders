@@ -192,7 +192,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
       </div>
 
       {message && (
-        <p className="mb-6 border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
+        <p className="mb-6 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
           {message}
         </p>
       )}
@@ -243,7 +243,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
             <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
               Rate (from Daily Rates)
             </p>
-            <p className="border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-medium text-sbc-black">
+            <p className="rounded-lg border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-medium text-sbc-black">
               {selectedRate
                 ? formatRateAmount(selectedRate.rate, selectedRate.rateType)
                 : "—"}

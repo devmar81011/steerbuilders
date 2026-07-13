@@ -925,7 +925,7 @@ export function PayrollClient({
         })}
       </div>
 
-      <p className="mb-4 rounded-md border border-sbc-gold/25 bg-sbc-gold/5 px-4 py-3 text-sm text-sbc-gray">
+      <p className="mb-4 rounded-lg border border-sbc-gold/25 bg-sbc-gold/5 px-4 py-3 text-sm text-sbc-gray">
         <span className="font-semibold text-sbc-black">Pay schedule · </span>
         {activeMeta.scheduleNote}
       </p>
@@ -939,7 +939,7 @@ export function PayrollClient({
       </p>
 
       {message && (
-        <p className="mb-6 border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
+        <p className="mb-6 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
           {message}
         </p>
       )}
@@ -947,7 +947,7 @@ export function PayrollClient({
       {editingId && (
         <form
           onSubmit={handleSubmit}
-          className="mb-8 grid gap-4 border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
+          className="mb-8 grid gap-4 rounded-lg border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
         >
           <p className="md:col-span-2 text-xs font-medium uppercase tracking-widest text-sbc-gold">
             Edit Payroll Entry
@@ -989,7 +989,7 @@ export function PayrollClient({
             <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
               Total Deductions
             </p>
-            <p className="border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-semibold text-sbc-black">
+            <p className="rounded-lg border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-semibold text-sbc-black">
               {formatCurrency(totalDeductionPreview)}
             </p>
           </div>
@@ -997,7 +997,7 @@ export function PayrollClient({
             <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
               Net Pay
             </p>
-            <p className="border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-semibold text-sbc-gold">
+            <p className="rounded-lg border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-semibold text-sbc-gold">
               {formatCurrency(netPreview)}
             </p>
           </div>

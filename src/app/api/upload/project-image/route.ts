@@ -1,36 +1,12 @@
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/require-admin";
+import { normalizeUploadImage } from "@/lib/normalize-upload-image";
+import { resolveUploadContentType } from "@/lib/upload-image-types";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createServiceClient } from "@/lib/supabase/service";
 
-const ALLOWED_TYPES = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-]);
-
-const EXT_TO_MIME: Record<string, string> = {
-  jpg: "image/jpeg",
-  jpeg: "image/jpeg",
-  png: "image/png",
-  webp: "image/webp",
-};
-
 const BUCKET = "project-images";
-
-function resolveContentType(file: File): string | null {
-  if (file.type && ALLOWED_TYPES.has(file.type)) {
-    return file.type === "image/jpg" ? "image/jpeg" : file.type;
-  }
-
-  const ext = file.name.split(".").pop()?.toLowerCase();
-  if (!ext) return null;
-
-  const mime = EXT_TO_MIME[ext];
-  return mime ?? null;
-}
 
 async function uploadWithSession(
   storagePath: string,
@@ -85,10 +61,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided." }, { status: 400 });
     }
 
-    const contentType = resolveContentType(file);
+    const contentType = resolveUploadContentType(file);
     if (!contentType) {
       return NextResponse.json(
-        { error: "Only JPG, PNG, and WebP images are allowed." },
+        { error: "Only JPG, PNG, WebP, and HEIC images are allowed." },
         { status: 400 }
       );
     }
@@ -97,17 +73,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "File must be under 5 MB." }, { status: 400 });
     }
 
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const rawBuffer = Buffer.from(await file.arrayBuffer());
+    let buffer: Buffer;
+    let storedContentType: string;
+    let ext: string;
+
+    try {
+      ({ buffer, contentType: storedContentType, ext } = await normalizeUploadImage(
+        rawBuffer,
+        contentType,
+        file.name
+      ));
+    } catch {
+      return NextResponse.json(
+        { error: "Could not process this image. Try JPG or PNG instead." },
+        { status: 400 }
+      );
+    }
+
     const filename = `${randomUUID()}.${ext}`;
     const storagePath = `projects/${filename}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
 
     const serviceClient = createServiceClient();
     if (serviceClient) {
       const { error: uploadError } = await serviceClient.storage
         .from(BUCKET)
         .upload(storagePath, buffer, {
-          contentType,
+          contentType: storedContentType,
           upsert: false,
         });
 
@@ -127,7 +119,7 @@ export async function POST(request: NextRequest) {
       const { error } = await uploadWithSession(
         storagePath,
         buffer,
-        contentType,
+        storedContentType,
         accessToken
       );
 

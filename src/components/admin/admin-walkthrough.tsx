@@ -335,7 +335,7 @@ function AdminGuideWidget({
 
   return (
     <div
-      className="fixed bottom-0 right-0 z-[100] flex w-full flex-col border-t border-sbc-gray-light bg-sbc-white shadow-[0_-8px_32px_rgba(0,0,0,0.12)] sm:bottom-5 sm:right-5 sm:w-[min(100vw-2rem,26rem)] sm:rounded-sm sm:border"
+      className="fixed bottom-0 right-0 z-[100] flex w-full flex-col border-t border-sbc-gray-light bg-sbc-white shadow-[0_-8px_32px_rgba(0,0,0,0.12)] sm:bottom-5 sm:right-5 sm:w-[min(100vw-2rem,26rem)] sm:rounded-lg sm:border"
       role="dialog"
       aria-labelledby="admin-guide-title"
       aria-live="polite"

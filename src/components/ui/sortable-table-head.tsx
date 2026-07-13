@@ -69,7 +69,7 @@ export function SortableTableHead({
       <button
         type="button"
         onClick={() => onSort(sortKey)}
-        className={`inline-flex cursor-pointer items-center gap-0.5 transition-colors hover:text-sbc-gold-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/30 ${
+        className={`inline-flex cursor-pointer items-center gap-0.5 rounded-md px-1 py-0.5 transition-colors hover:text-sbc-gold-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/30 ${
           active ? "text-sbc-gold-dark" : "text-sbc-gray"
         } ${align === "right" ? "float-right" : align === "center" ? "mx-auto" : ""}`}
         aria-sort={active ? (direction === "asc" ? "ascending" : "descending") : "none"}

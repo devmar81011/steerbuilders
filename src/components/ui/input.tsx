@@ -1,4 +1,5 @@
 import { type InputHTMLAttributes } from "react";
+import { radii } from "@/lib/design-tokens";
 
 type InputTone = "light" | "dark";
 type InputSize = "sm" | "md";
@@ -57,7 +58,7 @@ export function Input({
       )}
       <input
         id={inputId}
-        className={`transition-all duration-200 focus:outline-none focus:ring-2 ${styles.input} ${sizing.field} ${className}`}
+        className={`${radii.control} transition-all duration-200 focus:outline-none focus:ring-2 ${styles.input} ${sizing.field} ${className}`}
         {...props}
       />
     </div>

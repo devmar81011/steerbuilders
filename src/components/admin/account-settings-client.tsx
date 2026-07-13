@@ -71,7 +71,7 @@ export function AccountSettingsClient({ email }: Props) {
           )}
 
           {state.success && (
-            <p className="border border-sbc-gold/30 bg-sbc-gold/10 px-3 py-2 text-sm font-semibold text-sbc-black">
+            <p className="rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-3 py-2 text-sm font-semibold text-sbc-black">
               {state.success}
             </p>
           )}
