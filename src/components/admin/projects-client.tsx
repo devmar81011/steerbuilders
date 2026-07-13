@@ -482,13 +482,18 @@ export function AdminProjectsClient({
           onChange={(e) => setForm({ ...form, description: e.target.value })}
         />
         <div className="md:col-span-2">
-          <p className="mb-3 text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
-            Project photos
-          </p>
-          <ProjectImagesPicker
-            images={form.images}
-            onChange={(images) => setForm({ ...form, images })}
-          />
+          <div className="border border-sbc-gray-light bg-sbc-off-white/60 p-4 md:p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-sbc-gold">
+              Project Gallery
+            </p>
+            <p className="mt-1 mb-4 text-sm font-medium text-sbc-gray">
+              Upload photos for the portfolio and homepage featured section.
+            </p>
+            <ProjectImagesPicker
+              images={form.images}
+              onChange={(images) => setForm({ ...form, images })}
+            />
+          </div>
         </div>
         <div className="md:col-span-2 flex flex-wrap gap-3">
           <Button type="submit" disabled={pending}>
