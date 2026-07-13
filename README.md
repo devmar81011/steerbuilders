@@ -42,6 +42,7 @@ Add your Supabase anon key to `.env.local` from **Supabase → Project Settings 
 3. Add env vars in [Vercel settings](https://vercel.com/mar81011s-projects/steerbuilders/settings/environment-variables):
    - `NEXT_PUBLIC_SUPABASE_URL` → `https://stoocngdvtgvbbvdjmdo.supabase.co`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → your Supabase publishable/anon key
+   - `SUPABASE_SERVICE_ROLE_KEY` → your Supabase **service_role** or **secret** key (required for reliable photo uploads)
    - `NEXT_PUBLIC_ADMIN_HOST` → `steerbuilders-psi.vercel.app` (optional; used to redirect legacy deployments)
 
 ## Database

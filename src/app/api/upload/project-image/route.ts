@@ -1,7 +1,8 @@
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/require-admin";
-import { createClient } from "@/lib/supabase/server";
+import { getSupabaseEnv } from "@/lib/supabase/config";
+import { createServiceClient } from "@/lib/supabase/service";
 
 const ALLOWED_TYPES = new Set([
   "image/jpeg",
@@ -29,6 +30,60 @@ function resolveContentType(file: File): string | null {
 
   const mime = EXT_TO_MIME[ext];
   return mime ?? null;
+}
+
+async function uploadWithSession(
+  storagePath: string,
+  buffer: Buffer,
+  contentType: string,
+  accessToken: string
+) {
+  const env = getSupabaseEnv();
+  if (!env) {
+    return { error: "Supabase is not configured." };
+  }
+
+  const response = await fetch(
+    `${env.url}/storage/v1/object/${BUCKET}/${storagePath}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: env.key,
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": contentType,
+        "x-upsert": "false",
+      },
+      body: new Uint8Array(buffer),
+    }
+  );
+
+  if (!response.ok) {
+    let message = `Storage upload failed (${response.status}).`;
+    try {
+      const payload = (await response.json()) as { message?: string; error?: string };
+      message = payload.message ?? payload.error ?? message;
+    } catch {
+      // Keep generic message when storage returns non-JSON.
+    }
+    return { error: message };
+  }
+
+  return { error: null as string | null };
+}
+
+async function getAccessToken(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>
+) {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  if (session?.access_token) return session.access_token;
+
+  await supabase.auth.getUser();
+  const {
+    data: { session: refreshed },
+  } = await supabase.auth.getSession();
+  return refreshed?.access_token ?? null;
 }
 
 export async function POST(request: NextRequest) {
@@ -60,24 +115,48 @@ export async function POST(request: NextRequest) {
     const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
     const filename = `${randomUUID()}.${ext}`;
     const storagePath = `projects/${filename}`;
-
-    const supabase = await createClient();
-    await supabase.auth.refreshSession();
-
     const buffer = Buffer.from(await file.arrayBuffer());
-    const { error: uploadError } = await supabase.storage
-      .from(BUCKET)
-      .upload(storagePath, buffer, {
-        contentType,
-        upsert: false,
-      });
 
-    if (uploadError) {
-      return NextResponse.json({ error: uploadError.message }, { status: 500 });
+    const serviceClient = createServiceClient();
+    if (serviceClient) {
+      const { error: uploadError } = await serviceClient.storage
+        .from(BUCKET)
+        .upload(storagePath, buffer, {
+          contentType,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        return NextResponse.json({ error: uploadError.message }, { status: 500 });
+      }
+    } else {
+      const accessToken = await getAccessToken(admin.supabase);
+
+      if (!accessToken) {
+        return NextResponse.json(
+          { error: "Session expired. Sign out and sign in again." },
+          { status: 401 }
+        );
+      }
+
+      const { error } = await uploadWithSession(
+        storagePath,
+        buffer,
+        contentType,
+        accessToken
+      );
+
+      if (error) {
+        return NextResponse.json({ error }, { status: 500 });
+      }
     }
 
-    const { data } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
-    return NextResponse.json({ url: data.publicUrl });
+    const env = getSupabaseEnv();
+    const publicUrl = env
+      ? `${env.url}/storage/v1/object/public/${BUCKET}/${storagePath}`
+      : `/${BUCKET}/${storagePath}`;
+
+    return NextResponse.json({ url: publicUrl });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Upload failed.";
     return NextResponse.json({ error: message }, { status: 500 });
