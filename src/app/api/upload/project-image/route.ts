@@ -84,12 +84,13 @@ export async function POST(request: NextRequest) {
         contentType,
         file.name
       ));
-    } catch {
+    } catch (err) {
       const isHeic = isHeicUpload(contentType, file.name);
+      const detail = err instanceof Error ? err.message : "Unknown conversion error.";
       return NextResponse.json(
         {
           error: isHeic
-            ? "Could not convert this HEIC photo. Try exporting it as JPG from your phone."
+            ? `Could not convert this HEIC photo (${detail}). Try exporting it as JPG from your phone.`
             : "Could not process this image. Try JPG or PNG instead.",
         },
         { status: 400 }

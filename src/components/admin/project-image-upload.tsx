@@ -89,11 +89,7 @@ export function ProjectImageUpload({
       onUploaded(urls);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Upload failed.";
-      setError(
-        message.includes("heic") || message.includes("HEIC")
-          ? "Could not convert this HEIC photo. Try AirDrop/export as JPG, or take the photo in “Most Compatible” format on iPhone."
-          : message
-      );
+      setError(message);
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
