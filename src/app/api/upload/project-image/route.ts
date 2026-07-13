@@ -10,7 +10,26 @@ const ALLOWED_TYPES = new Set([
   "image/webp",
 ]);
 
+const EXT_TO_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
 const BUCKET = "project-images";
+
+function resolveContentType(file: File): string | null {
+  if (file.type && ALLOWED_TYPES.has(file.type)) {
+    return file.type === "image/jpg" ? "image/jpeg" : file.type;
+  }
+
+  const ext = file.name.split(".").pop()?.toLowerCase();
+  if (!ext) return null;
+
+  const mime = EXT_TO_MIME[ext];
+  return mime ?? null;
+}
 
 export async function POST(request: NextRequest) {
   const admin = await requireAdminApi();
@@ -26,7 +45,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No file provided." }, { status: 400 });
     }
 
-    if (!ALLOWED_TYPES.has(file.type)) {
+    const contentType = resolveContentType(file);
+    if (!contentType) {
       return NextResponse.json(
         { error: "Only JPG, PNG, and WebP images are allowed." },
         { status: 400 }
@@ -42,11 +62,13 @@ export async function POST(request: NextRequest) {
     const storagePath = `projects/${filename}`;
 
     const supabase = await createClient();
+    await supabase.auth.refreshSession();
+
     const buffer = Buffer.from(await file.arrayBuffer());
     const { error: uploadError } = await supabase.storage
       .from(BUCKET)
       .upload(storagePath, buffer, {
-        contentType: file.type,
+        contentType,
         upsert: false,
       });
 

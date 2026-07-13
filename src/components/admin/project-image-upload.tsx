@@ -17,11 +17,19 @@ async function uploadFile(file: File): Promise<string> {
   const res = await fetch("/api/upload/project-image", {
     method: "POST",
     body: formData,
+    credentials: "include",
   });
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? "Upload failed.");
-  return data.url as string;
+  let data: { error?: string; url?: string };
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Upload failed (${res.status}).`);
+  }
+
+  if (!res.ok) throw new Error(data.error ?? `Upload failed (${res.status}).`);
+  if (!data.url) throw new Error("Upload failed: no image URL returned.");
+  return data.url;
 }
 
 export function ProjectImageUpload({
