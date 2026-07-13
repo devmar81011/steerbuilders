@@ -79,11 +79,22 @@ function scrollTargetIntoView(selector?: string) {
   for (const node of nodes) {
     const box = node.getBoundingClientRect();
     if (box.width > 0 && box.height > 0) {
-      node.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      node.scrollIntoView({ block: "nearest", behavior: "instant" });
       return;
     }
   }
 }
+
+const ADMIN_TOUR_ROUTES = [
+  "/admin",
+  "/admin/rates",
+  "/admin/contributions",
+  "/admin/employees",
+  "/admin/attendance",
+  "/admin/payroll",
+  "/admin/projects",
+  "/admin/account",
+];
 
 type ProviderProps = {
   children: React.ReactNode;
@@ -116,7 +127,11 @@ export function AdminTourProvider({ children, openNav }: ProviderProps) {
     persistTourSession(true, 0);
     setStepIndex(0);
     setMode("touring");
-    setReady(false);
+    setReady(true);
+
+    for (const route of ADMIN_TOUR_ROUTES) {
+      router.prefetch(route);
+    }
 
     const first = adminTourSteps[0];
     if (first.navigateTo && !pathMatchesStep(pathname, first.navigateTo)) {
@@ -135,12 +150,15 @@ export function AdminTourProvider({ children, openNav }: ProviderProps) {
       if (!nextStep) return;
 
       persistTourSession(true, index);
-      setReady(false);
       setStepIndex(index);
 
       if (nextStep.navigateTo && !pathMatchesStep(pathname, nextStep.navigateTo)) {
+        setReady(false);
         router.push(nextStep.navigateTo);
+        return;
       }
+
+      setReady(true);
     },
     [pathname, router]
   );
@@ -151,7 +169,11 @@ export function AdminTourProvider({ children, openNav }: ProviderProps) {
       setMode("touring");
       setStepIndex(session.stepIndex);
     }
-  }, []);
+
+    for (const route of ADMIN_TOUR_ROUTES) {
+      router.prefetch(route);
+    }
+  }, [router]);
 
   useEffect(() => {
     if (!touring || !step) return;
@@ -166,33 +188,34 @@ export function AdminTourProvider({ children, openNav }: ProviderProps) {
       return;
     }
 
+    setReady(true);
+
+    if (!step.target) {
+      setTargetRect(null);
+      return;
+    }
+
     let cancelled = false;
     let attempts = 0;
 
     const syncTarget = () => {
       if (cancelled) return;
 
-      if (step.target) {
-        scrollTargetIntoView(step.target);
-      }
+      scrollTargetIntoView(step.target);
 
       const rect = measureVisibleTarget(step.target);
       if (rect) {
         setTargetRect(rect);
-        setReady(true);
         return;
       }
 
       attempts += 1;
-      if (attempts < 25) {
-        window.setTimeout(syncTarget, 120);
-      } else {
-        setTargetRect(null);
-        setReady(true);
+      if (attempts < 12) {
+        window.setTimeout(syncTarget, 40);
       }
     };
 
-    window.setTimeout(syncTarget, step.target ? 80 : 0);
+    syncTarget();
 
     return () => {
       cancelled = true;
@@ -240,7 +263,7 @@ export function AdminTourProvider({ children, openNav }: ProviderProps) {
       {touring && targetRect && (
         <div className="pointer-events-none fixed inset-0 z-[90]" aria-hidden>
           <div
-            className="absolute rounded-sm ring-2 ring-sbc-gold transition-all duration-300"
+            className="absolute rounded-sm ring-2 ring-sbc-gold transition-all duration-150"
             style={{
               top: targetRect.top - 4,
               left: targetRect.left - 4,
@@ -398,9 +421,6 @@ function AdminGuideWidget({
               </div>
             </div>
             <p className="text-sm leading-relaxed text-sbc-gray">{step.description}</p>
-            {!ready && step.navigateTo && (
-              <p className="mt-2 text-xs text-sbc-gray">Opening {step.title}…</p>
-            )}
           </div>
 
           <div className="flex items-center justify-between gap-2 border-t border-sbc-gray-light px-4 py-3">
