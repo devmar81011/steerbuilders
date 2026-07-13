@@ -1,15 +1,15 @@
 "use client";
 
+import Image from "next/image";
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   adminTourSteps,
@@ -27,7 +27,10 @@ type Rect = {
   height: number;
 };
 
+type WidgetMode = "closed" | "prompt" | "touring";
+
 type AdminTourContextValue = {
+  openGuide: () => void;
   startTour: () => void;
   finishTour: () => void;
   active: boolean;
@@ -43,60 +46,41 @@ export function useAdminTour() {
   return context;
 }
 
-function measureTarget(selector?: string): Rect | null {
+function measureVisibleTarget(selector?: string): Rect | null {
   if (!selector || typeof document === "undefined") return null;
-  const node = document.querySelector(selector);
-  if (!node) return null;
-  const box = node.getBoundingClientRect();
-  if (box.width === 0 && box.height === 0) return null;
-  return {
-    top: box.top,
-    left: box.left,
-    width: box.width,
-    height: box.height,
-  };
-}
 
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function getPopoverPosition(target: Rect | null) {
-  const cardWidth = 352;
-  const cardHeight = 240;
-  const margin = 16;
-  const viewportWidth = window.innerWidth;
-  const viewportHeight = window.innerHeight;
-
-  if (!target) {
-    return {
-      top: clamp(
-        viewportHeight / 2 - cardHeight / 2,
-        margin,
-        viewportHeight - cardHeight - margin
-      ),
-      left: clamp(
-        viewportWidth / 2 - cardWidth / 2,
-        margin,
-        viewportWidth - cardWidth - margin
-      ),
-    };
+  const nodes = document.querySelectorAll(selector);
+  for (const node of nodes) {
+    const box = node.getBoundingClientRect();
+    if (box.width > 0 && box.height > 0) {
+      return {
+        top: box.top,
+        left: box.left,
+        width: box.width,
+        height: box.height,
+      };
+    }
   }
+  return null;
+}
 
-  const preferBelow =
-    target.top + target.height + 12 + cardHeight < viewportHeight - margin;
-  const top = preferBelow
-    ? target.top + target.height + 12
-    : clamp(
-        target.top - cardHeight - 12,
-        margin,
-        viewportHeight - cardHeight - margin
-      );
+function pathMatchesStep(pathname: string, navigateTo?: string) {
+  if (!navigateTo) return true;
+  if (navigateTo === "/admin") return pathname === "/admin";
+  return pathname === navigateTo || pathname.startsWith(`${navigateTo}/`);
+}
 
-  let left = target.left + target.width / 2 - cardWidth / 2;
-  left = clamp(left, margin, viewportWidth - cardWidth - margin);
+function scrollTargetIntoView(selector?: string) {
+  if (!selector || typeof document === "undefined") return;
 
-  return { top, left };
+  const nodes = document.querySelectorAll(selector);
+  for (const node of nodes) {
+    const box = node.getBoundingClientRect();
+    if (box.width > 0 && box.height > 0) {
+      node.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      return;
+    }
+  }
 }
 
 type ProviderProps = {
@@ -106,235 +90,344 @@ type ProviderProps = {
 
 export function AdminTourProvider({ children, openNav }: ProviderProps) {
   const router = useRouter();
-  const [active, setActive] = useState(false);
+  const pathname = usePathname();
+  const [mode, setMode] = useState<WidgetMode>("closed");
   const [stepIndex, setStepIndex] = useState(0);
   const [targetRect, setTargetRect] = useState<Rect | null>(null);
+  const [ready, setReady] = useState(false);
 
   const step = adminTourSteps[stepIndex];
   const isLastStep = stepIndex === adminTourSteps.length - 1;
-
-  const refreshTarget = useCallback(
-    (currentStep: AdminTourStep) => {
-      if (window.matchMedia("(max-width: 767px)").matches) {
-        openNav?.();
-      }
-      requestAnimationFrame(() => {
-        setTargetRect(measureTarget(currentStep.target));
-      });
-    },
-    [openNav]
-  );
+  const touring = mode === "touring";
 
   const finishTour = useCallback(() => {
     markAdminTourCompleted();
-    setActive(false);
+    setMode("closed");
     setStepIndex(0);
     setTargetRect(null);
+    setReady(false);
   }, []);
 
   const startTour = useCallback(() => {
     dismissAdminTourPrompt();
     setStepIndex(0);
-    setActive(true);
-    window.setTimeout(() => refreshTarget(adminTourSteps[0]), 0);
-  }, [refreshTarget]);
+    setMode("touring");
+    setReady(false);
+
+    const first = adminTourSteps[0];
+    if (first.navigateTo && !pathMatchesStep(pathname, first.navigateTo)) {
+      router.push(first.navigateTo);
+    }
+  }, [pathname, router]);
+
+  const openGuide = useCallback(() => {
+    dismissAdminTourPrompt();
+    setMode("prompt");
+  }, []);
 
   const goToStep = useCallback(
     (index: number) => {
       const nextStep = adminTourSteps[index];
       if (!nextStep) return;
 
-      if (nextStep.navigateTo) {
+      setReady(false);
+      setStepIndex(index);
+
+      if (nextStep.navigateTo && !pathMatchesStep(pathname, nextStep.navigateTo)) {
         router.push(nextStep.navigateTo);
       }
-
-      setStepIndex(index);
-      window.setTimeout(() => refreshTarget(nextStep), nextStep.navigateTo ? 350 : 0);
     },
-    [refreshTarget, router]
+    [pathname, router]
   );
-
-  useLayoutEffect(() => {
-    if (!active || !step) return;
-
-    refreshTarget(step);
-
-    function handleLayoutChange() {
-      refreshTarget(step);
-    }
-
-    window.addEventListener("resize", handleLayoutChange);
-    window.addEventListener("scroll", handleLayoutChange, true);
-
-    return () => {
-      window.removeEventListener("resize", handleLayoutChange);
-      window.removeEventListener("scroll", handleLayoutChange, true);
-    };
-  }, [active, step, refreshTarget]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!touring || !step) return;
 
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") finishTour();
+    if (window.matchMedia("(max-width: 767px)").matches && step.target) {
+      openNav?.();
     }
 
-    document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKeyDown);
+    if (!pathMatchesStep(pathname, step.navigateTo)) {
+      setReady(false);
+      setTargetRect(null);
+      return;
+    }
+
+    let cancelled = false;
+    let attempts = 0;
+
+    const syncTarget = () => {
+      if (cancelled) return;
+
+      if (step.target) {
+        scrollTargetIntoView(step.target);
+      }
+
+      const rect = measureVisibleTarget(step.target);
+      if (rect) {
+        setTargetRect(rect);
+        setReady(true);
+        return;
+      }
+
+      attempts += 1;
+      if (attempts < 25) {
+        window.setTimeout(syncTarget, 120);
+      } else {
+        setTargetRect(null);
+        setReady(true);
+      }
+    };
+
+    window.setTimeout(syncTarget, step.target ? 80 : 0);
 
     return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", onKeyDown);
+      cancelled = true;
     };
-  }, [active, finishTour]);
+  }, [touring, step, pathname, openNav]);
+
+  useEffect(() => {
+    if (!touring) return;
+
+    function refreshSpotlight() {
+      if (!step?.target) return;
+      setTargetRect(measureVisibleTarget(step.target));
+    }
+
+    window.addEventListener("resize", refreshSpotlight);
+    window.addEventListener("scroll", refreshSpotlight, true);
+
+    return () => {
+      window.removeEventListener("resize", refreshSpotlight);
+      window.removeEventListener("scroll", refreshSpotlight, true);
+    };
+  }, [touring, step]);
+
+  useEffect(() => {
+    if (hasCompletedAdminTour() || hasDismissedAdminTourPrompt()) return;
+    const timer = window.setTimeout(() => setMode("prompt"), 800);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const value = useMemo(
-    () => ({ startTour, finishTour, active }),
-    [startTour, finishTour, active]
+    () => ({
+      openGuide,
+      startTour,
+      finishTour,
+      active: touring,
+    }),
+    [openGuide, startTour, finishTour, touring]
   );
-
-  const popoverPosition = active && step ? getPopoverPosition(targetRect) : null;
 
   return (
     <AdminTourContext.Provider value={value}>
       {children}
 
-      {active && step && popoverPosition && (
-        <div className="fixed inset-0 z-[100]" role="presentation">
-          {targetRect ? (
-            <div
-              className="pointer-events-none absolute rounded-sm ring-2 ring-sbc-gold"
-              style={{
-                top: targetRect.top - 4,
-                left: targetRect.left - 4,
-                width: targetRect.width + 8,
-                height: targetRect.height + 8,
-                boxShadow: "0 0 0 9999px rgba(16, 16, 16, 0.55)",
-              }}
-            />
-          ) : (
-            <div className="absolute inset-0 bg-sbc-black/55" aria-hidden />
-          )}
-
-          <button
-            type="button"
-            className="absolute inset-0 cursor-default"
-            aria-label="Close tour"
-            onClick={finishTour}
-          />
-
+      {touring && targetRect && (
+        <div className="pointer-events-none fixed inset-0 z-[90]" aria-hidden>
           <div
-            className="pointer-events-auto absolute z-[101] w-[min(100vw-2rem,22rem)] border border-sbc-gray-light bg-sbc-white p-5 shadow-lg"
-            style={{ top: popoverPosition.top, left: popoverPosition.left }}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="admin-tour-title"
-          >
-            <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
-              Step {stepIndex + 1} of {adminTourSteps.length}
-            </p>
-            <h2
-              id="admin-tour-title"
-              className="mt-2 text-base font-bold text-sbc-black"
-            >
-              {step.title}
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-sbc-gray">
-              {step.description}
-            </p>
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={finishTour}
-                className="cursor-pointer text-xs font-medium uppercase tracking-widest text-sbc-gray hover:text-sbc-gold"
-              >
-                Skip tour
-              </button>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={stepIndex === 0}
-                  onClick={() => goToStep(stepIndex - 1)}
-                >
-                  Back
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    if (isLastStep) {
-                      finishTour();
-                      return;
-                    }
-                    goToStep(stepIndex + 1);
-                  }}
-                >
-                  {isLastStep ? "Done" : "Next"}
-                </Button>
-              </div>
-            </div>
-          </div>
+            className="absolute rounded-sm ring-2 ring-sbc-gold transition-all duration-300"
+            style={{
+              top: targetRect.top - 4,
+              left: targetRect.left - 4,
+              width: targetRect.width + 8,
+              height: targetRect.height + 8,
+              boxShadow: "0 0 0 9999px rgba(16, 16, 16, 0.45)",
+            }}
+          />
         </div>
       )}
+
+      <AdminGuideWidget
+        mode={mode}
+        setMode={setMode}
+        step={step}
+        stepIndex={stepIndex}
+        isLastStep={isLastStep}
+        ready={ready}
+        onStart={startTour}
+        onFinish={finishTour}
+        onBack={() => goToStep(stepIndex - 1)}
+        onNext={() => {
+          if (isLastStep) {
+            finishTour();
+            return;
+          }
+          goToStep(stepIndex + 1);
+        }}
+      />
     </AdminTourContext.Provider>
   );
 }
 
+function AdminGuideWidget({
+  mode,
+  setMode,
+  step,
+  stepIndex,
+  isLastStep,
+  ready,
+  onStart,
+  onFinish,
+  onBack,
+  onNext,
+}: {
+  mode: WidgetMode;
+  setMode: (mode: WidgetMode) => void;
+  step: AdminTourStep | undefined;
+  stepIndex: number;
+  isLastStep: boolean;
+  ready: boolean;
+  onStart: () => void;
+  onFinish: () => void;
+  onBack: () => void;
+  onNext: () => void;
+}) {
+  if (mode === "closed") {
+    return (
+      <button
+        type="button"
+        onClick={() => setMode("prompt")}
+        className="fixed bottom-5 right-5 z-[100] flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border-2 border-sbc-gold bg-sbc-white shadow-lg transition-transform hover:scale-105"
+        aria-label="Open admin guide"
+      >
+        <Image src="/brand/logo-sbc.png" alt="" width={32} height={32} />
+      </button>
+    );
+  }
+
+  return (
+    <div
+      className="fixed bottom-0 right-0 z-[100] flex w-full flex-col border-t border-sbc-gray-light bg-sbc-white shadow-[0_-8px_32px_rgba(0,0,0,0.12)] sm:bottom-5 sm:right-5 sm:w-[min(100vw-2rem,26rem)] sm:rounded-sm sm:border"
+      role="dialog"
+      aria-labelledby="admin-guide-title"
+      aria-live="polite"
+    >
+      <div className="flex items-center gap-3 border-b border-sbc-gray-light px-4 py-3">
+        <Image
+          src="/brand/logo-sbc.png"
+          alt=""
+          width={28}
+          height={28}
+          className="shrink-0"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gold">
+            Admin guide
+          </p>
+          <p id="admin-guide-title" className="truncate text-sm font-bold text-sbc-black">
+            {mode === "prompt" ? "Need a hand?" : step?.title ?? "Guide"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            if (mode === "touring") onFinish();
+            else {
+              dismissAdminTourPrompt();
+              setMode("closed");
+            }
+          }}
+          className="cursor-pointer px-2 py-1 text-xs font-medium uppercase tracking-widest text-sbc-gray hover:text-sbc-gold"
+          aria-label="Close guide"
+        >
+          Close
+        </button>
+      </div>
+
+      {mode === "prompt" && (
+        <div className="px-4 py-4">
+          <p className="text-sm leading-relaxed text-sbc-gray">
+            Would you like a guided walkthrough of payroll and admin tools? We&apos;ll
+            step through each section in order — you can skip anytime.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button type="button" size="sm" onClick={onStart}>
+              Yes, guide me
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                dismissAdminTourPrompt();
+                setMode("closed");
+              }}
+            >
+              Maybe later
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {mode === "touring" && step && (
+        <>
+          <div className="px-4 py-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
+                Step {stepIndex + 1} of {adminTourSteps.length}
+              </p>
+              <div className="flex gap-1">
+                {adminTourSteps.map((item, index) => (
+                  <span
+                    key={item.id}
+                    className={`h-1.5 w-1.5 rounded-full ${
+                      index === stepIndex
+                        ? "bg-sbc-gold"
+                        : index < stepIndex
+                          ? "bg-sbc-gold/40"
+                          : "bg-sbc-gray-light"
+                    }`}
+                    aria-hidden
+                  />
+                ))}
+              </div>
+            </div>
+            <p className="text-sm leading-relaxed text-sbc-gray">{step.description}</p>
+            {!ready && step.navigateTo && (
+              <p className="mt-2 text-xs text-sbc-gray">Opening {step.title}…</p>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between gap-2 border-t border-sbc-gray-light px-4 py-3">
+            <button
+              type="button"
+              onClick={onFinish}
+              className="cursor-pointer text-xs font-medium uppercase tracking-widest text-sbc-gray hover:text-sbc-gold"
+            >
+              End tour
+            </button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={stepIndex === 0}
+                onClick={onBack}
+              >
+                Back
+              </Button>
+              <Button type="button" size="sm" disabled={!ready} onClick={onNext}>
+                {isLastStep ? "Finish" : "Next"}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export function AdminGuideButton() {
-  const { startTour } = useAdminTour();
+  const { openGuide } = useAdminTour();
 
   return (
     <button
       type="button"
-      data-admin-tour="guide-button"
-      onClick={startTour}
+      onClick={openGuide}
       className="cursor-pointer text-xs font-medium uppercase tracking-widest text-sbc-gray transition-colors hover:text-sbc-gold"
     >
       Guide
     </button>
-  );
-}
-
-export function AdminTourBanner() {
-  const { startTour, active } = useAdminTour();
-  const [showPrompt, setShowPrompt] = useState(false);
-
-  useEffect(() => {
-    if (hasCompletedAdminTour() || hasDismissedAdminTourPrompt()) return;
-    setShowPrompt(true);
-  }, []);
-
-  if (!showPrompt || active) return null;
-
-  return (
-    <div className="mb-6 flex flex-col gap-3 border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
-          New here?
-        </p>
-        <p className="mt-1 text-sm font-semibold text-sbc-black">
-          Take a quick tour of payroll and admin tools.
-        </p>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" onClick={startTour}>
-          Start tour
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => {
-            dismissAdminTourPrompt();
-            setShowPrompt(false);
-          }}
-        >
-          Not now
-        </Button>
-      </div>
-    </div>
   );
 }

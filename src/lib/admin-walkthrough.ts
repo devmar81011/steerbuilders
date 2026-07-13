@@ -14,15 +14,16 @@ export type AdminTourStep = {
 export const adminTourSteps: AdminTourStep[] = [
   {
     id: "welcome",
-    title: "Welcome to Steer Builders Admin",
+    title: "Welcome",
     description:
-      "This quick guide walks through payroll and site management in the order most teams use. You can replay it anytime from the Guide button in the header.",
+      "This tour walks through admin in the order most teams use: rates, deductions, employees, attendance, then payroll. Use Next to move through each section.",
+    navigateTo: "/admin",
   },
   {
     id: "dashboard",
     title: "Dashboard",
     description:
-      "See active employees and pending payroll at a glance. Draft entries here mean someone still needs to be processed in Payroll.",
+      "Your overview — active employees and pending payroll. Draft entries here still need to be processed under Payroll.",
     target: '[data-admin-tour="nav-dashboard"]',
     navigateTo: "/admin",
   },
@@ -86,7 +87,8 @@ export const adminTourSteps: AdminTourStep[] = [
     id: "done",
     title: "You're all set",
     description:
-      "Follow the numbered flow above whenever you run payroll. Open Guide again from the header if you need a refresher.",
+      "Follow that order whenever you run payroll. Tap the guide button at the bottom-right anytime for another walkthrough.",
+    navigateTo: "/admin",
   },
 ];
 

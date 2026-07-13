@@ -1,5 +1,4 @@
 import { AdminShell } from "@/components/layout/admin-shell";
-import { AdminTourBanner } from "@/components/admin/admin-walkthrough";
 import { DashboardPayrollSummary } from "@/components/admin/dashboard-payroll-summary";
 import { getEmployees, getPayrollEntries } from "@/lib/actions/payroll";
 
@@ -22,8 +21,6 @@ export default async function AdminDashboardPage() {
           Payroll and project management for Steer Builders.
         </p>
       </div>
-
-      <AdminTourBanner />
 
       <DashboardPayrollSummary
         initialPayroll={payroll}
