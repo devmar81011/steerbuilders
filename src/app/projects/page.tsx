@@ -9,13 +9,18 @@ import { isCompletedProject, isOngoingProject } from "@/lib/project-status";
 
 type Filter = "all" | "Completed" | "Ongoing";
 
+function parseFilter(value: string | undefined): Filter {
+  if (value === "Completed" || value === "Ongoing") return value;
+  return "all";
+}
+
 export default async function ProjectsPage({
   searchParams,
 }: {
   searchParams: Promise<{ filter?: string }>;
 }) {
   const params = await searchParams;
-  const filter = (params.filter as Filter) || "all";
+  const filter = parseFilter(params.filter);
   const portfolio = await getProjectsOrFallback();
 
   const filtered =

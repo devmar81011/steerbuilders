@@ -157,10 +157,14 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
         );
         setMessage("Employee updated.");
       } else {
+        const newId =
+          "id" in result && typeof result.id === "string"
+            ? result.id
+            : `emp-${Date.now()}`;
         setEmployees((prev) => [
           ...prev,
           {
-            id: `emp-${Date.now()}`,
+            id: newId,
             name: form.name,
             category: form.category,
             role: form.role as Employee["role"],
@@ -360,7 +364,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
         </Table>
         <TableMeta>
           <span>{employees.length} employees</span>
-          <span className="text-sbc-gold">Construction &amp; Admin roster</span>
+          <span className="text-sbc-gold">{"Construction & Admin roster"}</span>
         </TableMeta>
       </TableShell>
     </AdminShell>

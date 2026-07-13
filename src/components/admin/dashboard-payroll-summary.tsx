@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { formatCurrency, type PayrollEntry } from "@/lib/mvp-data";
 import { mergePayrollEntriesWithPreview } from "@/lib/payroll-preview-storage";
@@ -38,11 +38,10 @@ export function DashboardPayrollSummary({
   initialPayroll: PayrollSnapshot;
   activeEmployees: number;
 }) {
-  const [payroll, setPayroll] = useState(initialPayroll);
-
-  useEffect(() => {
-    setPayroll(mergeSnapshot(initialPayroll));
-  }, [initialPayroll]);
+  const payroll = useMemo(
+    () => mergeSnapshot(initialPayroll),
+    [initialPayroll]
+  );
 
   const pendingByCategory = useMemo(
     () => ({

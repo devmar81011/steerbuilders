@@ -142,10 +142,14 @@ export function RatesClient({ initialRates }: Props) {
         );
         setMessage("Rate updated.");
       } else {
+        const newId =
+          "id" in result && typeof result.id === "string"
+            ? result.id
+            : `rate-${Date.now()}`;
         setRates((prev) => [
           ...prev,
           {
-            id: `rate-${Date.now()}`,
+            id: newId,
             category: form.category,
             role: form.role,
             rate: Number(form.rate),

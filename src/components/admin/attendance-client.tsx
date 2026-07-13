@@ -213,14 +213,17 @@ export function AttendanceClient({
     setLoadingWeek(true);
     setMessage(null);
     startTransition(async () => {
-      const result = await getAttendanceForWeek(nextWeekStart);
-      setWeekStart(nextWeekStart);
-      setConstructionRows(
-        mergeConstructionRowsWithPreview(nextWeekStart, result.constructionRows)
-      );
-      setAdminRows(mergeAdminRowsWithPreview(nextWeekStart, result.adminRows));
-      setOjtRows(mergeAdminRowsWithPreview(nextWeekStart, result.ojtRows));
-      setLoadingWeek(false);
+      try {
+        const result = await getAttendanceForWeek(nextWeekStart);
+        setWeekStart(nextWeekStart);
+        setConstructionRows(
+          mergeConstructionRowsWithPreview(nextWeekStart, result.constructionRows)
+        );
+        setAdminRows(mergeAdminRowsWithPreview(nextWeekStart, result.adminRows));
+        setOjtRows(mergeAdminRowsWithPreview(nextWeekStart, result.ojtRows));
+      } finally {
+        setLoadingWeek(false);
+      }
     });
   }
 
@@ -357,13 +360,6 @@ export function AttendanceClient({
           );
         })}
       </div>
-
-      {!usingDatabase && (
-        <p className="mb-4 text-sm text-sbc-gray">
-          Preview mode — attendance is saved in this browser and feeds payroll
-          calculations until Supabase is connected.
-        </p>
-      )}
 
       {message && (
         <p className="mb-4 text-sm text-red-600" role="alert">

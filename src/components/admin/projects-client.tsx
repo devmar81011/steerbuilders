@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { sortRows, useTableSort } from "@/lib/table-sort";
 import { AdminShell } from "@/components/layout/admin-shell";
@@ -33,6 +33,7 @@ import {
   mergeProjectsWithPreview,
   saveFeaturedLimitPreview,
   saveProjectFeaturedPreview,
+  selectFeaturedProjects,
 } from "@/lib/projects-preview-storage";
 import { ProjectImagesEditor } from "@/components/admin/project-images-editor";
 import { textActionGoldClass } from "@/components/ui/icon-button";
@@ -66,10 +67,23 @@ export function AdminProjectsClient({
   usingDatabase,
   featuredLimit: initialFeaturedLimit,
 }: Props) {
-  const [items, setItems] = useState(projects);
-  const [featuredLimit, setFeaturedLimit] = useState(initialFeaturedLimit);
-  const [featuredLimitInput, setFeaturedLimitInput] = useState(
-    String(initialFeaturedLimit)
+  const serverMerged = useMemo(
+    () => (usingDatabase ? projects : mergeProjectsWithPreview(projects)),
+    [projects, usingDatabase]
+  );
+  const [items, setItems] = useState(serverMerged);
+  const [syncedServerMerged, setSyncedServerMerged] = useState(serverMerged);
+  const [featuredLimit, setFeaturedLimit] = useState(() =>
+    usingDatabase || typeof window === "undefined"
+      ? initialFeaturedLimit
+      : getFeaturedLimitPreview()
+  );
+  const [featuredLimitInput, setFeaturedLimitInput] = useState(() =>
+    String(
+      usingDatabase || typeof window === "undefined"
+        ? initialFeaturedLimit
+        : getFeaturedLimitPreview()
+    )
   );
   const { sort, toggleSort } = useTableSort<ProjectSortKey>({ defaultKey: "name" });
   const [message, setMessage] = useState<string | null>(null);
@@ -86,6 +100,19 @@ export function AdminProjectsClient({
     images: [] as string[],
   });
 
+  if (serverMerged !== syncedServerMerged) {
+    setSyncedServerMerged(serverMerged);
+    setItems(serverMerged);
+    if (usingDatabase) {
+      setFeaturedLimit(initialFeaturedLimit);
+      setFeaturedLimitInput(String(initialFeaturedLimit));
+    } else {
+      const previewLimit = getFeaturedLimitPreview();
+      setFeaturedLimit(previewLimit);
+      setFeaturedLimitInput(String(previewLimit));
+    }
+  }
+
   const completedCount = useMemo(
     () => items.filter((p) => isCompletedProject(p)).length,
     [items]
@@ -96,14 +123,13 @@ export function AdminProjectsClient({
     [items]
   );
 
-  useEffect(() => {
-    const merged = mergeProjectsWithPreview(projects);
-    setItems(merged);
-    if (!usingDatabase) {
-      setFeaturedLimit(getFeaturedLimitPreview());
-      setFeaturedLimitInput(String(getFeaturedLimitPreview()));
-    }
-  }, [projects, usingDatabase]);
+  const homepageFeaturedIds = useMemo(
+    () => new Set(selectFeaturedProjects(items, featuredLimit).map((project) => project.id)),
+    [items, featuredLimit]
+  );
+
+  const homepageFeaturedCount = homepageFeaturedIds.size;
+  const overFeaturedLimit = featuredCount > featuredLimit;
 
   function countFeaturedCandidates(excludeId?: string) {
     return items.filter((project) => project.featured && project.id !== excludeId)
@@ -216,12 +242,12 @@ export function AdminProjectsClient({
             )
           );
           saveProjectFeaturedPreview(editingId, payload.featured);
-          setMessage("Project updated (preview — connect Supabase to save permanently).");
+          setMessage("Project updated.");
         } else {
           const id = `static-${Date.now()}`;
           setItems((prev) => [...prev, buildProjectRow(id, payload)]);
           saveProjectFeaturedPreview(id, payload.featured);
-          setMessage("Project added (preview — connect Supabase to save permanently).");
+          setMessage("Project added.");
         }
         resetForm();
         return;
@@ -245,7 +271,7 @@ export function AdminProjectsClient({
   function handleDelete(id: string) {
     if (!usingDatabase) {
       setItems((prev) => prev.filter((p) => p.id !== id));
-      setMessage("Project removed (preview).");
+      setMessage("Project removed.");
       return;
     }
 
@@ -285,7 +311,6 @@ export function AdminProjectsClient({
         return;
       }
 
-      saveProjectFeaturedPreview(id, next);
       setMessage(next ? "Project marked as featured." : "Project removed from featured.");
     });
   }
@@ -315,7 +340,7 @@ export function AdminProjectsClient({
         saveFeaturedLimitPreview(nextLimit);
         setFeaturedLimit(nextLimit);
         setFeaturedLimitInput(String(nextLimit));
-        setMessage(`Featured limit set to ${nextLimit} (preview).`);
+        setMessage(`Featured limit set to ${nextLimit}.`);
         return;
       }
 
@@ -340,10 +365,21 @@ export function AdminProjectsClient({
         <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Projects</h1>
         <p className="mt-2 text-sm font-semibold text-sbc-gray">
           {usingDatabase
-            ? `${items.length} projects in database (${completedCount} completed)`
-            : `${items.length} projects — preview mode (edits work until refresh; add Supabase env vars to save permanently)`}
+            ? `${items.length} projects (${completedCount} completed)`
+            : `${items.length} projects`}
         </p>
       </div>
+
+      {overFeaturedLimit && (
+        <p
+          className="mb-6 border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900"
+          role="status"
+        >
+          {featuredCount} projects are marked featured, but only {featuredLimit} can appear
+          on the homepage. Unfeature {featuredCount - featuredLimit} project
+          {featuredCount - featuredLimit === 1 ? "" : "s"} to match the limit.
+        </p>
+      )}
 
       {message && (
         <p className="mb-6 border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
@@ -353,29 +389,37 @@ export function AdminProjectsClient({
 
       <form
         onSubmit={handleFeaturedLimitSave}
-        className="mb-6 flex flex-wrap items-end gap-4 border border-sbc-gray-light bg-sbc-white p-4"
+        className="mb-6 border border-sbc-gray-light bg-sbc-white p-4"
       >
-        <div>
-          <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
-            Homepage featured limit
-          </p>
-          <p className="mt-1 text-xs text-sbc-gray">
-            {featuredCount} of {featuredLimit} slots used on the homepage gallery
-          </p>
+        <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
+          Homepage featured limit
+        </p>
+        <p className="mt-1 text-xs text-sbc-gray">
+          {homepageFeaturedCount} of {featuredLimit} shown on the homepage
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <span className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
+            Max on homepage
+          </span>
+          <Input
+            aria-label="Max featured projects on homepage"
+            size="sm"
+            type="number"
+            min={MIN_FEATURED_PROJECT_LIMIT}
+            max={MAX_FEATURED_PROJECT_LIMIT}
+            value={featuredLimitInput}
+            onChange={(e) => setFeaturedLimitInput(e.target.value)}
+            className="w-20 text-center"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            disabled={pending}
+            className="h-10 min-h-10 shrink-0 px-5"
+          >
+            Save limit
+          </Button>
         </div>
-        <Input
-          label="Max featured projects"
-          size="sm"
-          type="number"
-          min={MIN_FEATURED_PROJECT_LIMIT}
-          max={MAX_FEATURED_PROJECT_LIMIT}
-          value={featuredLimitInput}
-          onChange={(e) => setFeaturedLimitInput(e.target.value)}
-          className="w-28"
-        />
-        <Button type="submit" size="sm" disabled={pending}>
-          Save limit
-        </Button>
       </form>
 
       <form
@@ -537,9 +581,17 @@ export function AdminProjectsClient({
                     type="button"
                     onClick={() => toggleFeatured(project.id, project.featured)}
                     className={textActionGoldClass}
-                    title="Toggle featured"
+                    title={
+                      project.featured && !homepageFeaturedIds.has(project.id)
+                        ? "Featured, but not shown on homepage (limit reached)"
+                        : "Toggle featured"
+                    }
                   >
-                    {project.featured ? "Yes" : "No"}
+                    {project.featured
+                      ? homepageFeaturedIds.has(project.id)
+                        ? "Yes"
+                        : "Yes · hidden"
+                      : "No"}
                   </button>
                 </TableCell>
                 <TableCell align="right">
@@ -555,8 +607,10 @@ export function AdminProjectsClient({
         <TableMeta>
           <span>{items.length} projects</span>
           <span className="text-sbc-gold">
-            {featuredCount}/{featuredLimit} featured ·{" "}
-            {usingDatabase ? "Live database" : "Preview mode"}
+            {homepageFeaturedCount}/{featuredLimit} on homepage
+            {featuredCount > homepageFeaturedCount
+              ? ` · ${featuredCount} marked featured`
+              : ""}
           </span>
         </TableMeta>
       </TableShell>

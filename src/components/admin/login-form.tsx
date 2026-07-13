@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useState } from "react";
 import { login, type LoginState } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,23 +9,27 @@ const initialState: LoginState = {};
 const REMEMBER_EMAIL_KEY = "sbc-admin-remember-email";
 const REMEMBER_ME_KEY = "sbc-admin-remember-me";
 
+function getRememberedLogin() {
+  if (typeof window === "undefined") {
+    return { email: "", rememberMe: true };
+  }
+
+  const remembered = localStorage.getItem(REMEMBER_ME_KEY) !== "false";
+  const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY);
+  return {
+    email: remembered && savedEmail ? savedEmail : "",
+    rememberMe: remembered,
+  };
+}
+
 export function LoginForm({
   supabaseConfigured = true,
 }: {
   supabaseConfigured?: boolean;
 }) {
   const [state, action, pending] = useActionState(login, initialState);
-  const [email, setEmail] = useState("");
-  const [rememberMe, setRememberMe] = useState(true);
-
-  useEffect(() => {
-    const remembered = localStorage.getItem(REMEMBER_ME_KEY) !== "false";
-    const savedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY);
-    setRememberMe(remembered);
-    if (remembered && savedEmail) {
-      setEmail(savedEmail);
-    }
-  }, []);
+  const [email, setEmail] = useState(() => getRememberedLogin().email);
+  const [rememberMe, setRememberMe] = useState(() => getRememberedLogin().rememberMe);
 
   function handleSubmit() {
     if (rememberMe) {

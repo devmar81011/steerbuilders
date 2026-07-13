@@ -41,7 +41,12 @@ export function ContactForm() {
       }
 
       if (result.fallbackMailto) {
+        setStatus("error");
+        setErrorMessage(
+          "We could not save your inquiry online. Your email app will open so you can send it directly."
+        );
         window.location.href = result.fallbackMailto;
+        return;
       }
     });
   }

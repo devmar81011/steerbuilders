@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { EmployeeCategory } from "@/lib/employee-categories";
 import { mockDailyRates, type DailyRate } from "@/lib/daily-rates";
 import { normalizeRateType, type RateType } from "@/lib/rate-types";
@@ -19,6 +20,8 @@ function mapRate(row: Record<string, unknown>): DailyRate {
 }
 
 export async function getDailyRates(): Promise<DailyRate[]> {
+  if (!isSupabaseConfigured()) return mockDailyRates;
+
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -27,10 +30,10 @@ export async function getDailyRates(): Promise<DailyRate[]> {
       .order("category")
       .order("role");
 
-    if (error || !data?.length) return mockDailyRates;
-    return data.map((row) => mapRate(row as Record<string, unknown>));
+    if (error) return [];
+    return (data ?? []).map((row) => mapRate(row as Record<string, unknown>));
   } catch {
-    return mockDailyRates;
+    return [];
   }
 }
 
@@ -41,17 +44,26 @@ export async function createDailyRate(input: {
   rate_type: RateType;
 }) {
   await requireAdmin();
-  try {
-    const supabase = await createClient();
-    const { error } = await supabase.from("daily_rates").insert(input);
-    if (error) return { error: error.message };
-  } catch {
+  if (!isSupabaseConfigured()) {
     return { success: true };
   }
 
-  revalidatePath("/admin/rates");
-  revalidatePath("/admin/employees");
-  return { success: true };
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("daily_rates")
+      .insert(input)
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    if (!data?.id) return { error: "Rate was not created." };
+
+    revalidatePath("/admin/rates");
+    revalidatePath("/admin/employees");
+    return { success: true, id: data.id as string };
+  } catch {
+    return { error: "Could not create rate." };
+  }
 }
 
 export async function updateDailyRate(

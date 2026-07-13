@@ -1,8 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { isPreviewPayrollEntryId } from "@/lib/preview-mode";
+import {
+  isPreviewEmployeeId,
+  isPreviewPayrollEntryId,
+  parsePreviewPayrollEntryId,
+} from "@/lib/preview-mode";
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { mockEmployees, mockPayroll, type Employee, type PayrollEntry } from "@/lib/mvp-data";
 import type { EmployeeCategory } from "@/lib/employee-categories";
 import { normalizeRateType, type RateType } from "@/lib/rate-types";
@@ -99,6 +104,8 @@ function buildMockEntry(
 }
 
 export async function getEmployees(): Promise<Employee[]> {
+  if (!isSupabaseConfigured()) return mockEmployees;
+
   try {
     const supabase = await createClient();
     const { data, error } = await supabase
@@ -106,10 +113,10 @@ export async function getEmployees(): Promise<Employee[]> {
       .select("*")
       .order("name");
 
-    if (error || !data?.length) return mockEmployees;
-    return data.map((row) => mapEmployee(row as Record<string, unknown>));
+    if (error) return [];
+    return (data ?? []).map((row) => mapEmployee(row as Record<string, unknown>));
   } catch {
-    return mockEmployees;
+    return [];
   }
 }
 
@@ -121,7 +128,9 @@ async function getPayrollFromDatabase(
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("payslips")
-      .select("*, employees(name, category), payroll_runs(period_start, period_end)")
+      .select(
+        "*, employees(name, category), payroll_runs!inner(period_start, period_end)"
+      )
       .eq("payroll_runs.period_start", period.periodStart)
       .eq("payroll_runs.period_end", period.periodEnd);
 
@@ -297,24 +306,33 @@ export async function createEmployee(input: {
   rate_type: RateType;
 }) {
   await requireAdmin();
-  try {
-    const supabase = await createClient();
-    const { error } = await supabase.from("employees").insert({
-      name: input.name,
-      category: input.category,
-      role: input.role,
-      rate: input.rate,
-      rate_type: input.rate_type,
-      status: "active",
-    });
-    if (error) return { error: error.message };
-  } catch {
+  if (!isSupabaseConfigured()) {
     return { success: true };
   }
 
-  revalidatePath("/admin/employees");
-  revalidatePath("/admin");
-  return { success: true };
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("employees")
+      .insert({
+        name: input.name,
+        category: input.category,
+        role: input.role,
+        rate: input.rate,
+        rate_type: input.rate_type,
+        status: "active",
+      })
+      .select("id")
+      .single();
+    if (error) return { error: error.message };
+    if (!data?.id) return { error: "Employee was not created." };
+
+    revalidatePath("/admin/employees");
+    revalidatePath("/admin");
+    return { success: true, id: data.id as string };
+  } catch {
+    return { error: "Could not create employee." };
+  }
 }
 
 export async function updateEmployee(
@@ -342,6 +360,88 @@ export async function updateEmployee(
   return { success: true };
 }
 
+function periodFromPreviewKey(periodKey: string): PayrollPeriod {
+  if (periodKey.startsWith("w-")) {
+    return parsePayrollPeriodKey("construction", periodKey);
+  }
+  return parsePayrollPeriodKey("admin", periodKey);
+}
+
+async function upsertPayrollEntry(
+  employeeId: string,
+  period: PayrollPeriod,
+  input: {
+    hours: number;
+    gross_pay: number;
+    deductions: number;
+    net_pay: number;
+    status: "draft" | "processed";
+  }
+): Promise<{ error?: string; id?: string }> {
+  const supabase = await createClient();
+
+  let payrollRunId: string | undefined;
+
+  const { data: existingRun, error: runLookupError } = await supabase
+    .from("payroll_runs")
+    .select("id")
+    .eq("period_start", period.periodStart)
+    .eq("period_end", period.periodEnd)
+    .maybeSingle();
+
+  if (runLookupError) return { error: runLookupError.message };
+
+  if (existingRun?.id) {
+    payrollRunId = existingRun.id as string;
+  } else {
+    const { data: newRun, error: runInsertError } = await supabase
+      .from("payroll_runs")
+      .insert({
+        period_start: period.periodStart,
+        period_end: period.periodEnd,
+        status: input.status,
+      })
+      .select("id")
+      .single();
+
+    if (runInsertError) return { error: runInsertError.message };
+    payrollRunId = newRun?.id as string | undefined;
+  }
+
+  if (!payrollRunId) return { error: "Payroll run was not created." };
+
+  const { data: existingPayslip, error: payslipLookupError } = await supabase
+    .from("payslips")
+    .select("id")
+    .eq("payroll_run_id", payrollRunId)
+    .eq("employee_id", employeeId)
+    .maybeSingle();
+
+  if (payslipLookupError) return { error: payslipLookupError.message };
+
+  if (existingPayslip?.id) {
+    const { error } = await supabase
+      .from("payslips")
+      .update(input)
+      .eq("id", existingPayslip.id);
+    if (error) return { error: error.message };
+    return { id: existingPayslip.id as string };
+  }
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("payslips")
+    .insert({
+      payroll_run_id: payrollRunId,
+      employee_id: employeeId,
+      ...input,
+    })
+    .select("id")
+    .single();
+
+  if (insertError) return { error: insertError.message };
+  return { id: inserted?.id as string | undefined };
+}
+
 export async function updatePayrollEntry(
   id: string,
   input: {
@@ -353,8 +453,28 @@ export async function updatePayrollEntry(
   }
 ) {
   await requireAdmin();
-  if (isPreviewPayrollEntryId(id)) {
+
+  if (!isSupabaseConfigured()) {
     return { success: true, preview: true };
+  }
+
+  if (isPreviewPayrollEntryId(id)) {
+    const parsed = parsePreviewPayrollEntryId(id);
+    if (!parsed || isPreviewEmployeeId(parsed.employeeId)) {
+      return { success: true, preview: true };
+    }
+
+    try {
+      const period = periodFromPreviewKey(parsed.periodKey);
+      const result = await upsertPayrollEntry(parsed.employeeId, period, input);
+      if (result.error) return { error: result.error };
+
+      revalidatePath("/admin/payroll");
+      revalidatePath("/admin");
+      return { success: true, id: result.id };
+    } catch {
+      return { error: "Could not save payroll entry." };
+    }
   }
 
   try {
@@ -362,7 +482,7 @@ export async function updatePayrollEntry(
     const { error } = await supabase.from("payslips").update(input).eq("id", id);
     if (error) return { error: error.message };
   } catch {
-    return { success: true, preview: true };
+    return { error: "Could not update payroll entry." };
   }
 
   revalidatePath("/admin/payroll");

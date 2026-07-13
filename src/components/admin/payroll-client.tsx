@@ -739,9 +739,12 @@ export function PayrollClient({
     const nextPeriod = shiftPayrollPeriod(activeTab, activePeriod, direction);
 
     startTransition(async () => {
-      const result = await getPayrollForPeriod(activeTab, nextPeriod.key);
-      applyPeriodResult(activeTab, result);
-      setLoadingPeriod(false);
+      try {
+        const result = await getPayrollForPeriod(activeTab, nextPeriod.key);
+        applyPeriodResult(activeTab, result);
+      } finally {
+        setLoadingPeriod(false);
+      }
     });
   }
 
@@ -753,9 +756,12 @@ export function PayrollClient({
     const current = getCurrentPayrollPeriod(activeTab);
 
     startTransition(async () => {
-      const result = await getPayrollForPeriod(activeTab, current.key);
-      applyPeriodResult(activeTab, result);
-      setLoadingPeriod(false);
+      try {
+        const result = await getPayrollForPeriod(activeTab, current.key);
+        applyPeriodResult(activeTab, result);
+      } finally {
+        setLoadingPeriod(false);
+      }
     });
   }
 
@@ -931,13 +937,6 @@ export function PayrollClient({
         </a>{" "}
         rules. Process to lock an entry.
       </p>
-
-      {!usingDatabase && (
-        <p className="mb-4 text-sm text-sbc-gray">
-          Preview mode — attendance is read from this browser; connect Supabase
-          for permanent storage.
-        </p>
-      )}
 
       {message && (
         <p className="mb-6 border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">

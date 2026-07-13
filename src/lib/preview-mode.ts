@@ -9,3 +9,14 @@ const UUID_RE =
 export function isPreviewPayrollEntryId(id: string): boolean {
   return !UUID_RE.test(id);
 }
+
+const PREVIEW_PAYROLL_ID_RE =
+  /^preview-(.+)-(w-\d{4}-\d{2}-\d{2}|s-\d{4}-\d{2}-\d{1,2})$/;
+
+export function parsePreviewPayrollEntryId(
+  id: string
+): { employeeId: string; periodKey: string } | null {
+  const match = id.match(PREVIEW_PAYROLL_ID_RE);
+  if (!match) return null;
+  return { employeeId: match[1], periodKey: match[2] };
+}

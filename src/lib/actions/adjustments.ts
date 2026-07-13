@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   mockDeductionRoleRates,
   type DeductionRoleRate,
@@ -64,6 +65,10 @@ function attachMockRoleRates(
 }
 
 export async function getPayrollAdjustments(): Promise<PayrollAdjustment[]> {
+  if (!isSupabaseConfigured()) {
+    return attachMockRoleRates(mockPayrollAdjustments);
+  }
+
   try {
     const supabase = await createClient();
     const [{ data: adjustments, error }, { data: roleRates, error: roleError }] =
@@ -76,15 +81,13 @@ export async function getPayrollAdjustments(): Promise<PayrollAdjustment[]> {
         supabase.from("payroll_adjustment_role_rates").select("*"),
       ]);
 
-    if (error || !adjustments?.length) {
-      return attachMockRoleRates(mockPayrollAdjustments);
-    }
+    if (error) return [];
 
-    const mapped = adjustments
+    const mapped = (adjustments ?? [])
       .map((row) => mapAdjustment(row as Record<string, unknown>))
       .filter((row): row is PayrollAdjustment => row !== null);
 
-    if (!mapped.length) return attachMockRoleRates(mockPayrollAdjustments);
+    if (!mapped.length) return [];
 
     const rates =
       roleError || !roleRates?.length
@@ -93,7 +96,7 @@ export async function getPayrollAdjustments(): Promise<PayrollAdjustment[]> {
 
     return attachRoleRates(mapped, rates);
   } catch {
-    return attachMockRoleRates(mockPayrollAdjustments);
+    return [];
   }
 }
 
