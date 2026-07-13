@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdminApi } from "@/lib/auth/require-admin";
 import { normalizeUploadImage } from "@/lib/normalize-upload-image";
-import { resolveUploadContentType, isHeicUpload } from "@/lib/upload-image-types";
+import { resolveUploadContentType, isHeicUpload, MAX_PROJECT_IMAGE_BYTES, MAX_PROJECT_IMAGE_LABEL } from "@/lib/upload-image-types";
 import { getSupabaseEnv } from "@/lib/supabase/config";
 import { createServiceClient } from "@/lib/supabase/service";
 
@@ -69,8 +69,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: "File must be under 10 MB." }, { status: 400 });
+    if (file.size > MAX_PROJECT_IMAGE_BYTES) {
+      return NextResponse.json(
+        { error: `File must be under ${MAX_PROJECT_IMAGE_LABEL}.` },
+        { status: 400 }
+      );
     }
 
     const rawBuffer = Buffer.from(await file.arrayBuffer());

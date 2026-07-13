@@ -3,7 +3,13 @@
 import { useRef, useState, type DragEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { prepareUploadImageFile } from "@/lib/prepare-upload-image";
-import { isAllowedUploadImage, UPLOAD_IMAGE_ACCEPT } from "@/lib/upload-image-types";
+import {
+  isAllowedUploadImage,
+  isHeicUpload,
+  MAX_PROJECT_IMAGE_BYTES,
+  MAX_PROJECT_IMAGE_LABEL,
+  UPLOAD_IMAGE_ACCEPT,
+} from "@/lib/upload-image-types";
 
 type Props = {
   onUploaded: (urls: string[]) => void;
@@ -12,7 +18,9 @@ type Props = {
   label?: string;
 };
 
-async function uploadFile(file: File): Promise<string> {
+const BUCKET = "project-images";
+
+async function uploadViaApi(file: File): Promise<string> {
   const formData = new FormData();
   formData.append("file", file);
 
@@ -43,6 +51,38 @@ async function uploadFile(file: File): Promise<string> {
   if (!res.ok) throw new Error(data.error ?? `Upload failed (${res.status}).`);
   if (!data.url) throw new Error("Upload failed: no image URL returned.");
   return data.url;
+}
+
+/** Upload JPEG/PNG/WebP straight to Storage (avoids Vercel ~4.5 MB API body limit). */
+async function uploadDirectToStorage(file: File): Promise<string> {
+  const supabase = createClient();
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const storagePath = `projects/${crypto.randomUUID()}.${ext === "jpeg" ? "jpg" : ext}`;
+
+  const { error } = await supabase.storage.from(BUCKET).upload(storagePath, file, {
+    contentType: file.type || "image/jpeg",
+    upsert: false,
+  });
+
+  if (error) throw new Error(error.message);
+
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
+  if (!data.publicUrl) throw new Error("Upload failed: no image URL returned.");
+  return data.publicUrl;
+}
+
+async function uploadFile(file: File): Promise<string> {
+  if (file.size > MAX_PROJECT_IMAGE_BYTES) {
+    throw new Error(`File must be under ${MAX_PROJECT_IMAGE_LABEL}.`);
+  }
+
+  const stillHeic = isHeicUpload(file.type || "", file.name);
+  if (stillHeic) {
+    // Server converts HEIC → JPEG (heic-convert).
+    return uploadViaApi(file);
+  }
+
+  return uploadDirectToStorage(file);
 }
 
 function UploadCloudIcon() {
@@ -83,6 +123,9 @@ export function ProjectImageUpload({
     try {
       const urls: string[] = [];
       for (const file of files) {
+        if (file.size > MAX_PROJECT_IMAGE_BYTES) {
+          throw new Error(`“${file.name}” is over ${MAX_PROJECT_IMAGE_LABEL}.`);
+        }
         const prepared = await prepareUploadImageFile(file);
         urls.push(await uploadFile(prepared));
       }
@@ -180,7 +223,7 @@ export function ProjectImageUpload({
           </div>
 
           <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-sbc-gray">
-            JPG · PNG · WebP · HEIC · up to 10 MB
+            JPG · PNG · WebP · HEIC · up to {MAX_PROJECT_IMAGE_LABEL}
           </p>
         </div>
       </button>

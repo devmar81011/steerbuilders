@@ -1,3 +1,6 @@
+export const MAX_PROJECT_IMAGE_BYTES = 20 * 1024 * 1024;
+export const MAX_PROJECT_IMAGE_LABEL = "20 MB";
+
 export const UPLOAD_IMAGE_ACCEPT =
   "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif";
 
