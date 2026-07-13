@@ -369,6 +369,16 @@ export function AdminProjectsClient({
         </p>
       </div>
 
+      {!usingDatabase && (
+        <p
+          className="mb-6 border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800"
+          role="status"
+        >
+          Projects are in preview mode on this device only. Featured Yes/No changes will not
+          update the public homepage until the database is connected.
+        </p>
+      )}
+
       {overFeaturedLimit && (
         <p
           className="mb-6 border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900"
