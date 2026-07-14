@@ -31,25 +31,35 @@ export function SiteFooter() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <p className="mb-3 text-xs font-medium uppercase tracking-widest text-sbc-gold">
-                Company
-              </p>
-              <ul className="space-y-2 text-sm font-medium text-sbc-gray-light">
-                <li><Link href="/about" className="hover:text-sbc-gold">About</Link></li>
-                <li><Link href="/projects" className="hover:text-sbc-gold">Portfolio</Link></li>
-                <li><Link href="/#contact" className="hover:text-sbc-gold">Contact</Link></li>
-              </ul>
-            </div>
-            <div>
-              <p className="mb-3 text-xs font-medium uppercase tracking-widest text-sbc-gold">
-                Team
-              </p>
-              <ul className="space-y-2 text-sm font-medium text-sbc-gray-light">
-                <li><Link href="/admin" className="hover:text-sbc-gold">Admin</Link></li>
-              </ul>
-            </div>
+          <div>
+            <p className="mb-3 text-xs font-medium uppercase tracking-widest text-sbc-gold">
+              Explore
+            </p>
+            <ul className="space-y-2 text-sm font-medium text-sbc-gray-light">
+              <li>
+                <Link href="/about" className="hover:text-sbc-gold">
+                  About
+                </Link>
+              </li>
+              <li>
+                <Link href="/#services" className="hover:text-sbc-gold">
+                  Services
+                </Link>
+              </li>
+              <li>
+                <Link href="/projects" className="hover:text-sbc-gold">
+                  Portfolio
+                </Link>
+              </li>
+              <li>
+                <Link href="/#contact" className="hover:text-sbc-gold">
+                  Contact
+                </Link>
+              </li>
+            </ul>
+            <p className="mt-6 text-xs font-medium uppercase tracking-widest text-sbc-gray">
+              Serving Cebu and the region
+            </p>
           </div>
         </div>
 

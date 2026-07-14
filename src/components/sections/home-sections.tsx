@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { ButtonLink } from "@/components/ui/button-link";
+import { getButtonClassName } from "@/components/ui/button-styles";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { Card } from "@/components/ui/card";
 import {
@@ -158,6 +159,21 @@ export function ContactSection() {
             </p>
             <a href={company.emailHref} className="mt-2 block hover:text-sbc-gold">
               {company.email}
+            </a>
+          </div>
+
+          <div className="flex flex-wrap gap-3 pt-2">
+            <a
+              href={company.phoneHref}
+              className={getButtonClassName("primary", "sm", "dark")}
+            >
+              Call us
+            </a>
+            <a
+              href={company.emailHref}
+              className={getButtonClassName("outline", "sm", "dark")}
+            >
+              Email us
             </a>
           </div>
         </div>

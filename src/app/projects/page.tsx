@@ -1,7 +1,8 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
-import { ProjectsPortfolioTable } from "@/components/projects/projects-portfolio-table";
+import { ProjectsPortfolioCards } from "@/components/projects/projects-portfolio-cards";
 import { ButtonLink } from "@/components/ui/button-link";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { getProjectsOrFallback } from "@/lib/actions/projects";
@@ -13,6 +14,12 @@ function parseFilter(value: string | undefined): Filter {
   if (value === "Completed" || value === "Ongoing") return value;
   return "all";
 }
+
+export const metadata: Metadata = {
+  title: "Project Portfolio",
+  description:
+    "Browse completed and ongoing Steer Builders Corporation projects across residential, commercial, and augmentation works in Cebu and beyond.",
+};
 
 export default async function ProjectsPage({
   searchParams,
@@ -69,7 +76,7 @@ export default async function ProjectsPage({
             ))}
           </div>
 
-          <ProjectsPortfolioTable
+          <ProjectsPortfolioCards
             projects={filtered}
             filterLabel={filter !== "all" ? filter : ""}
           />
