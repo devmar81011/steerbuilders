@@ -29,7 +29,8 @@ export function Reveal({ children, className = "", delay = 0 }: RevealProps) {
           observer.disconnect();
         }
       },
-      { threshold: 0.12, rootMargin: "0px 0px -8% 0px" }
+      /* Trigger a bit later so the rise is still on-screen when it starts */
+      { threshold: 0.18, rootMargin: "0px 0px -12% 0px" }
     );
 
     observer.observe(el);

@@ -5,14 +5,7 @@ import { getButtonClassName } from "@/components/ui/button-styles";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { Card } from "@/components/ui/card";
 import { Reveal } from "@/components/ui/reveal";
-import {
-  company,
-  story,
-  vision,
-  mission,
-  services,
-  proposalStats,
-} from "@/lib/company-content";
+import { company, services, proposalStats } from "@/lib/company-content";
 import { ContactForm } from "@/components/sections/contact-form";
 
 export function HeroSection() {
@@ -23,25 +16,25 @@ export function HeroSection() {
           <div className="text-center lg:text-left">
             <h1
               className="sbc-hero-rise text-4xl font-normal uppercase leading-tight tracking-wide md:text-5xl lg:text-6xl"
-              style={{ "--sbc-hero-delay": "0ms" } as CSSProperties}
+              style={{ "--sbc-hero-delay": "80ms" } as CSSProperties}
             >
               {company.name}
             </h1>
             <p
               className="sbc-hero-rise mt-4 text-2xl font-bold text-sbc-gold md:mt-5 md:text-3xl lg:text-4xl"
-              style={{ "--sbc-hero-delay": "120ms" } as CSSProperties}
+              style={{ "--sbc-hero-delay": "220ms" } as CSSProperties}
             >
               {company.mantra}
             </p>
             <p
               className="sbc-hero-rise mx-auto mt-5 max-w-xl text-base font-semibold leading-relaxed text-sbc-gray-light md:text-lg lg:mx-0"
-              style={{ "--sbc-hero-delay": "220ms" } as CSSProperties}
+              style={{ "--sbc-hero-delay": "380ms" } as CSSProperties}
             >
               {company.tagline}
             </p>
             <div
               className="sbc-hero-rise mt-8 flex flex-wrap justify-center gap-4 lg:justify-start"
-              style={{ "--sbc-hero-delay": "340ms" } as CSSProperties}
+              style={{ "--sbc-hero-delay": "540ms" } as CSSProperties}
             >
               <ButtonLink href="#contact" size="lg">
                 Request a Proposal
@@ -68,40 +61,6 @@ export function HeroSection() {
   );
 }
 
-export function StorySection() {
-  return (
-    <Section id="about">
-      <Reveal>
-        <SectionHeader title={story.title} />
-        <p className="max-w-3xl text-base font-semibold leading-relaxed text-sbc-gray">
-          {story.body}
-        </p>
-      </Reveal>
-    </Section>
-  );
-}
-
-export function VisionMissionSection() {
-  return (
-    <Section dark>
-      <div className="grid gap-10 md:grid-cols-2">
-        <Reveal>
-          <h2 className="text-2xl font-bold text-sbc-gold">{vision.title}</h2>
-          <p className="mt-4 text-base font-semibold leading-relaxed text-sbc-gray-light">
-            {vision.body}
-          </p>
-        </Reveal>
-        <Reveal delay={120}>
-          <h2 className="text-2xl font-bold text-sbc-gold">{mission.title}</h2>
-          <p className="mt-4 text-base font-semibold leading-relaxed text-sbc-gray-light">
-            {mission.body}
-          </p>
-        </Reveal>
-      </div>
-    </Section>
-  );
-}
-
 export function ServicesSection() {
   return (
     <Section id="services">
@@ -112,15 +71,17 @@ export function ServicesSection() {
           description="From residential and commercial design-build to specialty trades and project management — executed with hands-on engineering oversight."
         />
       </Reveal>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3">
         {services.map((service, index) => (
-          <Reveal key={service.title} delay={index * 80}>
-            <Card className="transition-shadow hover:shadow-lg">
+          <Reveal key={service.title} delay={index * 120} className="h-full">
+            <Card className="flex h-full flex-col transition-shadow hover:shadow-lg">
               <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
                 {String(index + 1).padStart(2, "0")}
               </p>
-              <h3 className="mt-3 text-lg font-bold text-sbc-black">{service.title}</h3>
-              <p className="mt-3 text-sm font-semibold leading-relaxed text-sbc-gray">
+              <h3 className="mt-3 min-h-[3.25rem] text-lg font-bold leading-snug text-sbc-black md:min-h-[3.5rem]">
+                {service.title}
+              </h3>
+              <p className="mt-3 flex-1 text-sm font-semibold leading-relaxed text-sbc-gray">
                 {service.description}
               </p>
             </Card>
@@ -133,20 +94,22 @@ export function ServicesSection() {
 
 export function StatsSection() {
   return (
-    <Section>
-      <div className="grid gap-8 border-y border-sbc-gray-light py-10 md:grid-cols-3">
-        {proposalStats.map((stat, index) => (
-          <Reveal key={stat.label} delay={index * 100}>
-            <div className="text-center md:text-left">
-              <p className="text-4xl font-bold text-sbc-gold md:text-5xl">{stat.value}</p>
-              <p className="mt-2 text-sm font-medium uppercase tracking-widest text-sbc-gray">
-                {stat.label}
-              </p>
-            </div>
-          </Reveal>
-        ))}
+    <section className="bg-sbc-off-white text-sbc-black">
+      <div className="mx-auto max-w-6xl px-6 md:px-8">
+        <div className="grid gap-5 border-y border-sbc-gray-light py-5 md:grid-cols-3 md:gap-6 md:py-6">
+          {proposalStats.map((stat, index) => (
+            <Reveal key={stat.label} delay={index * 140}>
+              <div className="text-center md:text-left">
+                <p className="text-3xl font-bold text-sbc-gold md:text-4xl">{stat.value}</p>
+                <p className="mt-1 text-xs font-medium uppercase tracking-widest text-sbc-gray">
+                  {stat.label}
+                </p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
       </div>
-    </Section>
+    </section>
   );
 }
 
@@ -168,7 +131,32 @@ export function ContactSection() {
               <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
                 Address
               </p>
-              <p className="mt-2">{company.address}</p>
+              <a
+                href={company.mapsHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 block hover:text-sbc-gold"
+              >
+                {company.address}
+              </a>
+              <a
+                href={company.mapsHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 inline-block text-xs font-medium uppercase tracking-widest text-sbc-gold hover:underline"
+              >
+                Open in Google Maps
+              </a>
+              <div className="mt-4 overflow-hidden rounded-md border border-sbc-gray/30">
+                <iframe
+                  title={`Map — ${company.address}`}
+                  src={company.mapsEmbedSrc}
+                  className="block h-48 w-full border-0 bg-sbc-black sm:h-56"
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  allowFullScreen
+                />
+              </div>
             </div>
             <div>
               <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
@@ -204,7 +192,7 @@ export function ContactSection() {
           </div>
         </Reveal>
 
-        <Reveal delay={140}>
+        <Reveal delay={200}>
           <Card variant="dark" className="overflow-hidden border-sbc-gray/30 p-0">
             <div className="h-1 bg-linear-to-r from-sbc-gold via-[#d4a647] to-sbc-gold-dark" />
             <div className="p-6 md:p-8">

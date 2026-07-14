@@ -1,6 +1,11 @@
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
-import { ContactSection, HeroSection, ServicesSection, StatsSection, StorySection, VisionMissionSection } from "@/components/sections/home-sections";
+import {
+  ContactSection,
+  HeroSection,
+  ServicesSection,
+  StatsSection,
+} from "@/components/sections/home-sections";
 import { FeaturedProjectsSection } from "@/components/sections/featured-projects";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +16,6 @@ export default function Home() {
       <SiteHeader />
       <main className="flex-1">
         <HeroSection />
-        <StorySection />
-        <VisionMissionSection />
         <ServicesSection />
         <StatsSection />
         <FeaturedProjectsSection />

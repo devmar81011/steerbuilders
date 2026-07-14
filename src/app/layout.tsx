@@ -73,6 +73,7 @@ const localBusinessJsonLd = {
   areaServed: ["Cebu", "Central Visayas", "Philippines"],
   foundingDate: String(company.founded),
   url: "https://steerbuilderscorporation.com",
+  hasMap: company.mapsHref,
   image: "/brand/logo-full.png",
 };
 

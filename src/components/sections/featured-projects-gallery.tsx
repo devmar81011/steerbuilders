@@ -90,7 +90,7 @@ export function FeaturedProjectsGallery({ projects }: Props) {
       </Reveal>
       <div className="grid gap-8 md:grid-cols-2">
         {projects.map((project, index) => (
-          <Reveal key={project.id} delay={(index % 2) * 100}>
+          <Reveal key={project.id} delay={(index % 2) * 160}>
           <button
             type="button"
             className="group h-full w-full cursor-pointer overflow-hidden rounded-lg border border-sbc-gray-light bg-sbc-white text-left transition-colors hover:border-sbc-gold/50"

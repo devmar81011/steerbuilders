@@ -4,6 +4,12 @@ export const company = {
   mantra: "We help build your vision.",
   tagline: "Leading construction firm for homeowners and developers in Cebu and the region.",
   address: "Space 308 OneTree Plaza Hotel, R. Duterte St., Banawa, Cebu City",
+  /** Google Maps search / open-in-app link */
+  mapsHref:
+    "https://www.google.com/maps/search/?api=1&query=OneTree+Plaza+Hotel+R.+Duterte+St+Banawa+Cebu+City",
+  /** iframe embed (no API key) centered on the office building */
+  mapsEmbedSrc:
+    "https://www.google.com/maps?q=OneTree+Plaza+Hotel,+R.+Duterte+Street,+Banawa,+Cebu+City&hl=en&z=16&output=embed",
   phone: "0917 149 4075",
   phoneHref: "tel:+639171494075",
   email: "info@steerbuilderscorporation.com",

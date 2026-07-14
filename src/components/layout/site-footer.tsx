@@ -18,7 +18,16 @@ export function SiteFooter() {
             <p className="mt-4 max-w-sm text-sm font-semibold text-sbc-gray-light">
               {company.mantra}
             </p>
-            <p className="mt-4 text-sm font-medium text-sbc-gray">{company.address}</p>
+            <p className="mt-4 text-sm font-medium text-sbc-gray">
+              <a
+                href={company.mapsHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-sbc-gold"
+              >
+                {company.address}
+              </a>
+            </p>
             <p className="mt-2 text-sm font-medium">
               <a href={company.phoneHref} className="hover:text-sbc-gold">
                 {company.phone}

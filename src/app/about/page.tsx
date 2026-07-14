@@ -29,23 +29,21 @@ export default function AboutPage() {
         </Section>
 
         <Section>
-          <SectionHeader title={story.title} />
-          <p className="max-w-3xl text-base font-semibold leading-relaxed text-sbc-gray">
+          <h2 className="text-2xl font-bold text-sbc-gold md:text-3xl">{story.title}</h2>
+          <p className="mt-4 max-w-3xl text-base font-semibold leading-relaxed text-sbc-gray">
             {story.body}
           </p>
-        </Section>
 
-        <Section>
-          <div className="grid gap-10 md:grid-cols-2">
-            <Card>
+          <div className="mt-8 grid items-stretch gap-6 md:mt-10 md:grid-cols-2">
+            <Card className="flex h-full flex-col">
               <h2 className="text-xl font-bold text-sbc-gold">{vision.title}</h2>
-              <p className="mt-4 text-sm font-semibold leading-relaxed text-sbc-gray">
+              <p className="mt-4 flex-1 text-sm font-semibold leading-relaxed text-sbc-gray">
                 {vision.body}
               </p>
             </Card>
-            <Card>
+            <Card className="flex h-full flex-col">
               <h2 className="text-xl font-bold text-sbc-gold">{mission.title}</h2>
-              <p className="mt-4 text-sm font-semibold leading-relaxed text-sbc-gray">
+              <p className="mt-4 flex-1 text-sm font-semibold leading-relaxed text-sbc-gray">
                 {mission.body}
               </p>
             </Card>
