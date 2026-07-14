@@ -1,0 +1,3 @@
+﻿SBC monogram: user-provided mark, black background removed for transparent PNG.
+Used as /brand/logo-sbc.png (admin + site header).
+Original on-black backup: logo-sbc-on-black.png

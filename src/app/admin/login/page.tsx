@@ -34,10 +34,11 @@ export default async function AdminLoginPage() {
       <Card className="w-full max-w-md">
         <div className="mb-6 flex justify-center">
           <Image
-            src="/brand/logo-sbc.png"
+            src="/brand/logo-sbc-mark.png"
             alt="SBC"
             width={64}
             height={64}
+            unoptimized
           />
         </div>
         <h1 className="text-center text-xl font-bold text-sbc-gold">Admin Sign In</h1>

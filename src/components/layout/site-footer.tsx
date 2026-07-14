@@ -9,11 +9,12 @@ export function SiteFooter() {
         <div className="grid gap-10 md:grid-cols-[1.2fr_1fr]">
           <div>
             <Image
-              src="/brand/logo-full.png"
+              src="/brand/logo-full-mark.png"
               alt={company.name}
               width={200}
               height={90}
               className="h-16 w-auto"
+              unoptimized
             />
             <p className="mt-4 max-w-sm text-sm font-semibold text-sbc-gray-light">
               {company.mantra}

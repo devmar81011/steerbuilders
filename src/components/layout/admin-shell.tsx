@@ -94,11 +94,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="border-b border-sbc-gray-light p-6">
           <Link href="/admin" className="flex items-center gap-3">
             <Image
-              src="/brand/logo-sbc.png"
+              src="/brand/logo-sbc-mark.png"
               alt="SBC"
               width={40}
               height={40}
               className="h-9 w-auto"
+              unoptimized
             />
             <div>
               <p className="text-xs font-normal uppercase tracking-widest text-sbc-black">
@@ -145,11 +146,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             onClick={() => setMobileMenuOpen(false)}
           >
             <Image
-              src="/brand/logo-sbc.png"
+              src="/brand/logo-sbc-mark.png"
               alt="SBC"
               width={36}
               height={36}
               className="h-9 w-auto"
+              unoptimized
             />
             <div>
               <p className="text-xs font-normal uppercase tracking-widest text-sbc-black">
@@ -199,10 +201,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </div>
             <Link href="/admin" className="md:hidden">
               <Image
-                src="/brand/logo-sbc.png"
+                src="/brand/logo-sbc-mark.png"
                 alt="SBC Admin"
                 width={36}
                 height={36}
+                unoptimized
               />
             </Link>
             <p className="hidden truncate text-sm font-semibold text-sbc-black sm:block">

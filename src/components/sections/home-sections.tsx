@@ -5,13 +5,16 @@ import { getButtonClassName } from "@/components/ui/button-styles";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { Card } from "@/components/ui/card";
 import { Reveal } from "@/components/ui/reveal";
+import { HeroBackground } from "@/components/sections/hero-background";
 import { company, services, proposalStats } from "@/lib/company-content";
 import { ContactForm } from "@/components/sections/contact-form";
 
 export function HeroSection() {
   return (
     <section className="relative flex min-h-[calc(100svh-4.5rem)] items-center overflow-hidden bg-sbc-black text-sbc-white">
-      <div className="mx-auto w-full max-w-6xl px-6 py-16 md:px-8 md:py-20">
+      <HeroBackground />
+
+      <div className="relative z-10 mx-auto w-full max-w-6xl px-6 py-16 md:px-8 md:py-20">
         <div className="grid w-full items-center gap-10 lg:grid-cols-2 lg:gap-14">
           <div className="text-center lg:text-left">
             <h1
@@ -46,17 +49,18 @@ export function HeroSection() {
           </div>
           <div className="flex justify-center lg:justify-end">
             <Image
-              src="/brand/logo-full.png"
+              src="/brand/logo-full-mark.png"
               alt={company.name}
               width={420}
-              height={320}
-              className="sbc-hero-logo w-full max-w-xs sm:max-w-sm lg:max-w-md"
+              height={460}
+              className="sbc-hero-logo h-auto w-full max-w-[220px] sm:max-w-xs lg:max-w-sm"
               priority
+              unoptimized
             />
           </div>
         </div>
       </div>
-      <div className="sbc-gold-line absolute inset-x-0 bottom-0 h-1 bg-sbc-gold" />
+      <div className="sbc-gold-line absolute inset-x-0 bottom-0 z-10 h-1 bg-sbc-gold" />
     </section>
   );
 }

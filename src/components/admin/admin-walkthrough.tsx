@@ -328,7 +328,7 @@ function AdminGuideWidget({
         className="fixed bottom-5 right-5 z-[100] flex h-14 w-14 cursor-pointer items-center justify-center rounded-full border-2 border-sbc-gold bg-sbc-white shadow-lg transition-transform hover:scale-105"
         aria-label="Open admin guide"
       >
-        <Image src="/brand/logo-sbc.png" alt="" width={32} height={32} />
+        <Image src="/brand/logo-sbc-mark.png" alt="" width={32} height={32} unoptimized />
       </button>
     );
   }
@@ -342,11 +342,12 @@ function AdminGuideWidget({
     >
       <div className="flex items-center gap-3 border-b border-sbc-gray-light px-4 py-3">
         <Image
-          src="/brand/logo-sbc.png"
+          src="/brand/logo-sbc-mark.png"
           alt=""
           width={28}
           height={28}
           className="shrink-0"
+          unoptimized
         />
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gold">

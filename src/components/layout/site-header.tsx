@@ -84,12 +84,13 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4 md:px-8">
         <Link href="/" className="flex items-center gap-3">
           <Image
-            src="/brand/logo-sbc.png"
+            src="/brand/logo-sbc-mark.png"
             alt="SBC"
             width={48}
             height={48}
             className="h-10 w-auto md:h-12"
             priority
+            unoptimized
           />
           <div className="hidden sm:block">
             <p className="text-sm font-normal uppercase tracking-[0.2em] text-sbc-white">
