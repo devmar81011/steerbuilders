@@ -10,6 +10,7 @@ import {
   CloseIcon,
 } from "@/components/ui/circle-button";
 import { Section, SectionHeader } from "@/components/ui/section";
+import { Reveal } from "@/components/ui/reveal";
 import { ProjectImageGrid } from "@/components/projects/project-image-grid";
 import { HOMEPAGE_PREVIEW_IMAGE_COUNT } from "@/lib/project-images";
 import { getStatusLabelClass } from "@/lib/project-status";
@@ -80,17 +81,19 @@ export function FeaturedProjectsGallery({ projects }: Props) {
 
   return (
     <Section id="projects">
-      <SectionHeader
-        label="Portfolio"
-        title="Featured Projects"
-        description="A selection of completed and ongoing engagements across Cebu, Bohol, Iloilo, and Cagayan de Oro."
-      />
+      <Reveal>
+        <SectionHeader
+          label="Portfolio"
+          title="Featured Projects"
+          description="A selection of completed and ongoing engagements across Cebu, Bohol, Iloilo, and Cagayan de Oro."
+        />
+      </Reveal>
       <div className="grid gap-8 md:grid-cols-2">
         {projects.map((project, index) => (
+          <Reveal key={project.id} delay={(index % 2) * 100}>
           <button
-            key={project.id}
             type="button"
-            className="group w-full cursor-pointer overflow-hidden rounded-lg border border-sbc-gray-light bg-sbc-white text-left transition-colors hover:border-sbc-gold/50"
+            className="group h-full w-full cursor-pointer overflow-hidden rounded-lg border border-sbc-gray-light bg-sbc-white text-left transition-colors hover:border-sbc-gold/50"
             onClick={() => {
               setActiveIndex(index);
               setPhotoIndex(0);
@@ -125,13 +128,16 @@ export function FeaturedProjectsGallery({ projects }: Props) {
               <p className="mt-2 text-sm font-medium text-sbc-gray">{project.location}</p>
             </div>
           </button>
+          </Reveal>
         ))}
       </div>
-      <div className="mt-8">
-        <ButtonLink href="/projects" variant="outline">
-          View Full Portfolio
-        </ButtonLink>
-      </div>
+      <Reveal delay={80}>
+        <div className="mt-8">
+          <ButtonLink href="/projects" variant="outline">
+            View Full Portfolio
+          </ButtonLink>
+        </div>
+      </Reveal>
 
       {activeProject && (
         <div

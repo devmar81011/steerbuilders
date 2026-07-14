@@ -1,8 +1,10 @@
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import { ButtonLink } from "@/components/ui/button-link";
 import { getButtonClassName } from "@/components/ui/button-styles";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { Card } from "@/components/ui/card";
+import { Reveal } from "@/components/ui/reveal";
 import {
   company,
   story,
@@ -19,16 +21,28 @@ export function HeroSection() {
       <div className="mx-auto w-full max-w-6xl px-6 py-16 md:px-8 md:py-20">
         <div className="grid w-full items-center gap-10 lg:grid-cols-2 lg:gap-14">
           <div className="text-center lg:text-left">
-            <h1 className="text-4xl font-normal uppercase leading-tight tracking-wide md:text-5xl lg:text-6xl">
+            <h1
+              className="sbc-hero-rise text-4xl font-normal uppercase leading-tight tracking-wide md:text-5xl lg:text-6xl"
+              style={{ "--sbc-hero-delay": "0ms" } as CSSProperties}
+            >
               {company.name}
             </h1>
-            <p className="mt-4 text-2xl font-bold text-sbc-gold md:mt-5 md:text-3xl lg:text-4xl">
+            <p
+              className="sbc-hero-rise mt-4 text-2xl font-bold text-sbc-gold md:mt-5 md:text-3xl lg:text-4xl"
+              style={{ "--sbc-hero-delay": "120ms" } as CSSProperties}
+            >
               {company.mantra}
             </p>
-            <p className="mx-auto mt-5 max-w-xl text-base font-semibold leading-relaxed text-sbc-gray-light md:text-lg lg:mx-0">
+            <p
+              className="sbc-hero-rise mx-auto mt-5 max-w-xl text-base font-semibold leading-relaxed text-sbc-gray-light md:text-lg lg:mx-0"
+              style={{ "--sbc-hero-delay": "220ms" } as CSSProperties}
+            >
               {company.tagline}
             </p>
-            <div className="mt-8 flex flex-wrap justify-center gap-4 lg:justify-start">
+            <div
+              className="sbc-hero-rise mt-8 flex flex-wrap justify-center gap-4 lg:justify-start"
+              style={{ "--sbc-hero-delay": "340ms" } as CSSProperties}
+            >
               <ButtonLink href="#contact" size="lg">
                 Request a Proposal
               </ButtonLink>
@@ -43,13 +57,13 @@ export function HeroSection() {
               alt={company.name}
               width={420}
               height={320}
-              className="w-full max-w-xs sm:max-w-sm lg:max-w-md"
+              className="sbc-hero-logo w-full max-w-xs sm:max-w-sm lg:max-w-md"
               priority
             />
           </div>
         </div>
       </div>
-      <div className="absolute inset-x-0 bottom-0 h-1 bg-sbc-gold" />
+      <div className="sbc-gold-line absolute inset-x-0 bottom-0 h-1 bg-sbc-gold" />
     </section>
   );
 }
@@ -57,10 +71,12 @@ export function HeroSection() {
 export function StorySection() {
   return (
     <Section id="about">
-      <SectionHeader title={story.title} />
-      <p className="max-w-3xl text-base font-semibold leading-relaxed text-sbc-gray">
-        {story.body}
-      </p>
+      <Reveal>
+        <SectionHeader title={story.title} />
+        <p className="max-w-3xl text-base font-semibold leading-relaxed text-sbc-gray">
+          {story.body}
+        </p>
+      </Reveal>
     </Section>
   );
 }
@@ -69,18 +85,18 @@ export function VisionMissionSection() {
   return (
     <Section dark>
       <div className="grid gap-10 md:grid-cols-2">
-        <div>
+        <Reveal>
           <h2 className="text-2xl font-bold text-sbc-gold">{vision.title}</h2>
           <p className="mt-4 text-base font-semibold leading-relaxed text-sbc-gray-light">
             {vision.body}
           </p>
-        </div>
-        <div>
+        </Reveal>
+        <Reveal delay={120}>
           <h2 className="text-2xl font-bold text-sbc-gold">{mission.title}</h2>
           <p className="mt-4 text-base font-semibold leading-relaxed text-sbc-gray-light">
             {mission.body}
           </p>
-        </div>
+        </Reveal>
       </div>
     </Section>
   );
@@ -89,22 +105,26 @@ export function VisionMissionSection() {
 export function ServicesSection() {
   return (
     <Section id="services">
-      <SectionHeader
-        label="Construction Services Offered"
-        title="Our Services"
-        description="From residential and commercial design-build to specialty trades and project management — executed with hands-on engineering oversight."
-      />
+      <Reveal>
+        <SectionHeader
+          label="Construction Services Offered"
+          title="Our Services"
+          description="From residential and commercial design-build to specialty trades and project management — executed with hands-on engineering oversight."
+        />
+      </Reveal>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {services.map((service, index) => (
-          <Card key={service.title} className="transition-shadow hover:shadow-lg">
-            <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
-              {String(index + 1).padStart(2, "0")}
-            </p>
-            <h3 className="mt-3 text-lg font-bold text-sbc-black">{service.title}</h3>
-            <p className="mt-3 text-sm font-semibold leading-relaxed text-sbc-gray">
-              {service.description}
-            </p>
-          </Card>
+          <Reveal key={service.title} delay={index * 80}>
+            <Card className="transition-shadow hover:shadow-lg">
+              <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
+                {String(index + 1).padStart(2, "0")}
+              </p>
+              <h3 className="mt-3 text-lg font-bold text-sbc-black">{service.title}</h3>
+              <p className="mt-3 text-sm font-semibold leading-relaxed text-sbc-gray">
+                {service.description}
+              </p>
+            </Card>
+          </Reveal>
         ))}
       </div>
     </Section>
@@ -115,13 +135,15 @@ export function StatsSection() {
   return (
     <Section>
       <div className="grid gap-8 border-y border-sbc-gray-light py-10 md:grid-cols-3">
-        {proposalStats.map((stat) => (
-          <div key={stat.label} className="text-center md:text-left">
-            <p className="text-4xl font-bold text-sbc-gold md:text-5xl">{stat.value}</p>
-            <p className="mt-2 text-sm font-medium uppercase tracking-widest text-sbc-gray">
-              {stat.label}
-            </p>
-          </div>
+        {proposalStats.map((stat, index) => (
+          <Reveal key={stat.label} delay={index * 100}>
+            <div className="text-center md:text-left">
+              <p className="text-4xl font-bold text-sbc-gold md:text-5xl">{stat.value}</p>
+              <p className="mt-2 text-sm font-medium uppercase tracking-widest text-sbc-gray">
+                {stat.label}
+              </p>
+            </div>
+          </Reveal>
         ))}
       </div>
     </Section>
@@ -131,59 +153,65 @@ export function StatsSection() {
 export function ContactSection() {
   return (
     <Section id="contact" dark>
-      <SectionHeader
-        label="Get In Touch"
-        title="Let's Build Your Vision"
-        description="Reach out for project proposals, consultations, or general contractor engagements."
-        light
-      />
+      <Reveal>
+        <SectionHeader
+          label="Get In Touch"
+          title="Let's Build Your Vision"
+          description="Reach out for project proposals, consultations, or general contractor engagements."
+          light
+        />
+      </Reveal>
       <div className="grid gap-8 md:grid-cols-2">
-        <div className="space-y-6 text-sm font-semibold text-sbc-gray-light">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
-              Address
-            </p>
-            <p className="mt-2">{company.address}</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
-              Phone
-            </p>
-            <a href={company.phoneHref} className="mt-2 block hover:text-sbc-gold">
-              {company.phone}
-            </a>
-          </div>
-          <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
-              Email
-            </p>
-            <a href={company.emailHref} className="mt-2 block hover:text-sbc-gold">
-              {company.email}
-            </a>
-          </div>
+        <Reveal>
+          <div className="space-y-6 text-sm font-semibold text-sbc-gray-light">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
+                Address
+              </p>
+              <p className="mt-2">{company.address}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
+                Phone
+              </p>
+              <a href={company.phoneHref} className="mt-2 block hover:text-sbc-gold">
+                {company.phone}
+              </a>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
+                Email
+              </p>
+              <a href={company.emailHref} className="mt-2 block hover:text-sbc-gold">
+                {company.email}
+              </a>
+            </div>
 
-          <div className="flex flex-wrap gap-3 pt-2">
-            <a
-              href={company.phoneHref}
-              className={getButtonClassName("primary", "sm", "dark")}
-            >
-              Call us
-            </a>
-            <a
-              href={company.emailHref}
-              className={getButtonClassName("outline", "sm", "dark")}
-            >
-              Email us
-            </a>
+            <div className="flex flex-wrap gap-3 pt-2">
+              <a
+                href={company.phoneHref}
+                className={getButtonClassName("primary", "sm", "dark")}
+              >
+                Call us
+              </a>
+              <a
+                href={company.emailHref}
+                className={getButtonClassName("outline", "sm", "dark")}
+              >
+                Email us
+              </a>
+            </div>
           </div>
-        </div>
+        </Reveal>
 
-        <Card variant="dark" className="overflow-hidden border-sbc-gray/30 p-0">
-          <div className="h-1 bg-linear-to-r from-sbc-gold via-[#d4a647] to-sbc-gold-dark" />
-          <div className="p-6 md:p-8">
-            <ContactForm />
-          </div>
-        </Card>
+        <Reveal delay={140}>
+          <Card variant="dark" className="overflow-hidden border-sbc-gray/30 p-0">
+            <div className="h-1 bg-linear-to-r from-sbc-gold via-[#d4a647] to-sbc-gold-dark" />
+            <div className="p-6 md:p-8">
+              <ContactForm />
+            </div>
+          </Card>
+        </Reveal>
       </div>
     </Section>
   );

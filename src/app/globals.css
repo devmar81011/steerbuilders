@@ -38,6 +38,85 @@ body {
   scroll-margin-top: 5rem;
 }
 
+/* Homepage motion — calm fade/rise, respects reduced motion */
+.sbc-reveal {
+  opacity: 0;
+  transform: translateY(1.25rem);
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--sbc-reveal-delay, 0ms);
+}
+
+.sbc-reveal--in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes sbc-hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sbc-hero-logo {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.sbc-hero-rise {
+  animation: sbc-hero-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--sbc-hero-delay, 0ms);
+}
+
+.sbc-hero-logo {
+  animation: sbc-hero-logo 1s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+}
+
+@keyframes sbc-gold-line {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.sbc-gold-line {
+  transform-origin: left center;
+  transform: scaleX(0);
+  animation: sbc-gold-line 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.5s forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sbc-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .sbc-hero-rise,
+  .sbc-hero-logo,
+  .sbc-gold-line {
+    animation: none;
+  }
+
+  .sbc-gold-line {
+    transform: none;
+  }
+}
+
 .payroll-print-area {
   display: none;
 }
