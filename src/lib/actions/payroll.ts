@@ -352,7 +352,7 @@ export async function updateEmployee(
     const { error } = await supabase.from("employees").update(input).eq("id", id);
     if (error) return { error: error.message };
   } catch {
-    return { success: true };
+    return { error: "Could not update employee." };
   }
 
   revalidatePath("/admin/employees");

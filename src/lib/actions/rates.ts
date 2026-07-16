@@ -81,7 +81,7 @@ export async function updateDailyRate(
     const { error } = await supabase.from("daily_rates").update(input).eq("id", id);
     if (error) return { error: error.message };
   } catch {
-    return { success: true };
+    return { error: "Could not update rate." };
   }
 
   revalidatePath("/admin/rates");
@@ -96,7 +96,7 @@ export async function deleteDailyRate(id: string) {
     const { error } = await supabase.from("daily_rates").delete().eq("id", id);
     if (error) return { error: error.message };
   } catch {
-    return { success: true };
+    return { error: "Could not delete rate." };
   }
 
   revalidatePath("/admin/rates");
