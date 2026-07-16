@@ -127,8 +127,10 @@ async function syncRoleRates(
     );
 
     if (error) throw error;
-  } catch {
-    // Preview mode without Supabase
+  } catch (error) {
+    throw error instanceof Error
+      ? error
+      : new Error("Could not sync role rates.");
   }
 }
 
@@ -149,7 +151,9 @@ export async function createPayrollAdjustment(input: {
   const code = slugifyDeductionCode(input.code || input.label);
   if (!code) return { error: "Deduction code is required." };
 
-  let adjustmentId = `adj-${Date.now()}`;
+  if (!isSupabaseConfigured()) {
+    return { error: "Database is not configured." };
+  }
 
   try {
     const supabase = await createClient();
@@ -169,18 +173,21 @@ export async function createPayrollAdjustment(input: {
       .single();
 
     if (error) return { error: error.message };
-    adjustmentId = data.id as string;
-  } catch {
-    return { success: true, id: adjustmentId };
-  }
+    if (!data?.id) return { error: "Deduction was not created." };
 
-  if (input.role_rates?.length) {
-    await syncRoleRates(adjustmentId, input.role_rates);
-  }
+    if (input.role_rates?.length) {
+      await syncRoleRates(data.id as string, input.role_rates);
+    }
 
-  revalidatePath("/admin/contributions");
-  revalidatePath("/admin/payroll");
-  return { success: true, id: adjustmentId };
+    revalidatePath("/admin/contributions");
+    revalidatePath("/admin/payroll");
+    return { success: true, id: data.id as string };
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Could not create deduction.",
+    };
+  }
 }
 
 export async function updatePayrollAdjustment(
@@ -199,6 +206,10 @@ export async function updatePayrollAdjustment(
   }
 ) {
   await requireAdmin();
+  if (!isSupabaseConfigured()) {
+    return { error: "Database is not configured." };
+  }
+
   try {
     const supabase = await createClient();
     const { error } = await supabase
@@ -214,12 +225,15 @@ export async function updatePayrollAdjustment(
       .eq("id", id)
       .eq("kind", "deduction");
     if (error) return { error: error.message };
-  } catch {
-    // Preview mode
-  }
 
-  if (input.role_rates) {
-    await syncRoleRates(id, input.role_rates);
+    if (input.role_rates) {
+      await syncRoleRates(id, input.role_rates);
+    }
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Could not update deduction.",
+    };
   }
 
   revalidatePath("/admin/contributions");
@@ -229,6 +243,10 @@ export async function updatePayrollAdjustment(
 
 export async function deletePayrollAdjustment(id: string) {
   await requireAdmin();
+  if (!isSupabaseConfigured()) {
+    return { error: "Database is not configured." };
+  }
+
   try {
     const supabase = await createClient();
     const { error } = await supabase
@@ -238,7 +256,7 @@ export async function deletePayrollAdjustment(id: string) {
       .eq("kind", "deduction");
     if (error) return { error: error.message };
   } catch {
-    return { success: true };
+    return { error: "Could not delete deduction." };
   }
 
   revalidatePath("/admin/contributions");

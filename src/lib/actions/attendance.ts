@@ -329,7 +329,7 @@ export async function saveAdminAttendanceRow(
 ): Promise<{ error?: string; success?: boolean }> {
   await requireAdmin();
   if (!isSupabaseConfigured()) {
-    return { success: true };
+    return { error: "Database is not configured." };
   }
 
   try {
@@ -350,7 +350,7 @@ export async function saveAdminAttendanceRow(
 
     if (error) return { error: error.message };
   } catch {
-    return { success: true };
+    return { error: "Failed to save admin attendance." };
   }
 
   revalidatePath("/admin/attendance");
