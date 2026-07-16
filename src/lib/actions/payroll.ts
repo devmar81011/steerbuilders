@@ -360,6 +360,38 @@ export async function updateEmployee(
   return { success: true };
 }
 
+export async function deleteEmployee(id: string) {
+  await requireAdmin();
+  if (!isSupabaseConfigured()) {
+    return { success: true };
+  }
+
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("employees").delete().eq("id", id);
+    if (error) {
+      if (
+        error.code === "23503" ||
+        /foreign key|referenced/i.test(error.message)
+      ) {
+        return {
+          error:
+            "This employee has payroll records. Set status to Inactive instead of deleting.",
+        };
+      }
+      return { error: error.message };
+    }
+  } catch {
+    return { error: "Could not delete employee." };
+  }
+
+  revalidatePath("/admin/employees");
+  revalidatePath("/admin");
+  revalidatePath("/admin/payroll");
+  revalidatePath("/admin/attendance");
+  return { success: true };
+}
+
 function periodFromPreviewKey(periodKey: string): PayrollPeriod {
   if (periodKey.startsWith("w-")) {
     return parsePayrollPeriodKey("construction", periodKey);

@@ -18,8 +18,9 @@ import {
   TableRow,
   TableShell,
 } from "@/components/ui/table";
-import { createEmployee, updateEmployee } from "@/lib/actions/payroll";
+import { createEmployee, deleteEmployee, updateEmployee } from "@/lib/actions/payroll";
 import {
+  TableDeleteButton,
   TableEditButton,
   TableRowActions,
 } from "@/components/admin/table-row-actions";
@@ -176,6 +177,27 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
       }
 
       resetForm();
+    });
+  }
+
+  function handleDelete(id: string, name: string) {
+    if (
+      !window.confirm(
+        `Remove ${name} from the roster? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await deleteEmployee(id);
+      if (result.error) {
+        setMessage(result.error);
+        return;
+      }
+      setEmployees((prev) => prev.filter((emp) => emp.id !== id));
+      if (editingId === id) resetForm();
+      setMessage("Employee removed.");
     });
   }
 
@@ -355,6 +377,11 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
                 <TableCell align="right">
                   <TableRowActions>
                     <TableEditButton onClick={() => startEdit(emp)} />
+                    <TableDeleteButton
+                      label="Remove"
+                      onClick={() => handleDelete(emp.id, emp.name)}
+                      disabled={pending}
+                    />
                   </TableRowActions>
                 </TableCell>
               </TableRow>
