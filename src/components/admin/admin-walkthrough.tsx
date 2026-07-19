@@ -87,7 +87,6 @@ function scrollTargetIntoView(selector?: string) {
 
 const ADMIN_TOUR_ROUTES = [
   "/admin",
-  "/admin/rates",
   "/admin/contributions",
   "/admin/employees",
   "/admin/attendance",

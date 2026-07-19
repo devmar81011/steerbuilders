@@ -18,7 +18,7 @@ export const adminTourSteps: AdminTourStep[] = [
     id: "welcome",
     title: "Welcome",
     description:
-      "This tour walks through admin in the order most teams use: rates, deductions, employees, attendance, then payroll. Use Next to move through each section.",
+      "This tour walks through admin in the order most teams use: deductions, employees, attendance, then payroll. Use Next to move through each section.",
     navigateTo: "/admin",
   },
   {
@@ -30,16 +30,8 @@ export const adminTourSteps: AdminTourStep[] = [
     navigateTo: "/admin",
   },
   {
-    id: "rates",
-    title: "1 · Role Rate Defaults",
-    description:
-      "Optionally set suggested pay rates by category and role. These can prefill a new employee but never override that employee’s saved rate.",
-    target: '[data-admin-tour="nav-rates"]',
-    navigateTo: "/admin/rates",
-  },
-  {
     id: "contributions",
-    title: "2 · Statutory Deductions",
+    title: "1 · Statutory Deductions",
     description:
       "Configure SSS, PhilHealth, Pag-IBIG, and other deductions. Payroll uses these rules when calculating net pay.",
     target: '[data-admin-tour="nav-contributions"]',
@@ -47,15 +39,15 @@ export const adminTourSteps: AdminTourStep[] = [
   },
   {
     id: "employees",
-    title: "3 · Employees",
+    title: "2 · Employees",
     description:
-      "Add workers and set each person’s rate and pay basis. A role default is optional and can be overridden.",
+      "Add workers and set each person’s own rate and pay basis — daily, monthly, or hourly.",
     target: '[data-admin-tour="nav-employees"]',
     navigateTo: "/admin/employees",
   },
   {
     id: "attendance",
-    title: "4 · Attendance",
+    title: "3 · Attendance",
     description:
       "Mark days worked (construction) or hours (admin/OJT) each week. Payroll auto-fills from this data.",
     target: '[data-admin-tour="nav-attendance"]',
@@ -63,7 +55,7 @@ export const adminTourSteps: AdminTourStep[] = [
   },
   {
     id: "payroll",
-    title: "5 · Payroll",
+    title: "4 · Payroll",
     description:
       "Review calculated gross pay and deductions, adjust if needed, then Process to finalize each payslip for the period.",
     target: '[data-admin-tour="nav-payroll"]',

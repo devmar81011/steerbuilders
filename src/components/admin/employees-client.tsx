@@ -31,10 +31,6 @@ import {
   getRolesForCategory,
   type EmployeeCategory,
 } from "@/lib/employee-categories";
-import {
-  findDailyRate,
-  type DailyRate,
-} from "@/lib/daily-rates";
 import type { Employee } from "@/lib/mvp-data";
 import {
   defaultRateTypeForCategory,
@@ -44,7 +40,6 @@ import {
 
 type Props = {
   employees: Employee[];
-  dailyRates: DailyRate[];
 };
 
 type EmployeeSortKey =
@@ -55,7 +50,7 @@ type EmployeeSortKey =
   | "rate"
   | "status";
 
-export function EmployeesClient({ employees: initialEmployees, dailyRates }: Props) {
+export function EmployeesClient({ employees: initialEmployees }: Props) {
   const [employees, setEmployees] = useState(initialEmployees);
   const { sort, toggleSort } = useTableSort<EmployeeSortKey>({ defaultKey: "name" });
   const [message, setMessage] = useState<string | null>(null);
@@ -75,13 +70,8 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
     name: "",
     category: "construction",
     role: defaultRole,
-    rate:
-      String(
-        findDailyRate(dailyRates, "construction", defaultRole)?.rate ?? ""
-      ),
-    rateType:
-      findDailyRate(dailyRates, "construction", defaultRole)?.rateType ??
-      "daily",
+    rate: "",
+    rateType: "daily",
     status: "active",
   });
 
@@ -89,8 +79,6 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
     () => getRolesForCategory(form.category),
     [form.category]
   );
-
-  const roleSuggestion = findDailyRate(dailyRates, form.category, form.role);
 
   const sortedEmployees = useMemo(
     () =>
@@ -103,42 +91,27 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
 
   function handleCategoryChange(category: EmployeeCategory) {
     const roles = getRolesForCategory(category);
-    const role = roles[0];
-    const suggestion = findDailyRate(dailyRates, category, role);
     setForm({
       ...form,
       category,
-      role,
-      rate: editingId ? form.rate : String(suggestion?.rate ?? ""),
-      rateType: editingId
-        ? form.rateType
-        : suggestion?.rateType ?? defaultRateTypeForCategory(category),
+      role: roles[0],
+      rateType: editingId ? form.rateType : defaultRateTypeForCategory(category),
     });
   }
 
   function handleRoleChange(role: string) {
-    const suggestion = findDailyRate(dailyRates, form.category, role);
-    setForm({
-      ...form,
-      role,
-      rate: editingId ? form.rate : String(suggestion?.rate ?? ""),
-      rateType: editingId
-        ? form.rateType
-        : suggestion?.rateType ?? defaultRateTypeForCategory(form.category),
-    });
+    setForm({ ...form, role });
   }
 
   function resetForm() {
-    const role = getRolesForCategory("construction")[0];
-    const suggestion = findDailyRate(dailyRates, "construction", role);
     setEditingId(null);
     setForm({
       employeeNumber: "",
       name: "",
       category: "construction",
-      role,
-      rate: String(suggestion?.rate ?? ""),
-      rateType: suggestion?.rateType ?? "daily",
+      role: getRolesForCategory("construction")[0],
+      rate: "",
+      rateType: "daily",
       status: "active",
     });
   }
@@ -265,8 +238,8 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
         </p>
         <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Employees</h1>
         <p className="mt-2 text-sm font-semibold text-sbc-gray">
-          Set each employee&apos;s own pay rate and basis. Role defaults are optional
-          suggestions for new employees.
+          Set each employee&apos;s own pay rate and basis — daily, monthly, or
+          hourly. Payroll always uses the rate saved here.
         </p>
       </div>
 
@@ -350,14 +323,6 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
             <option value="monthly">Monthly</option>
             <option value="hourly">Hourly</option>
           </Select>
-
-          {!editingId && (
-            <p className="md:col-span-2 text-xs text-sbc-gray">
-              {roleSuggestion
-                ? `Suggested role default: ${formatRateAmount(roleSuggestion.rate, roleSuggestion.rateType)}. You can override it.`
-                : "No role default is configured. Enter this employee’s rate directly."}
-            </p>
-          )}
 
           {editingId && (
             <Select
