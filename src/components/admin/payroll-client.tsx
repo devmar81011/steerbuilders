@@ -25,7 +25,6 @@ import {
 } from "@/components/ui/table";
 import { getPayrollForPeriod, updatePayrollEntry } from "@/lib/actions/payroll";
 import { formatCurrency, type Employee, type PayrollEntry } from "@/lib/mvp-data";
-import type { DailyRate } from "@/lib/daily-rates";
 import type { AdminAttendanceRow, AttendanceRow } from "@/lib/attendance";
 import type { PayrollAdjustment } from "@/lib/payroll-adjustments";
 import {
@@ -67,7 +66,6 @@ type Props = {
   initialOjtPeriod: PayrollPeriod;
   usingDatabase: boolean;
   employees: Employee[];
-  dailyRates: DailyRate[];
   constructionAttendance: AttendanceRow[];
   adminAttendance: AdminAttendanceRow[];
   ojtAttendance: AdminAttendanceRow[];
@@ -146,7 +144,6 @@ function chunkEntries(entries: PayrollEntry[], size: number): PayrollEntry[][] {
 function applyPreviewAttendanceToPayroll(
   entries: PayrollEntry[],
   employees: Employee[],
-  dailyRates: DailyRate[],
   constructionAttendance: AttendanceRow[],
   hourlyAttendance: AdminAttendanceRow[],
   category: PayrollTab,
@@ -163,7 +160,6 @@ function applyPreviewAttendanceToPayroll(
     computed = applyAttendanceToPayrollEntries(
       entries,
       employees,
-      dailyRates,
       merged,
       [],
       category,
@@ -179,7 +175,6 @@ function applyPreviewAttendanceToPayroll(
     computed = applyAttendanceToPayrollEntries(
       entries,
       employees,
-      dailyRates,
       [],
       mergedHourly,
       category,
@@ -567,7 +562,6 @@ export function PayrollClient({
   initialAdminPeriod,
   initialOjtPeriod,
   employees,
-  dailyRates,
   constructionAttendance,
   adminAttendance,
   ojtAttendance,
@@ -578,7 +572,6 @@ export function PayrollClient({
     applyPreviewAttendanceToPayroll(
       initialConstructionEntries,
       employees,
-      dailyRates,
       constructionAttendance,
       adminAttendance,
       "construction",
@@ -590,7 +583,6 @@ export function PayrollClient({
     applyPreviewAttendanceToPayroll(
       initialAdminEntries,
       employees,
-      dailyRates,
       constructionAttendance,
       adminAttendance,
       "admin",
@@ -602,7 +594,6 @@ export function PayrollClient({
     applyPreviewAttendanceToPayroll(
       initialOjtEntries,
       employees,
-      dailyRates,
       constructionAttendance,
       ojtAttendance,
       "ojt",
@@ -677,7 +668,6 @@ export function PayrollClient({
         applyPreviewAttendanceToPayroll(
           result.entries,
           employees,
-          dailyRates,
           result.constructionAttendance,
           [],
           tab,
@@ -695,7 +685,6 @@ export function PayrollClient({
         applyPreviewAttendanceToPayroll(
           result.entries,
           employees,
-          dailyRates,
           result.constructionAttendance,
           result.hourlyAttendance,
           tab,
@@ -712,7 +701,6 @@ export function PayrollClient({
       applyPreviewAttendanceToPayroll(
         result.entries,
         employees,
-        dailyRates,
         result.constructionAttendance,
         result.hourlyAttendance,
         tab,
@@ -1044,9 +1032,10 @@ export function PayrollClient({
       </p>
 
       <p className="mb-4 text-sm text-sbc-gray">
-        Draft rows calculate regular hours from attendance, with each construction
-        day equal to 8 hours. Overtime uses the normal hourly rate (1.0×), matching
-        the provided payroll sheet.{" "}
+        Rates are employee-specific. Monthly pay is converted using 26 workdays and
+        8 hours per day. Draft rows calculate regular hours from attendance, and
+        overtime uses the normal hourly rate (1.0×), matching the provided payroll
+        sheet.{" "}
         <a href="/admin/contributions" className="font-medium text-sbc-gold hover:underline">
           Statutory Deductions
         </a>{" "}

@@ -1,4 +1,4 @@
-import type { RateType } from "@/lib/rate-types";
+import { MONTHLY_WORK_DAYS, type RateType } from "@/lib/rate-types";
 
 export function roundPayrollAmount(value: number): number {
   return Math.round(value * 100) / 100;
@@ -8,9 +8,15 @@ export function derivePayrollRates(
   rate: number,
   rateType: RateType
 ): { dailyRate: number; hourlyRate: number } {
-  const hourlyRate = rateType === "hourly" ? rate : rate / 8;
+  const dailyRate =
+    rateType === "monthly"
+      ? rate / MONTHLY_WORK_DAYS
+      : rateType === "hourly"
+        ? rate * 8
+        : rate;
+  const hourlyRate = rateType === "monthly" ? dailyRate / 8 : rateType === "hourly" ? rate : rate / 8;
   return {
-    dailyRate: roundPayrollAmount(hourlyRate * 8),
+    dailyRate: roundPayrollAmount(dailyRate),
     hourlyRate: roundPayrollAmount(hourlyRate),
   };
 }

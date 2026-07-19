@@ -31,9 +31,9 @@ export const adminTourSteps: AdminTourStep[] = [
   },
   {
     id: "rates",
-    title: "1 · Daily Rates",
+    title: "1 · Role Rate Defaults",
     description:
-      "Start here. Set pay rates by category and role (construction, admin, OJT). New employees pull their rate from this list.",
+      "Optionally set suggested pay rates by category and role. These can prefill a new employee but never override that employee’s saved rate.",
     target: '[data-admin-tour="nav-rates"]',
     navigateTo: "/admin/rates",
   },
@@ -49,7 +49,7 @@ export const adminTourSteps: AdminTourStep[] = [
     id: "employees",
     title: "3 · Employees",
     description:
-      "Add workers and assign a category and role. Each employee must match a rate you defined in Daily Rates.",
+      "Add workers and set each person’s rate and pay basis. A role default is optional and can be overridden.",
     target: '[data-admin-tour="nav-employees"]',
     navigateTo: "/admin/employees",
   },

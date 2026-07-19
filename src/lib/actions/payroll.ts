@@ -11,7 +11,6 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { mockEmployees, mockPayroll, type Employee, type PayrollEntry } from "@/lib/mvp-data";
 import type { EmployeeCategory } from "@/lib/employee-categories";
 import { normalizeRateType, type RateType } from "@/lib/rate-types";
-import { getDailyRates } from "@/lib/actions/rates";
 import {
   applyAttendanceToPayrollEntries,
   getWeekStartsForPayrollPeriod,
@@ -256,15 +255,11 @@ async function enrichPayrollFromAttendance(
   const employees = (await getEmployees()).filter(
     (employee) => employee.status === "active" && employee.category === category
   );
-  const [dailyRates, adjustments] = await Promise.all([
-    getDailyRates(),
-    getPayrollAdjustments(),
-  ]);
+  const adjustments = await getPayrollAdjustments();
 
   return applyAttendanceToPayrollEntries(
     entries,
     employees,
-    dailyRates,
     constructionRows,
     hourlyRows,
     category,

@@ -34,7 +34,6 @@ import { type DailyRate } from "@/lib/daily-rates";
 import {
   defaultRateTypeForCategory,
   formatRateAmount,
-  formatRateTypeLabel,
   type RateType,
 } from "@/lib/rate-types";
 
@@ -109,12 +108,11 @@ export function RatesClient({ initialRates }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const rateType = defaultRateTypeForCategory(form.category);
       const payload = {
         category: form.category,
         role: form.role,
         rate: Number(form.rate),
-        rate_type: rateType,
+        rate_type: form.rateType,
       };
 
       const result = editingId
@@ -135,7 +133,7 @@ export function RatesClient({ initialRates }: Props) {
                   category: form.category,
                   role: form.role,
                   rate: Number(form.rate),
-                  rateType,
+                  rateType: form.rateType,
                 }
               : r
           )
@@ -153,7 +151,7 @@ export function RatesClient({ initialRates }: Props) {
             category: form.category,
             role: form.role,
             rate: Number(form.rate),
-            rateType,
+            rateType: form.rateType,
           },
         ]);
         setMessage("Rate added.");
@@ -181,9 +179,12 @@ export function RatesClient({ initialRates }: Props) {
         <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
           Admin
         </p>
-        <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Daily Rates</h1>
+        <h1 className="mt-2 text-2xl font-bold text-sbc-gold">
+          Role Rate Defaults
+        </h1>
         <p className="mt-2 text-sm font-semibold text-sbc-gray">
-          Set pay rates by category and role. Employees inherit rates automatically.
+          Optional suggestions used only when adding an employee. Existing employee
+          rates are never changed or overridden.
         </p>
       </div>
 
@@ -234,21 +235,22 @@ export function RatesClient({ initialRates }: Props) {
           value={form.rate}
           onChange={(e) => setForm({ ...form, rate: e.target.value })}
           placeholder={
-            defaultRateTypeForCategory(form.category) === "daily" ? "450" : "150"
+            defaultRateTypeForCategory(form.category) === "daily" ? "450" : "15000"
           }
           required
         />
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
-            Rate Type
-          </p>
-          <p className="rounded-lg border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-medium text-sbc-black">
-            {formatRateTypeLabel(defaultRateTypeForCategory(form.category))}
-            <span className="ml-2 text-xs text-sbc-gray">
-              ({form.category === "construction" ? "fixed" : "fixed hourly"})
-            </span>
-          </p>
-        </div>
+        <Select
+          label="Pay Basis"
+          size="sm"
+          value={form.rateType}
+          onChange={(e) =>
+            setForm({ ...form, rateType: e.target.value as RateType })
+          }
+        >
+          <option value="daily">Daily</option>
+          <option value="monthly">Monthly</option>
+          <option value="hourly">Hourly</option>
+        </Select>
         <div className="md:col-span-2 flex flex-wrap gap-3">
           <Button type="submit" size="sm" disabled={pending}>
             {editingId ? "Update Rate" : "Add Rate"}

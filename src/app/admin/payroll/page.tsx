@@ -3,16 +3,14 @@ import {
   getConstructionAttendanceForWeek,
   getHourlyAttendanceForWeek,
 } from "@/lib/actions/attendance";
-import { getDailyRates } from "@/lib/actions/rates";
 import { getPayrollAdjustments } from "@/lib/actions/adjustments";
 import { getEmployees, getPayrollEntries } from "@/lib/actions/payroll";
 import { getWeekStartsForPayrollPeriod } from "@/lib/payroll-from-attendance";
 
 export default async function PayrollPage() {
-  const [payroll, employees, dailyRates, payrollAdjustments] = await Promise.all([
+  const [payroll, employees, payrollAdjustments] = await Promise.all([
     getPayrollEntries(),
     getEmployees(),
-    getDailyRates(),
     getPayrollAdjustments(),
   ]);
 
@@ -48,7 +46,6 @@ export default async function PayrollPage() {
         initialOjtPeriod={ojtPeriod}
         usingDatabase={payroll.usingDatabase}
         employees={employees}
-        dailyRates={dailyRates}
         constructionAttendance={constructionAttendance}
         adminAttendance={adminAttendance}
         ojtAttendance={ojtAttendance}

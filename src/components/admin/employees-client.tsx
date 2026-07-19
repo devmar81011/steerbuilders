@@ -36,7 +36,11 @@ import {
   type DailyRate,
 } from "@/lib/daily-rates";
 import type { Employee } from "@/lib/mvp-data";
-import { formatRateAmount } from "@/lib/rate-types";
+import {
+  defaultRateTypeForCategory,
+  formatRateAmount,
+  type RateType,
+} from "@/lib/rate-types";
 
 type Props = {
   employees: Employee[];
@@ -63,12 +67,21 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
     name: string;
     category: EmployeeCategory;
     role: string;
+    rate: string;
+    rateType: RateType;
     status: "active" | "inactive";
   }>({
     employeeNumber: "",
     name: "",
     category: "construction",
     role: defaultRole,
+    rate:
+      String(
+        findDailyRate(dailyRates, "construction", defaultRole)?.rate ?? ""
+      ),
+    rateType:
+      findDailyRate(dailyRates, "construction", defaultRole)?.rateType ??
+      "daily",
     status: "active",
   });
 
@@ -77,7 +90,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
     [form.category]
   );
 
-  const selectedRate = findDailyRate(dailyRates, form.category, form.role);
+  const roleSuggestion = findDailyRate(dailyRates, form.category, form.role);
 
   const sortedEmployees = useMemo(
     () =>
@@ -90,16 +103,42 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
 
   function handleCategoryChange(category: EmployeeCategory) {
     const roles = getRolesForCategory(category);
-    setForm({ ...form, category, role: roles[0] });
+    const role = roles[0];
+    const suggestion = findDailyRate(dailyRates, category, role);
+    setForm({
+      ...form,
+      category,
+      role,
+      rate: editingId ? form.rate : String(suggestion?.rate ?? ""),
+      rateType: editingId
+        ? form.rateType
+        : suggestion?.rateType ?? defaultRateTypeForCategory(category),
+    });
+  }
+
+  function handleRoleChange(role: string) {
+    const suggestion = findDailyRate(dailyRates, form.category, role);
+    setForm({
+      ...form,
+      role,
+      rate: editingId ? form.rate : String(suggestion?.rate ?? ""),
+      rateType: editingId
+        ? form.rateType
+        : suggestion?.rateType ?? defaultRateTypeForCategory(form.category),
+    });
   }
 
   function resetForm() {
+    const role = getRolesForCategory("construction")[0];
+    const suggestion = findDailyRate(dailyRates, "construction", role);
     setEditingId(null);
     setForm({
       employeeNumber: "",
       name: "",
       category: "construction",
-      role: getRolesForCategory("construction")[0],
+      role,
+      rate: String(suggestion?.rate ?? ""),
+      rateType: suggestion?.rateType ?? "daily",
       status: "active",
     });
   }
@@ -111,6 +150,8 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
       name: emp.name,
       category: emp.category,
       role: emp.role,
+      rate: String(emp.rate),
+      rateType: emp.rateType,
       status: emp.status,
     });
     setMessage(null);
@@ -119,8 +160,9 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!selectedRate) {
-      setMessage("Add this category and role in Daily Rates first.");
+    const rate = Number(form.rate);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      setMessage("Enter an employee rate greater than zero.");
       return;
     }
 
@@ -130,8 +172,8 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
         name: form.name,
         category: form.category,
         role: form.role,
-        rate: selectedRate.rate,
-        rate_type: selectedRate.rateType,
+        rate,
+        rate_type: form.rateType,
         status: form.status,
       };
 
@@ -142,8 +184,8 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
             name: form.name,
             category: form.category,
             role: form.role,
-            rate: selectedRate.rate,
-            rate_type: selectedRate.rateType,
+            rate,
+            rate_type: form.rateType,
           });
 
       if (result.error) {
@@ -161,8 +203,8 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
                   name: form.name,
                   category: form.category,
                   role: form.role as Employee["role"],
-                  rate: selectedRate.rate,
-                  rateType: selectedRate.rateType,
+                  rate,
+                  rateType: form.rateType,
                   status: form.status,
                 }
               : emp
@@ -182,8 +224,8 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
             name: form.name,
             category: form.category,
             role: form.role as Employee["role"],
-            rate: selectedRate.rate,
-            rateType: selectedRate.rateType,
+            rate,
+            rateType: form.rateType,
             status: "active",
           },
         ]);
@@ -223,7 +265,8 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
         </p>
         <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Employees</h1>
         <p className="mt-2 text-sm font-semibold text-sbc-gray">
-          Add workers by category and role — rates come from Daily Rates.
+          Set each employee&apos;s own pay rate and basis. Role defaults are optional
+          suggestions for new employees.
         </p>
       </div>
 
@@ -274,7 +317,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
             label="Role"
             size="sm"
             value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value })}
+            onChange={(e) => handleRoleChange(e.target.value)}
             required
           >
             {roleOptions.map((role) => (
@@ -284,16 +327,37 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
             ))}
           </Select>
 
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
-              Rate (from Daily Rates)
+          <Input
+            label="Rate (PHP)"
+            size="sm"
+            type="number"
+            min="0.01"
+            step="0.01"
+            value={form.rate}
+            onChange={(e) => setForm({ ...form, rate: e.target.value })}
+            required
+          />
+
+          <Select
+            label="Pay Basis"
+            size="sm"
+            value={form.rateType}
+            onChange={(e) =>
+              setForm({ ...form, rateType: e.target.value as RateType })
+            }
+          >
+            <option value="daily">Daily</option>
+            <option value="monthly">Monthly</option>
+            <option value="hourly">Hourly</option>
+          </Select>
+
+          {!editingId && (
+            <p className="md:col-span-2 text-xs text-sbc-gray">
+              {roleSuggestion
+                ? `Suggested role default: ${formatRateAmount(roleSuggestion.rate, roleSuggestion.rateType)}. You can override it.`
+                : "No role default is configured. Enter this employee’s rate directly."}
             </p>
-            <p className="rounded-lg border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-medium text-sbc-black">
-              {selectedRate
-                ? formatRateAmount(selectedRate.rate, selectedRate.rateType)
-                : "—"}
-            </p>
-          </div>
+          )}
 
           {editingId && (
             <Select
@@ -313,7 +377,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
           )}
 
           <div className="md:col-span-2 flex flex-wrap gap-3">
-            <Button type="submit" size="sm" disabled={pending || !selectedRate}>
+            <Button type="submit" size="sm" disabled={pending}>
               {editingId ? "Update Employee" : "+ Add Employee"}
             </Button>
             {editingId && (

@@ -7,12 +7,9 @@ import {
   type AdminAttendanceRow,
   type AttendanceRow,
 } from "@/lib/attendance";
-import type { DailyRate } from "@/lib/daily-rates";
-import { findDailyRate } from "@/lib/daily-rates";
 import type { Employee, PayrollEntry } from "@/lib/mvp-data";
 import type { PayrollPeriod, PayrollTab } from "@/lib/payroll-periods";
 import { usesWeeklyPayroll } from "@/lib/employee-categories";
-import type { RateType } from "@/lib/rate-types";
 import type { PayrollAdjustment } from "@/lib/payroll-adjustments";
 import { mockPayrollAdjustments } from "@/lib/payroll-adjustments";
 import {
@@ -26,17 +23,6 @@ import {
 
 function resolveAdjustments(adjustments: PayrollAdjustment[]): PayrollAdjustment[] {
   return adjustments.length ? adjustments : mockPayrollAdjustments;
-}
-
-function resolveEmployeeRate(
-  employee: Employee,
-  dailyRates: DailyRate[]
-): { rate: number; rateType: RateType } {
-  const matched = findDailyRate(dailyRates, employee.category, employee.role);
-  return {
-    rate: matched?.rate ?? employee.rate,
-    rateType: matched?.rateType ?? employee.rateType,
-  };
 }
 
 export function getWeekStartsInPeriod(periodStart: string, periodEnd: string): string[] {
@@ -55,7 +41,6 @@ export function getWeekStartsInPeriod(periodStart: string, periodEnd: string): s
 export function applyAttendanceToPayrollEntry(
   entry: PayrollEntry,
   employee: Employee,
-  rateInfo: { rate: number; rateType: RateType },
   constructionAttendance: AttendanceRow[],
   hourlyAttendance: AdminAttendanceRow[],
   category: PayrollTab,
@@ -92,8 +77,8 @@ export function applyAttendanceToPayrollEntry(
       ? computedOvertimeHours
       : Number(entry.overtimeHours) || 0;
   const { dailyRate, hourlyRate } = derivePayrollRates(
-    rateInfo.rate,
-    rateInfo.rateType
+    employee.rate,
+    employee.rateType
   );
   const baseAmounts = calculatePayrollAmounts({
     hourlyRate,
@@ -142,7 +127,6 @@ export function applyAttendanceToPayrollEntry(
 export function applyAttendanceToPayrollEntries(
   entries: PayrollEntry[],
   employees: Employee[],
-  dailyRates: DailyRate[],
   constructionAttendance: AttendanceRow[],
   hourlyAttendance: AdminAttendanceRow[],
   category: PayrollTab,
@@ -152,12 +136,9 @@ export function applyAttendanceToPayrollEntries(
     const employee = employees.find((item) => item.id === entry.employeeId);
     if (!employee) return entry;
 
-    const rateInfo = resolveEmployeeRate(employee, dailyRates);
-
     return applyAttendanceToPayrollEntry(
       entry,
       employee,
-      rateInfo,
       constructionAttendance,
       hourlyAttendance,
       category,

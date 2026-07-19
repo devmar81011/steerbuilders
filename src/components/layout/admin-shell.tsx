@@ -14,7 +14,7 @@ import {
 const navItems = [
   { href: "/admin", label: "Dashboard", exact: true, tourId: "nav-dashboard" },
   { href: "/admin/projects", label: "Projects", tourId: "nav-projects" },
-  { href: "/admin/rates", label: "Daily Rates", tourId: "nav-rates" },
+  { href: "/admin/rates", label: "Role Rate Defaults", tourId: "nav-rates" },
   {
     href: "/admin/contributions",
     label: "Statutory Deductions",

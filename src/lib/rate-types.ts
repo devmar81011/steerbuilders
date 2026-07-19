@@ -2,35 +2,36 @@ import { formatCurrency } from "@/lib/mvp-data";
 import type { EmployeeCategory } from "@/lib/employee-categories";
 import { isDailyCategory } from "@/lib/employee-categories";
 
-export type RateType = "hourly" | "daily";
+export type RateType = "hourly" | "daily" | "monthly";
+export const MONTHLY_WORK_DAYS = 26;
 
-/** Normalize legacy DB values (`salary` → hourly, construction hourly → daily). */
+/** Normalize legacy DB values while preserving explicit hourly and daily rows. */
 export function normalizeRateType(
   value: string | null | undefined,
   category?: EmployeeCategory
 ): RateType {
+  if (value === "monthly") return "monthly";
   if (value === "daily") return "daily";
-  if (value === "hourly") {
-    return category && isDailyCategory(category) ? "daily" : "hourly";
-  }
-  if (value === "salary") return "hourly";
-  return category && isDailyCategory(category) ? "daily" : "hourly";
+  if (value === "hourly") return "hourly";
+  if (value === "salary") return "monthly";
+  return category && isDailyCategory(category) ? "daily" : "monthly";
 }
 
 export function defaultRateTypeForCategory(
   category: EmployeeCategory
 ): RateType {
-  return isDailyCategory(category) ? "daily" : "hourly";
+  return isDailyCategory(category) ? "daily" : "monthly";
 }
 
 export function formatRateTypeLabel(rateType: RateType): string {
+  if (rateType === "monthly") return "Monthly";
   return rateType === "daily" ? "Daily" : "Hourly";
 }
 
 export function formatRateAmount(rate: number, rateType: RateType): string {
-  return rateType === "daily"
-    ? `${formatCurrency(rate)}/day`
-    : `${formatCurrency(rate)}/hr`;
+  if (rateType === "monthly") return `${formatCurrency(rate)}/month`;
+  if (rateType === "daily") return `${formatCurrency(rate)}/day`;
+  return `${formatCurrency(rate)}/hr`;
 }
 
 export function getPayrollUnitRate(
@@ -39,7 +40,9 @@ export function getPayrollUnitRate(
   category: EmployeeCategory
 ): number {
   if (isDailyCategory(category)) {
-    return rate;
+    if (rateType === "monthly") return rate / MONTHLY_WORK_DAYS;
+    return rateType === "hourly" ? rate * 8 : rate;
   }
-  return rateType === "hourly" ? rate : rate / 8;
+  if (rateType === "monthly") return rate / MONTHLY_WORK_DAYS / 8;
+  return rateType === "daily" ? rate / 8 : rate;
 }
