@@ -56,6 +56,10 @@ import {
 } from "@/lib/payroll-periods";
 import { usesWeeklyPayroll } from "@/lib/employee-categories";
 import { calculatePayrollAmounts } from "@/lib/payroll-calculations";
+import {
+  buildPayrollCsv,
+  payrollExportFilename,
+} from "@/lib/payroll-export";
 
 type Props = {
   initialConstructionEntries: PayrollEntry[];
@@ -947,6 +951,29 @@ export function PayrollClient({
     });
   }
 
+  function handleExportPayroll() {
+    const csv = buildPayrollCsv({
+      entries: activeEntries,
+      employees,
+      payrollAdjustments,
+      category: activeTab,
+      period: activePeriod,
+    });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = payrollExportFilename(activeTab, activePeriod);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setMessage(
+      `${activeMeta.label} payroll for ${activePeriod.label} exported successfully.`
+    );
+  }
+
   const isBusy = pending || loadingPeriod;
 
   return (
@@ -991,6 +1018,15 @@ export function PayrollClient({
             onClick={jumpToCurrentPeriod}
           >
             {usesWeeklyPayroll(activeTab) ? "This Week" : "Current Period"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={activeEntries.length === 0}
+            onClick={handleExportPayroll}
+          >
+            Export CSV
           </Button>
           <Button
             type="button"
