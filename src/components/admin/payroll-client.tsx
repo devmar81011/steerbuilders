@@ -56,6 +56,7 @@ import {
   type PayrollTab,
 } from "@/lib/payroll-periods";
 import { usesWeeklyPayroll } from "@/lib/employee-categories";
+import { calculatePayrollAmounts } from "@/lib/payroll-calculations";
 
 type Props = {
   initialConstructionEntries: PayrollEntry[];
@@ -75,17 +76,23 @@ type Props = {
 
 type PayrollForm = {
   hours: string;
-  grossPay: string;
+  overtimeHours: string;
+  cashAdvance: string;
+  additionalPay: string;
+  siteAssignment: string;
+  disbursement: string;
+  remarks: string;
+  chargedTo: string;
   deductionLines: Record<string, string>;
   status: "draft" | "processed";
 };
 
 function buildFormDeductionLines(
-  grossPay: string,
+  grossPay: number,
   rules: PayrollAdjustment[],
   employee?: EmployeeDeductionContext
 ): Record<string, string> {
-  const breakdown = buildDeductionBreakdown(Number(grossPay) || 0, rules, employee);
+  const breakdown = buildDeductionBreakdown(grossPay || 0, rules, employee);
   return Object.fromEntries(
     breakdown.map((line) => [line.code, String(line.amount)])
   );
@@ -196,7 +203,6 @@ function PayrollPrintSheet({
   payrollAdjustments: PayrollAdjustment[];
   employees: Employee[];
 }) {
-  const quantityLabel = category === "construction" ? "Days worked" : "Hours";
   const pages = chunkEntries(entries, 6);
   const activeModules = payrollAdjustments
     .filter((rule) => rule.active)
@@ -242,15 +248,38 @@ function PayrollPrintSheet({
                     <dd>{period.label}</dd>
                   </div>
                   <div>
-                    <dt>{quantityLabel}</dt>
+                    <dt>Employee No.</dt>
+                    <dd>{entry.employeeNumber || "—"}</dd>
+                  </div>
+                  <div>
+                    <dt>Site / Designation</dt>
                     <dd>
-                      {entry.hours}
-                      {category === "construction" ? " day(s)" : " hour(s)"}
+                      {[entry.siteAssignment, entry.designation]
+                        .filter(Boolean)
+                        .join(" · ") || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Regular Hours / Pay</dt>
+                    <dd>{entry.hours}h · {formatCurrency(entry.regularPay)}</dd>
+                  </div>
+                  <div>
+                    <dt>OT Hours / Pay</dt>
+                    <dd>
+                      {entry.overtimeHours}h · {formatCurrency(entry.overtimePay)}
                     </dd>
                   </div>
                   <div>
                     <dt>Gross Pay</dt>
                     <dd>{formatCurrency(entry.grossPay)}</dd>
+                  </div>
+                  <div>
+                    <dt>Cash Advance</dt>
+                    <dd>{formatCurrency(entry.cashAdvance)}</dd>
+                  </div>
+                  <div>
+                    <dt>Additional Pay</dt>
+                    <dd>{formatCurrency(entry.additionalPay)}</dd>
                   </div>
                   {activeModules.map((rule) => (
                     <div key={rule.code}>
@@ -268,6 +297,24 @@ function PayrollPrintSheet({
                     <dt>Net Pay</dt>
                     <dd>{formatCurrency(entry.netPay)}</dd>
                   </div>
+                  {entry.disbursement && (
+                    <div>
+                      <dt>Disbursement</dt>
+                      <dd>{entry.disbursement}</dd>
+                    </div>
+                  )}
+                  {entry.remarks && (
+                    <div>
+                      <dt>Remarks</dt>
+                      <dd>{entry.remarks}</dd>
+                    </div>
+                  )}
+                  {entry.chargedTo && (
+                    <div>
+                      <dt>Charged To</dt>
+                      <dd>{entry.chargedTo}</dd>
+                    </div>
+                  )}
                 </dl>
 
                 <div className="payroll-print-signatures">
@@ -288,11 +335,8 @@ function PayrollTable({
   entries,
   category,
   period,
-  payrollAdjustments,
-  employees,
   editingId,
   form,
-  pending,
   pendingId,
   sort,
   onToggleSort,
@@ -302,22 +346,15 @@ function PayrollTable({
   entries: PayrollEntry[];
   category: PayrollTab;
   period: PayrollPeriod;
-  payrollAdjustments: PayrollAdjustment[];
-  employees: Employee[];
   editingId: string | null;
   form: PayrollForm;
-  pending: boolean;
   pendingId: string | null;
   sort: ReturnType<typeof useTableSort<PayrollSortKey>>["sort"];
   onToggleSort: (key: PayrollSortKey) => void;
   onStartEdit: (entry: PayrollEntry) => void;
   onProcess: (id: string) => void;
 }) {
-  const quantityLabel = category === "construction" ? "Days Worked" : "Hours";
-  const activeModules = payrollAdjustments
-    .filter((rule) => rule.active)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
-  const columnCount = 6 + activeModules.length;
+  const columnCount = 20;
   const sortedEntries = useMemo(
     () => sortRows(entries, sort, (row, key) => row[key]),
     [entries, sort]
@@ -358,10 +395,11 @@ function PayrollTable({
         </div>
       </div>
 
-      <TableShell minWidth={`${980 + activeModules.length * 120}px`} scrollable>
+      <TableShell minWidth="2700px" scrollable>
         <Table>
           <TableHeader>
             <tr>
+              <TableHead>Employee No.</TableHead>
               <SortableTableHead
                 sortKey="employeeName"
                 activeKey={sort.key}
@@ -370,6 +408,10 @@ function PayrollTable({
               >
                 Employee
               </SortableTableHead>
+              <TableHead>Site Assignment</TableHead>
+              <TableHead align="right">Daily Rate</TableHead>
+              <TableHead>Designation</TableHead>
+              <TableHead align="right">Hourly Rate</TableHead>
               <SortableTableHead
                 sortKey="hours"
                 align="center"
@@ -377,8 +419,11 @@ function PayrollTable({
                 direction={sort.direction}
                 onSort={(key) => onToggleSort(key as PayrollSortKey)}
               >
-                {quantityLabel}
+                Regular Hours
               </SortableTableHead>
+              <TableHead align="right">OT Hours</TableHead>
+              <TableHead align="right">Regular Pay</TableHead>
+              <TableHead align="right">OT Pay</TableHead>
               <SortableTableHead
                 sortKey="grossPay"
                 align="right"
@@ -388,11 +433,8 @@ function PayrollTable({
               >
                 Gross
               </SortableTableHead>
-              {activeModules.map((rule) => (
-                <TableHead key={rule.code} align="right">
-                  {rule.label}
-                </TableHead>
-              ))}
+              <TableHead align="right">Cash Advance</TableHead>
+              <TableHead align="right">Additional Pay</TableHead>
               <SortableTableHead
                 sortKey="deductions"
                 align="right"
@@ -400,7 +442,7 @@ function PayrollTable({
                 direction={sort.direction}
                 onSort={(key) => onToggleSort(key as PayrollSortKey)}
               >
-                Total Ded.
+                Statutory Ded.
               </SortableTableHead>
               <SortableTableHead
                 sortKey="netPay"
@@ -411,6 +453,9 @@ function PayrollTable({
               >
                 Net Pay
               </SortableTableHead>
+              <TableHead>Disbursement</TableHead>
+              <TableHead>Remarks</TableHead>
+              <TableHead>Charged To</TableHead>
               <SortableTableHead
                 sortKey="status"
                 align="right"
@@ -431,39 +476,48 @@ function PayrollTable({
               />
             ) : (
               sortedEntries.map((entry) => {
-                const employeeContext = employeeContextFromEntry(entry, employees);
-                const breakdown = resolveEntryDeductionBreakdown(
-                  entry,
-                  payrollAdjustments,
-                  employeeContext
-                );
-
                 return (
                 <TableRow key={entry.id}>
+                  <TableCell className="!text-sbc-gray">
+                    {entry.employeeNumber || "—"}
+                  </TableCell>
                   <TablePrimaryCell>{entry.employeeName}</TablePrimaryCell>
+                  <TableCell>{entry.siteAssignment || "—"}</TableCell>
+                  <TableCell align="right" numeric>
+                    {formatCurrency(entry.dailyRate)}
+                  </TableCell>
+                  <TableCell>{entry.designation || "—"}</TableCell>
+                  <TableCell align="right" numeric>
+                    {formatCurrency(entry.hourlyRate)}
+                  </TableCell>
                   <TableCell align="center" numeric>
-                    {entry.hours}
-                    {category === "construction" ? "d" : "h"}
+                    {entry.hours}h
+                  </TableCell>
+                  <TableCell align="right" numeric>{entry.overtimeHours}h</TableCell>
+                  <TableCell align="right" numeric>
+                    {formatCurrency(entry.regularPay)}
+                  </TableCell>
+                  <TableCell align="right" numeric>
+                    {formatCurrency(entry.overtimePay)}
                   </TableCell>
                   <TableCell align="right" numeric className="!font-semibold !text-sbc-black">
                     {formatCurrency(entry.grossPay)}
                   </TableCell>
-                  {activeModules.map((rule) => (
-                    <TableCell
-                      key={rule.code}
-                      align="right"
-                      numeric
-                      className="!text-sbc-gray"
-                    >
-                      {formatCurrency(getDeductionAmount(breakdown, rule.code))}
-                    </TableCell>
-                  ))}
+                  <TableCell align="right" numeric>
+                    {formatCurrency(entry.cashAdvance)}
+                  </TableCell>
+                  <TableCell align="right" numeric>
+                    {formatCurrency(entry.additionalPay)}
+                  </TableCell>
                   <TableCell align="right" numeric className="!text-sbc-gray">
                     {formatCurrency(entry.deductions)}
                   </TableCell>
                   <TableCell align="right" numeric className="!font-bold !text-sbc-gold">
                     {formatCurrency(entry.netPay)}
                   </TableCell>
+                  <TableCell>{entry.disbursement || "—"}</TableCell>
+                  <TableCell>{entry.remarks || "—"}</TableCell>
+                  <TableCell>{entry.chargedTo || "—"}</TableCell>
                   <TableCell align="right">
                     <span
                       className={`text-xs font-semibold uppercase tracking-widest ${
@@ -498,7 +552,7 @@ function PayrollTable({
 
       {editingId && (
         <p className="sr-only">
-          Editing {quantityLabel.toLowerCase()}: {form.hours}
+          Editing regular hours: {form.hours}
         </p>
       )}
     </>
@@ -512,7 +566,6 @@ export function PayrollClient({
   initialConstructionPeriod,
   initialAdminPeriod,
   initialOjtPeriod,
-  usingDatabase,
   employees,
   dailyRates,
   constructionAttendance,
@@ -562,15 +615,21 @@ export function PayrollClient({
   );
   const [adminPeriod, setAdminPeriod] = useState(initialAdminPeriod);
   const [ojtPeriod, setOjtPeriod] = useState(initialOjtPeriod);
-  const [serverConstructionAttendance, setServerConstructionAttendance] =
+  const [, setServerConstructionAttendance] =
     useState(constructionAttendance);
-  const [serverAdminAttendance, setServerAdminAttendance] =
+  const [, setServerAdminAttendance] =
     useState(adminAttendance);
-  const [serverOjtAttendance, setServerOjtAttendance] = useState(ojtAttendance);
+  const [, setServerOjtAttendance] = useState(ojtAttendance);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<PayrollForm>({
     hours: "",
-    grossPay: "",
+    overtimeHours: "",
+    cashAdvance: "",
+    additionalPay: "",
+    siteAssignment: "",
+    disbursement: "",
+    remarks: "",
+    chargedTo: "",
     deductionLines: {},
     status: "draft",
   });
@@ -601,9 +660,6 @@ export function PayrollClient({
       : activeTab === "admin"
         ? setAdminEntries
         : setOjtEntries;
-  const quantityLabel =
-    activeTab === "construction" ? "Days Worked" : "Hours";
-
   const activeDeductionModules = useMemo(
     () =>
       payrollAdjustments
@@ -668,13 +724,23 @@ export function PayrollClient({
     setServerOjtAttendance(result.hourlyAttendance);
   }
 
-  const netPreview = useMemo(() => {
-    const gross = Number(form.grossPay) || 0;
+  const editingEntry = editingId
+    ? activeEntries.find((item) => item.id === editingId)
+    : undefined;
+
+  const amountPreview = useMemo(() => {
     const deductions = sumDeductionLines(
       breakdownFromForm(form, payrollAdjustments)
     );
-    return Math.max(gross - deductions, 0);
-  }, [form, payrollAdjustments]);
+    return calculatePayrollAmounts({
+      hourlyRate: editingEntry?.hourlyRate ?? 0,
+      regularHours: Number(form.hours) || 0,
+      overtimeHours: Number(form.overtimeHours) || 0,
+      cashAdvance: Number(form.cashAdvance) || 0,
+      additionalPay: Number(form.additionalPay) || 0,
+      statutoryDeductions: deductions,
+    });
+  }, [editingEntry?.hourlyRate, form, payrollAdjustments]);
 
   const totalDeductionPreview = useMemo(
     () => sumDeductionLines(breakdownFromForm(form, payrollAdjustments)),
@@ -690,7 +756,18 @@ export function PayrollClient({
 
   function resetForm() {
     setEditingId(null);
-    setForm({ hours: "", grossPay: "", deductionLines: {}, status: "draft" });
+    setForm({
+      hours: "",
+      overtimeHours: "",
+      cashAdvance: "",
+      additionalPay: "",
+      siteAssignment: "",
+      disbursement: "",
+      remarks: "",
+      chargedTo: "",
+      deductionLines: {},
+      status: "draft",
+    });
   }
 
   function startEdit(entry: PayrollEntry) {
@@ -703,7 +780,13 @@ export function PayrollClient({
     setEditingId(entry.id);
     setForm({
       hours: String(entry.hours),
-      grossPay: String(entry.grossPay),
+      overtimeHours: String(entry.overtimeHours),
+      cashAdvance: String(entry.cashAdvance),
+      additionalPay: String(entry.additionalPay),
+      siteAssignment: entry.siteAssignment,
+      disbursement: entry.disbursement,
+      remarks: entry.remarks,
+      chargedTo: entry.chargedTo,
       deductionLines: Object.fromEntries(
         breakdown.map((line) => [line.code, String(line.amount)])
       ),
@@ -712,12 +795,17 @@ export function PayrollClient({
     setMessage(null);
   }
 
-  function updateGrossPay(value: string) {
+  function updateHours(field: "hours" | "overtimeHours", value: string) {
+    const next = { ...form, [field]: value };
+    const amounts = calculatePayrollAmounts({
+      hourlyRate: editingEntry?.hourlyRate ?? 0,
+      regularHours: Number(next.hours) || 0,
+      overtimeHours: Number(next.overtimeHours) || 0,
+    });
     setForm({
-      ...form,
-      grossPay: value,
+      ...next,
       deductionLines: buildFormDeductionLines(
-        value,
+        amounts.grossPay,
         payrollAdjustments,
         getEditingEmployeeContext()
       ),
@@ -768,15 +856,29 @@ export function PayrollClient({
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!editingId) return;
+    const currentEntry = activeEntries.find((entry) => entry.id === editingId);
+    if (!currentEntry) {
+      setMessage("Payroll entry could not be found.");
+      return;
+    }
 
     startTransition(async () => {
       const deductionBreakdown = breakdownFromForm(form, payrollAdjustments);
       const deductions = sumDeductionLines(deductionBreakdown);
       const payload = {
         hours: Number(form.hours),
-        gross_pay: Number(form.grossPay),
+        overtime_hours: Number(form.overtimeHours),
+        regular_pay: amountPreview.regularPay,
+        overtime_pay: amountPreview.overtimePay,
+        gross_pay: amountPreview.grossPay,
+        cash_advance: Number(form.cashAdvance),
+        additional_pay: Number(form.additionalPay),
         deductions,
-        net_pay: netPreview,
+        net_pay: amountPreview.netPay,
+        site_assignment: form.siteAssignment.trim(),
+        disbursement: form.disbursement.trim(),
+        remarks: form.remarks.trim(),
+        charged_to: form.chargedTo.trim(),
         status: form.status,
       };
 
@@ -787,19 +889,21 @@ export function PayrollClient({
       }
 
       const updatedEntry: PayrollEntry = {
-        ...(activeEntries.find((entry) => entry.id === editingId) ?? {
-          id: editingId,
-          employeeId: "",
-          employeeName: "",
-          category: activeTab,
-          periodKey: activePeriod.key,
-          period: activePeriod.label,
-        }),
+        ...currentEntry,
         hours: payload.hours,
+        overtimeHours: payload.overtime_hours,
+        regularPay: payload.regular_pay,
+        overtimePay: payload.overtime_pay,
         grossPay: payload.gross_pay,
+        cashAdvance: payload.cash_advance,
+        additionalPay: payload.additional_pay,
         deductions: payload.deductions,
         deductionBreakdown,
         netPay: payload.net_pay,
+        siteAssignment: payload.site_assignment,
+        disbursement: payload.disbursement,
+        remarks: payload.remarks,
+        chargedTo: payload.charged_to,
         status: payload.status,
       };
 
@@ -824,9 +928,18 @@ export function PayrollClient({
 
       const result = await updatePayrollEntry(id, {
         hours: entry.hours,
+        overtime_hours: entry.overtimeHours,
+        regular_pay: entry.regularPay,
+        overtime_pay: entry.overtimePay,
         gross_pay: entry.grossPay,
+        cash_advance: entry.cashAdvance,
+        additional_pay: entry.additionalPay,
         deductions: entry.deductions,
         net_pay: entry.netPay,
+        site_assignment: entry.siteAssignment,
+        disbursement: entry.disbursement,
+        remarks: entry.remarks,
+        charged_to: entry.chargedTo,
         status: "processed",
       });
 
@@ -931,11 +1044,13 @@ export function PayrollClient({
       </p>
 
       <p className="mb-4 text-sm text-sbc-gray">
-        Draft rows auto-calculate from attendance (days worked or hours) and{" "}
+        Draft rows calculate regular hours from attendance, with each construction
+        day equal to 8 hours. Overtime uses the normal hourly rate (1.0×), matching
+        the provided payroll sheet.{" "}
         <a href="/admin/contributions" className="font-medium text-sbc-gold hover:underline">
           Statutory Deductions
         </a>{" "}
-        rules. Process to lock an entry.
+        remain included. Process to lock an entry.
       </p>
 
       {message && (
@@ -952,25 +1067,89 @@ export function PayrollClient({
           <p className="md:col-span-2 text-xs font-medium uppercase tracking-widest text-sbc-gold">
             Edit Payroll Entry
           </p>
+          <div className="md:col-span-2 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {[
+              ["Daily Rate", formatCurrency(editingEntry?.dailyRate ?? 0)],
+              ["Hourly Rate", formatCurrency(editingEntry?.hourlyRate ?? 0)],
+              ["Regular Pay", formatCurrency(amountPreview.regularPay)],
+              ["OT Pay", formatCurrency(amountPreview.overtimePay)],
+              ["Gross Pay", formatCurrency(amountPreview.grossPay)],
+              ["Net Pay", formatCurrency(amountPreview.netPay)],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-lg border border-sbc-gray-light bg-sbc-off-white px-3 py-2"
+              >
+                <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
+                  {label}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-sbc-black">{value}</p>
+              </div>
+            ))}
+          </div>
           <Input
-            label={quantityLabel}
+            label="Regular Hours"
             size="sm"
             type="number"
             min="0"
-            step={activeTab === "construction" ? "1" : "0.5"}
+            step="0.25"
             value={form.hours}
-            onChange={(e) => setForm({ ...form, hours: e.target.value })}
+            onChange={(e) => updateHours("hours", e.target.value)}
             required
           />
           <Input
-            label="Gross Pay (PHP)"
+            label="OT Hours"
+            size="sm"
+            type="number"
+            min="0"
+            step="0.25"
+            value={form.overtimeHours}
+            onChange={(e) => updateHours("overtimeHours", e.target.value)}
+            required
+          />
+          <Input
+            label="Cash Advance (PHP)"
             size="sm"
             type="number"
             min="0"
             step="0.01"
-            value={form.grossPay}
-            onChange={(e) => updateGrossPay(e.target.value)}
+            value={form.cashAdvance}
+            onChange={(e) => setForm({ ...form, cashAdvance: e.target.value })}
             required
+          />
+          <Input
+            label="Additional Pay (PHP)"
+            size="sm"
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.additionalPay}
+            onChange={(e) => setForm({ ...form, additionalPay: e.target.value })}
+            required
+          />
+          <Input
+            label="Site Assignment"
+            size="sm"
+            value={form.siteAssignment}
+            onChange={(e) => setForm({ ...form, siteAssignment: e.target.value })}
+          />
+          <Input
+            label="Disbursement"
+            size="sm"
+            value={form.disbursement}
+            onChange={(e) => setForm({ ...form, disbursement: e.target.value })}
+          />
+          <Input
+            label="Remarks"
+            size="sm"
+            value={form.remarks}
+            onChange={(e) => setForm({ ...form, remarks: e.target.value })}
+          />
+          <Input
+            label="Charged To"
+            size="sm"
+            value={form.chargedTo}
+            onChange={(e) => setForm({ ...form, chargedTo: e.target.value })}
           />
           {activeDeductionModules.map((rule) => (
             <Input
@@ -991,14 +1170,6 @@ export function PayrollClient({
             </p>
             <p className="rounded-lg border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-semibold text-sbc-black">
               {formatCurrency(totalDeductionPreview)}
-            </p>
-          </div>
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
-              Net Pay
-            </p>
-            <p className="rounded-lg border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-semibold text-sbc-gold">
-              {formatCurrency(netPreview)}
             </p>
           </div>
           <Select
@@ -1027,11 +1198,8 @@ export function PayrollClient({
         entries={activeEntries}
         category={activeTab}
         period={activePeriod}
-        payrollAdjustments={payrollAdjustments}
-        employees={employees}
         editingId={editingId}
         form={form}
-        pending={pending}
         pendingId={pendingId}
         sort={sort}
         onToggleSort={toggleSort}

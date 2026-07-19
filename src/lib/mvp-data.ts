@@ -4,6 +4,7 @@ import type { RateType } from "@/lib/rate-types";
 
 export type Employee = {
   id: string;
+  employeeNumber: string;
   name: string;
   category: EmployeeCategory;
   role: EmployeeRole;
@@ -15,17 +16,30 @@ export type Employee = {
 export type PayrollEntry = {
   id: string;
   employeeId: string;
+  employeeNumber: string;
   employeeName: string;
+  siteAssignment: string;
+  designation: string;
   category: EmployeeCategory;
   periodKey: string;
   period: string;
-  /** Admin: hours from time in/out. Construction: stored as days worked. */
+  dailyRate: number;
+  hourlyRate: number;
+  /** Regular hours for every payroll category. */
   hours: number;
+  overtimeHours: number;
+  regularPay: number;
+  overtimePay: number;
   grossPay: number;
+  cashAdvance: number;
+  additionalPay: number;
   deductions: number;
   /** Per-module amounts (SSS, PhilHealth, etc.). Recomputed from rules when empty. */
   deductionBreakdown?: DeductionLine[];
   netPay: number;
+  disbursement: string;
+  remarks: string;
+  chargedTo: string;
   status: "draft" | "processed";
 };
 
@@ -33,6 +47,7 @@ export type PayrollEntry = {
 export const mockEmployees: Employee[] = [
   {
     id: "emp-001",
+    employeeNumber: "SBC-001",
     name: "Juan Dela Cruz",
     category: "construction",
     role: "Foreman",
@@ -42,6 +57,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: "emp-002",
+    employeeNumber: "SBC-002",
     name: "Maria Santos",
     category: "admin",
     role: "Operations",
@@ -51,6 +67,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: "emp-003",
+    employeeNumber: "SBC-003",
     name: "Pedro Reyes",
     category: "construction",
     role: "Skilled",
@@ -60,6 +77,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: "emp-004",
+    employeeNumber: "SBC-004",
     name: "Ana Lopez",
     category: "admin",
     role: "Finance/Admin",
@@ -69,6 +87,7 @@ export const mockEmployees: Employee[] = [
   },
   {
     id: "emp-005",
+    employeeNumber: "SBC-005",
     name: "Carlo Mendoza",
     category: "ojt",
     role: "Trainee",
@@ -82,53 +101,105 @@ export const mockPayroll: PayrollEntry[] = [
   {
     id: "pay-001",
     employeeId: "emp-001",
+    employeeNumber: "SBC-001",
     employeeName: "Juan Dela Cruz",
+    siteAssignment: "Main Site",
+    designation: "Foreman",
     category: "construction",
     periodKey: "w-sample",
     period: "Weekly",
-    hours: 6,
+    dailyRate: 450,
+    hourlyRate: 56.25,
+    hours: 48,
+    overtimeHours: 0,
+    regularPay: 2700,
+    overtimePay: 0,
     grossPay: 2700,
+    cashAdvance: 0,
+    additionalPay: 0,
     deductions: 324,
     netPay: 2376,
+    disbursement: "Cash",
+    remarks: "",
+    chargedTo: "Main Site",
     status: "processed",
   },
   {
     id: "pay-003",
     employeeId: "emp-003",
+    employeeNumber: "SBC-003",
     employeeName: "Pedro Reyes",
+    siteAssignment: "",
+    designation: "Skilled",
     category: "construction",
     periodKey: "w-sample",
     period: "Weekly",
-    hours: 5,
+    dailyRate: 380,
+    hourlyRate: 47.5,
+    hours: 40,
+    overtimeHours: 0,
+    regularPay: 1900,
+    overtimePay: 0,
     grossPay: 1900,
+    cashAdvance: 0,
+    additionalPay: 0,
     deductions: 228,
     netPay: 1672,
+    disbursement: "",
+    remarks: "",
+    chargedTo: "",
     status: "draft",
   },
   {
     id: "pay-002",
     employeeId: "emp-002",
+    employeeNumber: "SBC-002",
     employeeName: "Maria Santos",
+    siteAssignment: "Head Office",
+    designation: "Operations",
     category: "admin",
     periodKey: "s-2026-07-1",
     period: "Jul 1 – 15, 2026",
+    dailyRate: 3250,
+    hourlyRate: 406.25,
     hours: 80,
+    overtimeHours: 0,
+    regularPay: 32500,
+    overtimePay: 0,
     grossPay: 32500,
+    cashAdvance: 0,
+    additionalPay: 0,
     deductions: 3900,
     netPay: 28600,
+    disbursement: "Bank transfer",
+    remarks: "",
+    chargedTo: "Administration",
     status: "processed",
   },
   {
     id: "pay-004",
     employeeId: "emp-004",
+    employeeNumber: "SBC-004",
     employeeName: "Ana Lopez",
+    siteAssignment: "Head Office",
+    designation: "Finance/Admin",
     category: "admin",
     periodKey: "s-2026-07-1",
     period: "Jul 1 – 15, 2026",
+    dailyRate: 2750,
+    hourlyRate: 343.75,
     hours: 72,
+    overtimeHours: 0,
+    regularPay: 24750,
+    overtimePay: 0,
     grossPay: 24750,
+    cashAdvance: 0,
+    additionalPay: 0,
     deductions: 2970,
     netPay: 21780,
+    disbursement: "",
+    remarks: "",
+    chargedTo: "Administration",
     status: "draft",
   },
 ];

@@ -24,10 +24,15 @@ import {
 } from "@/lib/payroll-periods";
 import { getPayrollAdjustments } from "@/lib/actions/adjustments";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import {
+  calculatePayrollAmounts,
+  derivePayrollRates,
+} from "@/lib/payroll-calculations";
 
 function mapEmployee(row: Record<string, unknown>): Employee {
   return {
     id: row.id as string,
+    employeeNumber: (row.employee_number as string) ?? "",
     name: row.name as string,
     category: (row.category as EmployeeCategory) ?? "construction",
     role: row.role as Employee["role"],
@@ -43,21 +48,55 @@ function mapPayrollRow(
   category: EmployeeCategory
 ): PayrollEntry {
   const employee = row.employees as
-    | { name: string; category: EmployeeCategory }
+    | {
+        employee_number?: string;
+        name: string;
+        category: EmployeeCategory;
+        role?: string;
+        rate?: number;
+        rate_type?: string;
+      }
     | null
     | undefined;
+  const { dailyRate, hourlyRate } = derivePayrollRates(
+    Number(employee?.rate) || 0,
+    normalizeRateType(employee?.rate_type, employee?.category ?? category)
+  );
+  const hours = Number(row.hours) || 0;
+  const overtimeHours = Number(row.overtime_hours) || 0;
+  const calculated = calculatePayrollAmounts({
+    hourlyRate,
+    regularHours: hours,
+    overtimeHours,
+    cashAdvance: Number(row.cash_advance) || 0,
+    additionalPay: Number(row.additional_pay) || 0,
+    statutoryDeductions: Number(row.deductions) || 0,
+  });
 
   return {
     id: row.id as string,
     employeeId: row.employee_id as string,
+    employeeNumber: employee?.employee_number ?? "",
     employeeName: employee?.name ?? "Unknown",
+    siteAssignment: (row.site_assignment as string) ?? "",
+    designation: employee?.role ?? "",
     category: employee?.category ?? category,
     periodKey: period.key,
     period: period.label,
-    hours: Number(row.hours),
+    dailyRate,
+    hourlyRate,
+    hours,
+    overtimeHours,
+    regularPay: Number(row.regular_pay) || calculated.regularPay,
+    overtimePay: Number(row.overtime_pay) || calculated.overtimePay,
     grossPay: Number(row.gross_pay),
-    deductions: Number(row.deductions),
+    cashAdvance: Number(row.cash_advance) || 0,
+    additionalPay: Number(row.additional_pay) || 0,
+    deductions: Number(row.deductions) || 0,
     netPay: Number(row.net_pay),
+    disbursement: (row.disbursement as string) ?? "",
+    remarks: (row.remarks as string) ?? "",
+    chargedTo: (row.charged_to as string) ?? "",
     status: (row.status as "draft" | "processed") ?? "draft",
   };
 }
@@ -88,17 +127,35 @@ function buildMockEntry(
     };
   }
 
+  const { dailyRate, hourlyRate } = derivePayrollRates(
+    employee.rate,
+    employee.rateType
+  );
+
   return {
     id: `preview-${employee.id}-${period.key}`,
     employeeId: employee.id,
+    employeeNumber: employee.employeeNumber,
     employeeName: employee.name,
+    siteAssignment: "",
+    designation: employee.role,
     category: employee.category,
     periodKey: period.key,
     period: period.label,
+    dailyRate,
+    hourlyRate,
     hours: 0,
+    overtimeHours: 0,
+    regularPay: 0,
+    overtimePay: 0,
     grossPay: 0,
+    cashAdvance: 0,
+    additionalPay: 0,
     deductions: 0,
     netPay: 0,
+    disbursement: "",
+    remarks: "",
+    chargedTo: "",
     status: "draft",
   };
 }
@@ -129,7 +186,7 @@ async function getPayrollFromDatabase(
     const { data, error } = await supabase
       .from("payslips")
       .select(
-        "*, employees(name, category), payroll_runs!inner(period_start, period_end)"
+        "*, employees(employee_number, name, category, role, rate, rate_type), payroll_runs!inner(period_start, period_end)"
       )
       .eq("payroll_runs.period_start", period.periodStart)
       .eq("payroll_runs.period_end", period.periodEnd);
@@ -299,6 +356,7 @@ export async function getPayrollEntries() {
 }
 
 export async function createEmployee(input: {
+  employee_number: string;
   name: string;
   category: EmployeeCategory;
   role: string;
@@ -315,6 +373,7 @@ export async function createEmployee(input: {
     const { data, error } = await supabase
       .from("employees")
       .insert({
+        employee_number: input.employee_number,
         name: input.name,
         category: input.category,
         role: input.role,
@@ -338,6 +397,7 @@ export async function createEmployee(input: {
 export async function updateEmployee(
   id: string,
   input: {
+    employee_number: string;
     name: string;
     category: EmployeeCategory;
     role: string;
@@ -399,16 +459,27 @@ function periodFromPreviewKey(periodKey: string): PayrollPeriod {
   return parsePayrollPeriodKey("admin", periodKey);
 }
 
+type PayrollEntryInput = {
+  hours: number;
+  overtime_hours: number;
+  regular_pay: number;
+  overtime_pay: number;
+  gross_pay: number;
+  cash_advance: number;
+  additional_pay: number;
+  deductions: number;
+  net_pay: number;
+  site_assignment: string;
+  disbursement: string;
+  remarks: string;
+  charged_to: string;
+  status: "draft" | "processed";
+};
+
 async function upsertPayrollEntry(
   employeeId: string,
   period: PayrollPeriod,
-  input: {
-    hours: number;
-    gross_pay: number;
-    deductions: number;
-    net_pay: number;
-    status: "draft" | "processed";
-  }
+  input: PayrollEntryInput
 ): Promise<{ error?: string; id?: string }> {
   const supabase = await createClient();
 
@@ -476,13 +547,7 @@ async function upsertPayrollEntry(
 
 export async function updatePayrollEntry(
   id: string,
-  input: {
-    hours: number;
-    gross_pay: number;
-    deductions: number;
-    net_pay: number;
-    status: "draft" | "processed";
-  }
+  input: PayrollEntryInput
 ) {
   await requireAdmin();
 

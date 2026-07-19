@@ -224,6 +224,20 @@ export function countAdminHours(row: AdminAttendanceRow): number {
   );
 }
 
+export function countAdminRegularAndOvertimeHours(
+  row: AdminAttendanceRow
+): { regularHours: number; overtimeHours: number } {
+  return ATTENDANCE_DAYS.reduce(
+    (totals, { key }) => {
+      const totalHours = calculateDayHours(row[key]);
+      totals.regularHours += Math.min(totalHours, 8);
+      totals.overtimeHours += Math.max(totalHours - 8, 0);
+      return totals;
+    },
+    { regularHours: 0, overtimeHours: 0 }
+  );
+}
+
 export function isAdminDayPresent(entry: DayTimeEntry): boolean {
   const timeIn = entry.timeIn?.trim();
   const timeOut = entry.timeOut?.trim();

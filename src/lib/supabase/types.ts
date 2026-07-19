@@ -32,6 +32,7 @@ import type { RateType } from "@/lib/rate-types";
 
 export type EmployeeRow = {
   id: string;
+  employee_number: string;
   name: string;
   category: EmployeeCategory;
   role: string;
@@ -71,8 +72,18 @@ export type PayslipRow = {
   payroll_run_id: string;
   employee_id: string;
   hours: number;
+  site_assignment: string;
+  overtime_hours: number;
+  regular_pay: number;
+  overtime_pay: number;
   gross_pay: number;
+  cash_advance: number;
+  additional_pay: number;
   deductions: number;
   net_pay: number;
+  disbursement: string;
+  remarks: string;
+  charged_to: string;
+  status: "draft" | "processed";
   created_at: string;
 };

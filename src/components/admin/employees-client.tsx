@@ -35,7 +35,7 @@ import {
   findDailyRate,
   type DailyRate,
 } from "@/lib/daily-rates";
-import { formatCurrency, type Employee } from "@/lib/mvp-data";
+import type { Employee } from "@/lib/mvp-data";
 import { formatRateAmount } from "@/lib/rate-types";
 
 type Props = {
@@ -43,7 +43,13 @@ type Props = {
   dailyRates: DailyRate[];
 };
 
-type EmployeeSortKey = "name" | "category" | "role" | "rate" | "status";
+type EmployeeSortKey =
+  | "employeeNumber"
+  | "name"
+  | "category"
+  | "role"
+  | "rate"
+  | "status";
 
 export function EmployeesClient({ employees: initialEmployees, dailyRates }: Props) {
   const [employees, setEmployees] = useState(initialEmployees);
@@ -53,11 +59,13 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
   const [editingId, setEditingId] = useState<string | null>(null);
   const defaultRole = getRolesForCategory("construction")[0];
   const [form, setForm] = useState<{
+    employeeNumber: string;
     name: string;
     category: EmployeeCategory;
     role: string;
     status: "active" | "inactive";
   }>({
+    employeeNumber: "",
     name: "",
     category: "construction",
     role: defaultRole,
@@ -88,6 +96,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
   function resetForm() {
     setEditingId(null);
     setForm({
+      employeeNumber: "",
       name: "",
       category: "construction",
       role: getRolesForCategory("construction")[0],
@@ -98,6 +107,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
   function startEdit(emp: Employee) {
     setEditingId(emp.id);
     setForm({
+      employeeNumber: emp.employeeNumber,
       name: emp.name,
       category: emp.category,
       role: emp.role,
@@ -116,6 +126,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
 
     startTransition(async () => {
       const payload = {
+        employee_number: form.employeeNumber,
         name: form.name,
         category: form.category,
         role: form.role,
@@ -127,6 +138,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
       const result = editingId
         ? await updateEmployee(editingId, payload)
         : await createEmployee({
+            employee_number: form.employeeNumber,
             name: form.name,
             category: form.category,
             role: form.role,
@@ -145,6 +157,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
             emp.id === editingId
               ? {
                   ...emp,
+                  employeeNumber: form.employeeNumber,
                   name: form.name,
                   category: form.category,
                   role: form.role as Employee["role"],
@@ -165,6 +178,7 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
           ...prev,
           {
             id: newId,
+            employeeNumber: form.employeeNumber,
             name: form.name,
             category: form.category,
             role: form.role as Employee["role"],
@@ -224,6 +238,15 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
           {editingId ? "Edit Employee" : "Add Employee"}
         </p>
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+          <Input
+            label="Employee Number"
+            size="sm"
+            value={form.employeeNumber}
+            onChange={(e) =>
+              setForm({ ...form, employeeNumber: e.target.value })
+            }
+            required
+          />
           <Input
             label="Full Name"
             size="sm"
@@ -307,6 +330,14 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
           <TableHeader>
             <tr>
               <SortableTableHead
+                sortKey="employeeNumber"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as EmployeeSortKey)}
+              >
+                Employee No.
+              </SortableTableHead>
+              <SortableTableHead
                 sortKey="name"
                 activeKey={sort.key}
                 direction={sort.direction}
@@ -353,6 +384,9 @@ export function EmployeesClient({ employees: initialEmployees, dailyRates }: Pro
           <TableBody>
             {sortedEmployees.map((emp) => (
               <TableRow key={emp.id}>
+                <TableCell className="!font-medium !text-sbc-gray">
+                  {emp.employeeNumber || "—"}
+                </TableCell>
                 <TablePrimaryCell>{emp.name}</TablePrimaryCell>
                 <TableCell>
                   <span

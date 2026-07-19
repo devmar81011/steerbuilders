@@ -1,5 +1,5 @@
 import {
-  countAdminHours,
+  countAdminRegularAndOvertimeHours,
   countPresentDays,
   getWeekStart,
   parseDateISO,
@@ -16,9 +16,13 @@ import type { RateType } from "@/lib/rate-types";
 import type { PayrollAdjustment } from "@/lib/payroll-adjustments";
 import { mockPayrollAdjustments } from "@/lib/payroll-adjustments";
 import {
-  computeNetPay,
   computePayrollAdjustments,
 } from "@/lib/compute-payroll-adjustments";
+import {
+  calculatePayrollAmounts,
+  derivePayrollRates,
+  roundPayrollAmount,
+} from "@/lib/payroll-calculations";
 
 function resolveAdjustments(adjustments: PayrollAdjustment[]): PayrollAdjustment[] {
   return adjustments.length ? adjustments : mockPayrollAdjustments;
@@ -48,14 +52,6 @@ export function getWeekStartsInPeriod(periodStart: string, periodEnd: string): s
   return weeks;
 }
 
-function getAdminHourlyRate(rate: number, rateType: RateType): number {
-  return rateType === "hourly" ? rate : rate / 8;
-}
-
-function roundMoney(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
 export function applyAttendanceToPayrollEntry(
   entry: PayrollEntry,
   employee: Employee,
@@ -68,26 +64,45 @@ export function applyAttendanceToPayrollEntry(
   if (entry.status === "processed") return entry;
 
   const rules = resolveAdjustments(adjustments);
-  let grossPay = 0;
   let hours = 0;
+  let computedOvertimeHours = 0;
 
   if (category === "construction") {
     const row = constructionAttendance.find(
       (item) => item.employeeId === employee.id
     );
-    hours = row ? countPresentDays(row) : 0;
-    grossPay = roundMoney(hours * rateInfo.rate);
+    hours = (row ? countPresentDays(row) : 0) * 8;
   } else {
     const rows = hourlyAttendance.filter((item) => item.employeeId === employee.id);
-    hours = roundMoney(
-      rows.reduce((total, row) => total + countAdminHours(row), 0)
+    const totals = rows.reduce(
+      (sum, row) => {
+        const dayTotals = countAdminRegularAndOvertimeHours(row);
+        sum.regularHours += dayTotals.regularHours;
+        sum.overtimeHours += dayTotals.overtimeHours;
+        return sum;
+      },
+      { regularHours: 0, overtimeHours: 0 }
     );
-    const hourlyRate = getAdminHourlyRate(rateInfo.rate, rateInfo.rateType);
-    grossPay = roundMoney(hours * hourlyRate);
+    hours = roundPayrollAmount(totals.regularHours);
+    computedOvertimeHours = roundPayrollAmount(totals.overtimeHours);
   }
 
+  const overtimeHours =
+    computedOvertimeHours > 0
+      ? computedOvertimeHours
+      : Number(entry.overtimeHours) || 0;
+  const { dailyRate, hourlyRate } = derivePayrollRates(
+    rateInfo.rate,
+    rateInfo.rateType
+  );
+  const baseAmounts = calculatePayrollAmounts({
+    hourlyRate,
+    regularHours: hours,
+    overtimeHours,
+  });
+
   const { deductionLines, totalDeductions } = computePayrollAdjustments(
-    grossPay,
+    baseAmounts.grossPay,
     rules,
     { category: employee.category, role: employee.role }
   );
@@ -97,15 +112,29 @@ export function applyAttendanceToPayrollEntry(
     amount: line.amount,
   }));
   const deductions = totalDeductions;
-  const netPay = computeNetPay(grossPay, deductions);
+  const amounts = calculatePayrollAmounts({
+    hourlyRate,
+    regularHours: hours,
+    overtimeHours,
+    cashAdvance: Number(entry.cashAdvance) || 0,
+    additionalPay: Number(entry.additionalPay) || 0,
+    statutoryDeductions: deductions,
+  });
 
   return {
     ...entry,
+    employeeNumber: employee.employeeNumber,
+    designation: employee.role,
+    dailyRate,
+    hourlyRate,
     hours,
-    grossPay,
+    overtimeHours,
+    regularPay: amounts.regularPay,
+    overtimePay: amounts.overtimePay,
+    grossPay: amounts.grossPay,
     deductions,
     deductionBreakdown,
-    netPay,
+    netPay: amounts.netPay,
     status: "draft",
   };
 }
