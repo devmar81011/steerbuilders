@@ -6,19 +6,15 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logout } from "@/lib/actions/auth";
 import { IconButton } from "@/components/ui/icon-button";
-import {
-  AdminGuideButton,
-  AdminTourProvider,
-} from "@/components/admin/admin-walkthrough";
 
 const navItems = [
-  { href: "/admin", label: "Dashboard", exact: true, tourId: "nav-dashboard" },
-  { href: "/admin/projects", label: "Projects", tourId: "nav-projects" },
-  { href: "/admin/employees", label: "Employees", tourId: "nav-employees" },
-  { href: "/admin/sites", label: "Sites", tourId: "nav-sites" },
-  { href: "/admin/attendance", label: "Attendance", tourId: "nav-attendance" },
-  { href: "/admin/payroll", label: "Payroll", tourId: "nav-payroll" },
-  { href: "/admin/account", label: "Account", tourId: "nav-account" },
+  { href: "/admin", label: "Dashboard", exact: true },
+  { href: "/admin/projects", label: "Projects" },
+  { href: "/admin/employees", label: "Employees" },
+  { href: "/admin/sites", label: "Sites" },
+  { href: "/admin/attendance", label: "Attendance" },
+  { href: "/admin/payroll", label: "Payroll" },
+  { href: "/admin/account", label: "Account" },
 ];
 
 function MenuIcon() {
@@ -55,7 +51,6 @@ function AdminNavLinks({
             <Link
               href={item.href}
               onClick={onNavigate}
-              data-admin-tour={item.tourId}
               className={`block border-l-2 px-4 py-2.5 text-xs font-medium uppercase tracking-widest transition-colors ${
                 active
                   ? "border-sbc-gold bg-sbc-gold/10 text-sbc-gold-dark"
@@ -83,8 +78,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [mobileMenuOpen]);
 
   return (
-    <AdminTourProvider openNav={() => setMobileMenuOpen(true)}>
-      <div className="flex min-h-screen bg-sbc-off-white">
+    <div className="flex min-h-screen bg-sbc-off-white">
       <aside className="hidden w-64 flex-col border-r border-sbc-gray-light bg-sbc-white md:flex">
         <div className="border-b border-sbc-gray-light p-6">
           <Link href="/admin" className="flex items-center gap-3">
@@ -208,7 +202,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-4">
-            <AdminGuideButton />
             <form action={logout}>
               <button
                 type="submit"
@@ -223,6 +216,5 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>
     </div>
-    </AdminTourProvider>
   );
 }
