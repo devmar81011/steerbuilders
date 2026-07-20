@@ -1,22 +1,22 @@
 export type EmployeeCategory = "construction" | "admin" | "ojt";
 
-export type ConstructionRole = "Foreman" | "Skilled" | "Labor";
-export type AdminRole = "Operations" | "Finance/Admin";
-export type OjtRole = "Trainee";
-export type EmployeeRole = ConstructionRole | AdminRole | OjtRole;
+export type ConstructionDesignation = "Foreman" | "Skilled" | "Labor";
+export type AdminDesignation = "Operations" | "Finance/Admin";
+export type OjtDesignation = "Trainee";
+export type EmployeeDesignation = ConstructionDesignation | AdminDesignation | OjtDesignation;
 
 export const employeeCategories = {
   construction: {
     label: "Construction",
-    roles: ["Foreman", "Skilled", "Labor"] as ConstructionRole[],
+    designations: ["Foreman", "Skilled", "Labor"] as ConstructionDesignation[],
   },
   admin: {
     label: "Admin",
-    roles: ["Operations", "Finance/Admin"] as AdminRole[],
+    designations: ["Operations", "Finance/Admin"] as AdminDesignation[],
   },
   ojt: {
     label: "OJT",
-    roles: ["Trainee"] as OjtRole[],
+    designations: ["Trainee"] as OjtDesignation[],
   },
 } as const;
 
@@ -26,8 +26,13 @@ export const payrollCategories: EmployeeCategory[] = [
   "ojt",
 ];
 
-export function getRolesForCategory(category: EmployeeCategory): EmployeeRole[] {
-  return [...employeeCategories[category].roles];
+export function getDesignationsForCategory(category: EmployeeCategory): EmployeeDesignation[] {
+  return [...employeeCategories[category].designations];
+}
+
+// Legacy alias for backward compatibility
+export function getRolesForCategory(category: EmployeeCategory): EmployeeDesignation[] {
+  return getDesignationsForCategory(category);
 }
 
 export function formatEmployeeCategory(category: EmployeeCategory) {

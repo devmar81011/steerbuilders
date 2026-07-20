@@ -20,6 +20,7 @@ const navItems = [
     tourId: "nav-contributions",
   },
   { href: "/admin/employees", label: "Employees", tourId: "nav-employees" },
+  { href: "/admin/sites", label: "Sites", tourId: "nav-sites" },
   { href: "/admin/attendance", label: "Attendance", tourId: "nav-attendance" },
   { href: "/admin/payroll", label: "Payroll", tourId: "nav-payroll" },
   { href: "/admin/account", label: "Account", tourId: "nav-account" },

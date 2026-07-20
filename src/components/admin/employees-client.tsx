@@ -28,7 +28,7 @@ import {
   employeeCategories,
   formatEmployeeCategory,
   getCategoryLabelClass,
-  getRolesForCategory,
+  getDesignationsForCategory,
   type EmployeeCategory,
 } from "@/lib/employee-categories";
 import type { Employee } from "@/lib/mvp-data";
@@ -37,46 +37,50 @@ import {
   formatRateAmount,
   type RateType,
 } from "@/lib/rate-types";
+import type { Site } from "@/lib/actions/sites";
 
 type Props = {
   employees: Employee[];
+  sites: Site[];
 };
 
 type EmployeeSortKey =
   | "employeeNumber"
   | "name"
   | "category"
-  | "role"
+  | "designation"
   | "rate"
   | "status";
 
-export function EmployeesClient({ employees: initialEmployees }: Props) {
+export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
   const [employees, setEmployees] = useState(initialEmployees);
   const { sort, toggleSort } = useTableSort<EmployeeSortKey>({ defaultKey: "name" });
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const defaultRole = getRolesForCategory("construction")[0];
+  const defaultDesignation = getDesignationsForCategory("construction")[0];
   const [form, setForm] = useState<{
     employeeNumber: string;
     name: string;
     category: EmployeeCategory;
-    role: string;
+    designation: string;
     rate: string;
     rateType: RateType;
     status: "active" | "inactive";
+    assignedSite: string;
   }>({
     employeeNumber: "",
     name: "",
     category: "construction",
-    role: defaultRole,
+    designation: defaultDesignation,
     rate: "",
     rateType: "daily",
     status: "active",
+    assignedSite: "",
   });
 
-  const roleOptions = useMemo(
-    () => getRolesForCategory(form.category),
+  const designationOptions = useMemo(
+    () => getDesignationsForCategory(form.category),
     [form.category]
   );
 
@@ -90,17 +94,17 @@ export function EmployeesClient({ employees: initialEmployees }: Props) {
   );
 
   function handleCategoryChange(category: EmployeeCategory) {
-    const roles = getRolesForCategory(category);
+    const designations = getDesignationsForCategory(category);
     setForm({
       ...form,
       category,
-      role: roles[0],
+      designation: designations[0],
       rateType: editingId ? form.rateType : defaultRateTypeForCategory(category),
     });
   }
 
-  function handleRoleChange(role: string) {
-    setForm({ ...form, role });
+  function handleDesignationChange(designation: string) {
+    setForm({ ...form, designation });
   }
 
   function resetForm() {
@@ -109,10 +113,11 @@ export function EmployeesClient({ employees: initialEmployees }: Props) {
       employeeNumber: "",
       name: "",
       category: "construction",
-      role: getRolesForCategory("construction")[0],
+      designation: getDesignationsForCategory("construction")[0],
       rate: "",
       rateType: "daily",
       status: "active",
+      assignedSite: "",
     });
   }
 
@@ -122,10 +127,11 @@ export function EmployeesClient({ employees: initialEmployees }: Props) {
       employeeNumber: emp.employeeNumber,
       name: emp.name,
       category: emp.category,
-      role: emp.role,
+      designation: emp.designation,
       rate: String(emp.rate),
       rateType: emp.rateType,
       status: emp.status,
+      assignedSite: emp.assignedSite || "",
     });
     setMessage(null);
   }
@@ -144,10 +150,11 @@ export function EmployeesClient({ employees: initialEmployees }: Props) {
         employee_number: form.employeeNumber,
         name: form.name,
         category: form.category,
-        role: form.role,
+        designation: form.designation,
         rate,
         rate_type: form.rateType,
         status: form.status,
+        assigned_site: form.assignedSite.trim(),
       };
 
       const result = editingId
@@ -156,9 +163,10 @@ export function EmployeesClient({ employees: initialEmployees }: Props) {
             employee_number: form.employeeNumber,
             name: form.name,
             category: form.category,
-            role: form.role,
+            designation: form.designation,
             rate,
             rate_type: form.rateType,
+            assigned_site: form.assignedSite.trim(),
           });
 
       if (result.error) {
@@ -175,10 +183,11 @@ export function EmployeesClient({ employees: initialEmployees }: Props) {
                   employeeNumber: form.employeeNumber,
                   name: form.name,
                   category: form.category,
-                  role: form.role as Employee["role"],
+                  designation: form.designation as Employee["designation"],
                   rate,
                   rateType: form.rateType,
                   status: form.status,
+                  assignedSite: form.assignedSite.trim(),
                 }
               : emp
           )
@@ -196,10 +205,11 @@ export function EmployeesClient({ employees: initialEmployees }: Props) {
             employeeNumber: form.employeeNumber,
             name: form.name,
             category: form.category,
-            role: form.role as Employee["role"],
+            designation: form.designation as Employee["designation"],
             rate,
             rateType: form.rateType,
             status: "active",
+            assignedSite: form.assignedSite.trim(),
           },
         ]);
         setMessage("Employee added.");
@@ -287,17 +297,33 @@ export function EmployeesClient({ employees: initialEmployees }: Props) {
           </Select>
 
           <Select
-            label="Role"
+            label="Designation"
             size="sm"
-            value={form.role}
-            onChange={(e) => handleRoleChange(e.target.value)}
+            value={form.designation}
+            onChange={(e) => handleDesignationChange(e.target.value)}
             required
           >
-            {roleOptions.map((role) => (
-              <option key={role} value={role}>
-                {role}
+            {designationOptions.map((designation) => (
+              <option key={designation} value={designation}>
+                {designation}
               </option>
             ))}
+          </Select>
+
+          <Select
+            label="Assigned Site"
+            size="sm"
+            value={form.assignedSite}
+            onChange={(e) => setForm({ ...form, assignedSite: e.target.value })}
+          >
+            <option value="">Not assigned</option>
+            {sites
+              .filter((site) => site.status === "active")
+              .map((site) => (
+                <option key={site.id} value={site.name}>
+                  {site.name}
+                </option>
+              ))}
           </Select>
 
           <Input
@@ -383,13 +409,14 @@ export function EmployeesClient({ employees: initialEmployees }: Props) {
                 Category
               </SortableTableHead>
               <SortableTableHead
-                sortKey="role"
+                sortKey="designation"
                 activeKey={sort.key}
                 direction={sort.direction}
                 onSort={(key) => toggleSort(key as EmployeeSortKey)}
               >
-                Role
+                Designation
               </SortableTableHead>
+              <TableHead>Assigned Site</TableHead>
               <SortableTableHead
                 sortKey="rate"
                 activeKey={sort.key}
@@ -424,7 +451,8 @@ export function EmployeesClient({ employees: initialEmployees }: Props) {
                     {formatEmployeeCategory(emp.category)}
                   </span>
                 </TableCell>
-                <TableCell className="!text-sbc-gray">{emp.role}</TableCell>
+                <TableCell className="!text-sbc-gray">{emp.designation}</TableCell>
+                <TableCell className="!text-sbc-gray">{emp.assignedSite || "—"}</TableCell>
                 <TableCell numeric className="!font-semibold !text-sbc-black">
                   {formatRateAmount(emp.rate, emp.rateType)}
                 </TableCell>

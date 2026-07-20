@@ -1,6 +1,8 @@
 import {
   countAdminRegularAndOvertimeHours,
   countPresentDays,
+  countTotalHours,
+  countTotalOvertimeHours,
   getWeekStart,
   parseDateISO,
   shiftWeekStart,
@@ -56,7 +58,8 @@ export function applyAttendanceToPayrollEntry(
     const row = constructionAttendance.find(
       (item) => item.employeeId === employee.id
     );
-    hours = (row ? countPresentDays(row) : 0) * 8;
+    hours = row ? countTotalHours(row) : 0;
+    computedOvertimeHours = row ? countTotalOvertimeHours(row) : 0;
   } else {
     const rows = hourlyAttendance.filter((item) => item.employeeId === employee.id);
     const totals = rows.reduce(
@@ -89,7 +92,7 @@ export function applyAttendanceToPayrollEntry(
   const { deductionLines, totalDeductions } = computePayrollAdjustments(
     baseAmounts.grossPay,
     rules,
-    { category: employee.category, role: employee.role }
+    { category: employee.category, designation: employee.designation }
   );
   const deductionBreakdown = deductionLines.map((line) => ({
     code: line.code,
@@ -109,7 +112,7 @@ export function applyAttendanceToPayrollEntry(
   return {
     ...entry,
     employeeNumber: employee.employeeNumber,
-    designation: employee.role,
+    designation: employee.designation,
     dailyRate,
     hourlyRate,
     hours,
