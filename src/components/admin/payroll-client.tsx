@@ -106,7 +106,7 @@ function employeeContextFromEntry(
 ): EmployeeDeductionContext | undefined {
   const employee = employees.find((item) => item.id === entry.employeeId);
   if (!employee) return undefined;
-  return { category: employee.category, role: employee.role };
+  return { category: employee.category, designation: employee.designation };
 }
 
 function breakdownFromForm(
@@ -353,7 +353,7 @@ function PayrollTable({
   onStartEdit: (entry: PayrollEntry) => void;
   onProcess: (id: string) => void;
 }) {
-  const columnCount = 20;
+  const columnCount = 19;
   const sortedEntries = useMemo(
     () => sortRows(entries, sort, (row, key) => row[key]),
     [entries, sort]
@@ -435,15 +435,6 @@ function PayrollTable({
               <TableHead align="right">Cash Advance</TableHead>
               <TableHead align="right">Additional Pay</TableHead>
               <SortableTableHead
-                sortKey="deductions"
-                align="right"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => onToggleSort(key as PayrollSortKey)}
-              >
-                Statutory Ded.
-              </SortableTableHead>
-              <SortableTableHead
                 sortKey="netPay"
                 align="right"
                 activeKey={sort.key}
@@ -507,9 +498,6 @@ function PayrollTable({
                   </TableCell>
                   <TableCell align="right" numeric>
                     {formatCurrency(entry.additionalPay)}
-                  </TableCell>
-                  <TableCell align="right" numeric className="!text-sbc-gray">
-                    {formatCurrency(entry.deductions)}
                   </TableCell>
                   <TableCell align="right" numeric className="!font-bold !text-sbc-gold">
                     {formatCurrency(entry.netPay)}
@@ -1071,11 +1059,7 @@ export function PayrollClient({
         Rates are employee-specific. Monthly pay is converted using 26 workdays and
         8 hours per day. Draft rows calculate regular hours from attendance, and
         overtime uses the normal hourly rate (1.0×), matching the provided payroll
-        sheet.{" "}
-        <a href="/admin/contributions" className="font-medium text-sbc-gold hover:underline">
-          Statutory Deductions
-        </a>{" "}
-        remain included. Process to lock an entry.
+        sheet. Process to lock an entry.
       </p>
 
       {message && (
@@ -1158,12 +1142,16 @@ export function PayrollClient({
             value={form.siteAssignment}
             onChange={(e) => setForm({ ...form, siteAssignment: e.target.value })}
           />
-          <Input
+          <Select
             label="Disbursement"
             size="sm"
             value={form.disbursement}
             onChange={(e) => setForm({ ...form, disbursement: e.target.value })}
-          />
+          >
+            <option value="">Select disbursement method</option>
+            <option value="MLhuilier">MLhuilier</option>
+            <option value="BPI">BPI</option>
+          </Select>
           <Input
             label="Remarks"
             size="sm"

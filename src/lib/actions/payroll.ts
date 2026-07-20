@@ -34,10 +34,11 @@ function mapEmployee(row: Record<string, unknown>): Employee {
     employeeNumber: (row.employee_number as string) ?? "",
     name: row.name as string,
     category: (row.category as EmployeeCategory) ?? "construction",
-    role: row.role as Employee["role"],
+    designation: row.designation as Employee["designation"],
     rate: Number(row.rate),
     rateType: normalizeRateType(row.rate_type as string, row.category as EmployeeCategory),
     status: (row.status as "active" | "inactive") ?? "active",
+    assignedSite: (row.assigned_site as string) || undefined,
   };
 }
 
@@ -51,7 +52,7 @@ function mapPayrollRow(
         employee_number?: string;
         name: string;
         category: EmployeeCategory;
-        role?: string;
+        designation?: string;
         rate?: number;
         rate_type?: string;
       }
@@ -78,7 +79,7 @@ function mapPayrollRow(
     employeeNumber: employee?.employee_number ?? "",
     employeeName: employee?.name ?? "Unknown",
     siteAssignment: (row.site_assignment as string) ?? "",
-    designation: employee?.role ?? "",
+    designation: employee?.designation ?? "",
     category: employee?.category ?? category,
     periodKey: period.key,
     period: period.label,
@@ -136,8 +137,8 @@ function buildMockEntry(
     employeeId: employee.id,
     employeeNumber: employee.employeeNumber,
     employeeName: employee.name,
-    siteAssignment: "",
-    designation: employee.role,
+    siteAssignment: employee.assignedSite || "",
+    designation: employee.designation,
     category: employee.category,
     periodKey: period.key,
     period: period.label,
@@ -354,9 +355,10 @@ export async function createEmployee(input: {
   employee_number: string;
   name: string;
   category: EmployeeCategory;
-  role: string;
+  designation: string;
   rate: number;
   rate_type: RateType;
+  assigned_site?: string;
 }) {
   await requireAdmin();
   if (!isSupabaseConfigured()) {
@@ -371,9 +373,10 @@ export async function createEmployee(input: {
         employee_number: input.employee_number,
         name: input.name,
         category: input.category,
-        role: input.role,
+        designation: input.designation,
         rate: input.rate,
         rate_type: input.rate_type,
+        assigned_site: input.assigned_site || null,
         status: "active",
       })
       .select("id")
@@ -395,10 +398,11 @@ export async function updateEmployee(
     employee_number: string;
     name: string;
     category: EmployeeCategory;
-    role: string;
+    designation: string;
     rate: number;
     rate_type: RateType;
     status: "active" | "inactive";
+    assigned_site?: string;
   }
 ) {
   await requireAdmin();

@@ -19,14 +19,19 @@ export const ATTENDANCE_DAYS: { key: AttendanceDayKey; label: string }[] = [
   { key: "sat", label: "Sat" },
 ];
 
-export const DEFAULT_ATTENDANCE: Record<AttendanceDayKey, boolean> = {
-  sun: false,
-  mon: true,
-  tue: true,
-  wed: true,
-  thu: true,
-  fri: true,
-  sat: true,
+export type AttendanceDayValue = {
+  hours: number;
+  overtimeHours: number;
+};
+
+export const DEFAULT_ATTENDANCE: Record<AttendanceDayKey, AttendanceDayValue> = {
+  sun: { hours: 0, overtimeHours: 0 },
+  mon: { hours: 8, overtimeHours: 0 },
+  tue: { hours: 8, overtimeHours: 0 },
+  wed: { hours: 8, overtimeHours: 0 },
+  thu: { hours: 8, overtimeHours: 0 },
+  fri: { hours: 8, overtimeHours: 0 },
+  sat: { hours: 8, overtimeHours: 0 },
 };
 
 export type AttendanceRow = {
@@ -34,13 +39,13 @@ export type AttendanceRow = {
   employeeId: string;
   employeeName: string;
   weekStart: string;
-  sun: boolean;
-  mon: boolean;
-  tue: boolean;
-  wed: boolean;
-  thu: boolean;
-  fri: boolean;
-  sat: boolean;
+  sun: AttendanceDayValue;
+  mon: AttendanceDayValue;
+  tue: AttendanceDayValue;
+  wed: AttendanceDayValue;
+  thu: AttendanceDayValue;
+  fri: AttendanceDayValue;
+  sat: AttendanceDayValue;
 };
 
 export type DayTimeEntry = {
@@ -146,7 +151,21 @@ export function createDefaultAdminAttendanceRow(
 
 export function countPresentDays(row: AttendanceRow): number {
   return ATTENDANCE_DAYS.reduce(
-    (total, { key }) => total + (row[key] ? 1 : 0),
+    (total, { key }) => total + (row[key].hours > 0 ? 1 : 0),
+    0
+  );
+}
+
+export function countTotalHours(row: AttendanceRow): number {
+  return ATTENDANCE_DAYS.reduce(
+    (total, { key }) => total + row[key].hours,
+    0
+  );
+}
+
+export function countTotalOvertimeHours(row: AttendanceRow): number {
+  return ATTENDANCE_DAYS.reduce(
+    (total, { key }) => total + row[key].overtimeHours,
     0
   );
 }
@@ -154,9 +173,10 @@ export function countPresentDays(row: AttendanceRow): number {
 export function setDayValue(
   row: AttendanceRow,
   dayKey: AttendanceDayKey,
-  present: boolean
+  hours: number,
+  overtimeHours: number
 ): AttendanceRow {
-  return { ...row, [dayKey]: present };
+  return { ...row, [dayKey]: { hours, overtimeHours } };
 }
 
 export function setAdminDayTime(

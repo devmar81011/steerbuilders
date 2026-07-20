@@ -30,6 +30,8 @@ import {
   calculateDayHours,
   countAdminHours,
   countPresentDays,
+  countTotalHours,
+  countTotalOvertimeHours,
   formatHours,
   formatWeekRange,
   getWeekStart,
@@ -62,7 +64,7 @@ const tabs: { id: AttendanceTab; label: string; description: string }[] = [
   {
     id: "construction",
     label: "Construction",
-    description: "Daily present / absent — daily rate, Sunday off by default.",
+    description: "Daily hours and overtime input — regular hours + OT per day.",
   },
   {
     id: "admin",
@@ -102,6 +104,43 @@ function AttendanceChip({
     >
       {present ? "Present" : "Absent"}
     </button>
+  );
+}
+
+function ConstructionDayCell({
+  entry,
+  disabled,
+  onHoursChange,
+}: {
+  entry: { hours: number; overtimeHours: number };
+  disabled?: boolean;
+  onHoursChange: (hours: number, overtimeHours: number) => void;
+}) {
+  return (
+    <div className="mx-auto flex w-[120px] flex-col items-center gap-1.5">
+      <input
+        type="number"
+        min="0"
+        max="24"
+        step="0.5"
+        value={entry.hours}
+        disabled={disabled}
+        onChange={(e) => onHoursChange(Number(e.target.value) || 0, entry.overtimeHours)}
+        className="w-full rounded border border-sbc-gray-light px-2 py-1 text-center text-xs focus:border-sbc-gold focus:outline-none focus:ring-1 focus:ring-sbc-gold/40 disabled:opacity-60"
+        placeholder="Hrs"
+      />
+      <input
+        type="number"
+        min="0"
+        max="24"
+        step="0.5"
+        value={entry.overtimeHours}
+        disabled={disabled}
+        onChange={(e) => onHoursChange(entry.hours, Number(e.target.value) || 0)}
+        className="w-full rounded border border-sbc-gray-light px-2 py-1 text-center text-xs focus:border-sbc-gold focus:outline-none focus:ring-1 focus:ring-sbc-gold/40 disabled:opacity-60"
+        placeholder="OT"
+      />
+    </div>
   );
 }
 
@@ -191,7 +230,7 @@ export function AttendanceClient({
   const sortedConstructionRows = useMemo(
     () =>
       sortRows(constructionRows, constructionSort, (row, key) => {
-        if (key === "present") return countPresentDays(row);
+        if (key === "present") return countTotalHours(row);
         return row.employeeName;
       }),
     [constructionRows, constructionSort]
@@ -226,9 +265,8 @@ export function AttendanceClient({
     });
   }
 
-  function handleConstructionToggle(row: AttendanceRow, dayKey: AttendanceDayKey) {
-    const nextPresent = !row[dayKey];
-    const nextRow = setDayValue(row, dayKey, nextPresent);
+  function handleConstructionToggle(row: AttendanceRow, dayKey: AttendanceDayKey, hours: number, overtimeHours: number) {
+    const nextRow = setDayValue(row, dayKey, hours, overtimeHours);
 
     setConstructionRows((current) =>
       current.map((item) =>
@@ -243,7 +281,8 @@ export function AttendanceClient({
         row.employeeId,
         weekStart,
         dayKey,
-        nextPresent
+        hours,
+        overtimeHours
       );
       if (result.error) {
         setConstructionRows((current) =>
@@ -391,14 +430,15 @@ export function AttendanceClient({
                   onSort={(key) => toggleConstructionSort(key as ConstructionSortKey)}
                   align="right"
                 >
-                  Days Present
+                  Total Hrs
                 </SortableTableHead>
+                <TableHead align="right">Total OT</TableHead>
               </tr>
             </TableHeader>
             <TableBody>
               {sortedConstructionRows.length === 0 ? (
                 <TableEmpty
-                  colSpan={ATTENDANCE_DAYS.length + 2}
+                  colSpan={ATTENDANCE_DAYS.length + 3}
                   message="No active construction employees."
                 />
               ) : (
@@ -407,15 +447,20 @@ export function AttendanceClient({
                     <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
                     {ATTENDANCE_DAYS.map(({ key }) => (
                       <TableCell key={key} className="text-center">
-                        <AttendanceChip
-                          present={row[key]}
+                        <ConstructionDayCell
+                          entry={row[key]}
                           disabled={isBusy}
-                          onToggle={() => handleConstructionToggle(row, key)}
+                          onHoursChange={(hours, overtimeHours) =>
+                            handleConstructionToggle(row, key, hours, overtimeHours)
+                          }
                         />
                       </TableCell>
                     ))}
                     <TableCell align="right" numeric className="!text-sbc-black">
-                      {countPresentDays(row)} / 7
+                      {formatHours(countTotalHours(row))}
+                    </TableCell>
+                    <TableCell align="right" numeric className="!text-sbc-black">
+                      {formatHours(countTotalOvertimeHours(row))}
                     </TableCell>
                   </TableRow>
                 ))

@@ -1,4 +1,4 @@
-import type { EmployeeCategory, EmployeeRole } from "@/lib/employee-categories";
+import type { EmployeeCategory, EmployeeDesignation } from "@/lib/employee-categories";
 import type { DeductionLine } from "@/lib/deduction-lines";
 import type { RateType } from "@/lib/rate-types";
 
@@ -7,10 +7,11 @@ export type Employee = {
   employeeNumber: string;
   name: string;
   category: EmployeeCategory;
-  role: EmployeeRole;
+  designation: EmployeeDesignation;
   rate: number;
   rateType: RateType;
   status: "active" | "inactive";
+  assignedSite?: string;
 };
 
 export type PayrollEntry = {
@@ -50,27 +51,29 @@ export const mockEmployees: Employee[] = [
     employeeNumber: "SBC-001",
     name: "Juan Dela Cruz",
     category: "construction",
-    role: "Foreman",
+    designation: "Foreman",
     rate: 450,
     rateType: "daily",
     status: "active",
+    assignedSite: "Main Site",
   },
   {
     id: "emp-002",
     employeeNumber: "SBC-002",
     name: "Maria Santos",
     category: "admin",
-    role: "Operations",
+    designation: "Operations",
     rate: 406.25,
     rateType: "hourly",
     status: "active",
+    assignedSite: "Head Office",
   },
   {
     id: "emp-003",
     employeeNumber: "SBC-003",
     name: "Pedro Reyes",
     category: "construction",
-    role: "Skilled",
+    designation: "Skilled",
     rate: 380,
     rateType: "daily",
     status: "active",
@@ -80,17 +83,18 @@ export const mockEmployees: Employee[] = [
     employeeNumber: "SBC-004",
     name: "Ana Lopez",
     category: "admin",
-    role: "Finance/Admin",
+    designation: "Finance/Admin",
     rate: 343.75,
     rateType: "hourly",
     status: "active",
+    assignedSite: "Head Office",
   },
   {
     id: "emp-005",
     employeeNumber: "SBC-005",
     name: "Carlo Mendoza",
     category: "ojt",
-    role: "Trainee",
+    designation: "Trainee",
     rate: 150,
     rateType: "hourly",
     status: "active",

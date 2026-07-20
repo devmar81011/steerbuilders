@@ -208,7 +208,8 @@ export async function updateAttendanceDay(
   employeeId: string,
   weekStart: string,
   dayKey: AttendanceDayKey,
-  present: boolean
+  hours: number,
+  overtimeHours: number
 ): Promise<{ error?: string; success?: boolean; preview?: boolean }> {
   await requireAdmin();
   if (!isSupabaseConfigured() || isPreviewEmployeeId(employeeId)) {
@@ -239,7 +240,7 @@ export async function updateAttendanceDay(
             sat: existing.sat,
           }
         : {}),
-      [dayKey]: present,
+      [dayKey]: { hours, overtimeHours },
     };
 
     const payload = {
