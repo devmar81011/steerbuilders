@@ -43,7 +43,7 @@ function mapRoleRate(row: Record<string, unknown>): DeductionRoleRate {
     id: row.id as string,
     adjustmentId: row.adjustment_id as string,
     category: row.category as EmployeeCategory,
-    role: row.role as DeductionRoleRate["role"],
+    designation: row.role as DeductionRoleRate["designation"],
     value: Number(row.value),
   };
 }
@@ -104,7 +104,7 @@ async function syncRoleRates(
   adjustmentId: string,
   roleRates: {
     category: EmployeeCategory;
-    role: string;
+    designation: string;
     value: number;
   }[]
 ) {
@@ -121,7 +121,8 @@ async function syncRoleRates(
       roleRates.map((rate) => ({
         adjustment_id: adjustmentId,
         category: rate.category,
-        role: rate.role,
+        // DB column is still named `role` for now
+        role: rate.designation,
         value: rate.value,
       }))
     );
@@ -143,7 +144,7 @@ export async function createPayrollAdjustment(input: {
   active: boolean;
   role_rates?: {
     category: EmployeeCategory;
-    role: string;
+    designation: string;
     value: number;
   }[];
 }) {
@@ -200,7 +201,7 @@ export async function updatePayrollAdjustment(
     description: string;
     role_rates?: {
       category: EmployeeCategory;
-      role: string;
+      designation: string;
       value: number;
     }[];
   }

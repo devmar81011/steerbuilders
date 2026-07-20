@@ -101,7 +101,7 @@ function roleRatesToFormMap(
   const map: Record<string, string> = {};
   for (const rate of roleRates ?? []) {
     if (rate.category !== category) continue;
-    map[roleRateKey(rate.category, rate.role)] = String(rate.value);
+    map[roleRateKey(rate.category, rate.designation)] = String(rate.value);
   }
   return map;
 }
@@ -200,7 +200,7 @@ export function ContributionsClient({ initialAdjustments }: Props) {
           id: `drr-${Date.now()}-${index}`,
           adjustmentId: savedId,
           category: rate.category,
-          role: rate.role as DeductionRoleRate["role"],
+          designation: rate.designation as DeductionRoleRate["designation"],
           value: rate.value,
         })
       );
@@ -392,7 +392,7 @@ export function ContributionsClient({ initialAdjustments }: Props) {
               {activeTabMeta.label} role overrides
             </p>
             <p className="mt-1 text-xs text-sbc-gray">
-              {employeeCategories[activeTab].roles.join(", ")} — leave blank to
+              {employeeCategories[activeTab].designations.join(", ")} — leave blank to
               use the default.
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

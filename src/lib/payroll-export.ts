@@ -77,7 +77,7 @@ export function buildPayrollCsv(input: {
       entry,
       payrollAdjustments,
       employee
-        ? { category: employee.category, role: employee.role }
+        ? { category: employee.category, designation: employee.designation }
         : undefined
     );
 
@@ -134,7 +134,7 @@ export function buildPayrollCsv(input: {
             entry,
             payrollAdjustments,
             employee
-              ? { category: employee.category, role: employee.role }
+              ? { category: employee.category, designation: employee.designation }
               : undefined
           );
           return sum + getDeductionAmount(breakdown, rule.code);

@@ -29,13 +29,15 @@ export type ProjectInput = {
 
 import type { EmployeeCategory } from "@/lib/employee-categories";
 import type { RateType } from "@/lib/rate-types";
+import type { AttendanceDayValue } from "@/lib/attendance";
 
 export type EmployeeRow = {
   id: string;
   employee_number: string;
   name: string;
   category: EmployeeCategory;
-  role: string;
+  designation: string;
+  assigned_site: string | null;
   rate: number;
   rate_type: RateType;
   status: "active" | "inactive";
@@ -47,13 +49,13 @@ export type AttendanceWeekRow = {
   id: string;
   employee_id: string;
   week_start: string;
-  sun: boolean;
-  mon: boolean;
-  tue: boolean;
-  wed: boolean;
-  thu: boolean;
-  fri: boolean;
-  sat: boolean;
+  sun: AttendanceDayValue;
+  mon: AttendanceDayValue;
+  tue: AttendanceDayValue;
+  wed: AttendanceDayValue;
+  thu: AttendanceDayValue;
+  fri: AttendanceDayValue;
+  sat: AttendanceDayValue;
   created_at: string;
   updated_at: string;
 };
