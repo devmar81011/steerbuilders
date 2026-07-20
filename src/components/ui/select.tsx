@@ -61,10 +61,10 @@ export function Select({
           {label}
         </label>
       )}
-      <div className={`relative ${radii.control}`}>
+      <div className="relative">
         <select
           id={selectId}
-          className={`sbc-select w-full cursor-pointer appearance-none border border-sbc-gray-light/90 bg-sbc-white text-sbc-black shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-all duration-200 hover:border-sbc-gold/45 focus:border-sbc-gold focus:outline-none focus:ring-2 focus:ring-sbc-gold/20 ${styles.field} ${className}`}
+          className={`sbc-select w-full cursor-pointer appearance-none border border-sbc-gray-light/90 bg-sbc-white text-sbc-black shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-all duration-200 hover:border-sbc-gold/45 focus:border-sbc-gold focus:outline-none focus:ring-2 focus:ring-sbc-gold/20 ${radii.control} ${styles.field} ${className}`}
           {...props}
         >
           {children}

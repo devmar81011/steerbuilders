@@ -60,6 +60,7 @@ import {
   buildPayrollCsv,
   payrollExportFilename,
 } from "@/lib/payroll-export";
+import { radii } from "@/lib/design-tokens";
 
 type Props = {
   initialConstructionEntries: PayrollEntry[];
@@ -147,7 +148,7 @@ function chunkEntries(entries: PayrollEntry[], size: number): PayrollEntry[][] {
 }
 
 const tableFieldClass =
-  "h-9 w-full min-w-[96px] rounded-md border border-sbc-gray-light/90 bg-sbc-white px-2 text-sm font-medium text-sbc-black outline-none transition-colors hover:border-sbc-gold/45 focus:border-sbc-gold focus:ring-2 focus:ring-sbc-gold/20 disabled:cursor-not-allowed disabled:opacity-60";
+  `h-9 w-full min-w-[96px] ${radii.control} border border-sbc-gray-light/90 bg-sbc-white px-2 text-sm font-medium text-sbc-black outline-none transition-colors hover:border-sbc-gold/45 focus:border-sbc-gold focus:ring-2 focus:ring-sbc-gold/20 disabled:cursor-not-allowed disabled:opacity-60`;
 
 function InlineTextField({
   value,
