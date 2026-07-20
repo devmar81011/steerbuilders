@@ -299,10 +299,6 @@ function PayrollPrintSheet({
                     <dd>{period.label}</dd>
                   </div>
                   <div>
-                    <dt>Employee No.</dt>
-                    <dd>{entry.employeeNumber || "—"}</dd>
-                  </div>
-                  <div>
                     <dt>Site / Designation</dt>
                     <dd>
                       {[entry.siteAssignment, entry.designation]
@@ -413,7 +409,7 @@ function PayrollTable({
     value: string
   ) => void;
 }) {
-  const columnCount = 19;
+  const columnCount = 18;
   const sortedEntries = useMemo(
     () => sortRows(entries, sort, (row, key) => row[key]),
     [entries, sort]
@@ -458,7 +454,6 @@ function PayrollTable({
         <Table>
           <TableHeader>
             <tr>
-              <TableHead>Employee No.</TableHead>
               <SortableTableHead
                 sortKey="employeeName"
                 activeKey={sort.key}
@@ -538,9 +533,6 @@ function PayrollTable({
 
                 return (
                 <TableRow key={entry.id}>
-                  <TableCell className="!text-sbc-gray">
-                    {entry.employeeNumber || "—"}
-                  </TableCell>
                   <TablePrimaryCell>{entry.employeeName}</TablePrimaryCell>
                   <TableCell>{entry.siteAssignment || "—"}</TableCell>
                   <TableCell align="right" numeric>
@@ -1275,9 +1267,13 @@ export function PayrollClient({
 
       <p className="mb-4 text-sm text-sbc-gray">
         Rates are employee-specific. Monthly pay is converted using 26 workdays and
-        8 hours per day. Draft rows calculate regular hours from attendance, and
-        overtime uses the normal hourly rate (1.0×), matching the provided payroll
-        sheet. Process to lock an entry.
+        8 hours per day. Draft rows calculate from attendance. Overtime uses the OT
+        pay % from{" "}
+        <a href="/admin/settings" className="font-medium text-sbc-gold hover:underline">
+          Settings
+        </a>{" "}
+        (currently {otPayPercent}% / {(otPayPercent / 100).toFixed(2)}× hourly). Process
+        to lock an entry.
       </p>
 
       {message && (

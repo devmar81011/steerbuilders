@@ -48,7 +48,6 @@ export function buildPayrollCsv(input: {
     csvRow(["Process Date", period.processDate]),
     "",
     csvRow([
-      "Employee No.",
       "Employee",
       "Site Assignment",
       "Daily Rate",
@@ -83,7 +82,6 @@ export function buildPayrollCsv(input: {
 
     rows.push(
       csvRow([
-        entry.employeeNumber,
         entry.employeeName,
         entry.siteAssignment,
         entry.dailyRate,

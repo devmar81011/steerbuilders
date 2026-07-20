@@ -361,7 +361,6 @@ export async function getPayrollEntries() {
 }
 
 export async function createEmployee(input: {
-  employee_number: string;
   name: string;
   category: EmployeeCategory;
   designation: string;
@@ -379,7 +378,7 @@ export async function createEmployee(input: {
     const { data, error } = await supabase
       .from("employees")
       .insert({
-        employee_number: input.employee_number,
+        employee_number: "",
         name: input.name,
         category: input.category,
         designation: input.designation,
@@ -404,7 +403,6 @@ export async function createEmployee(input: {
 export async function updateEmployee(
   id: string,
   input: {
-    employee_number: string;
     name: string;
     category: EmployeeCategory;
     designation: string;
