@@ -68,18 +68,37 @@ export function useAdminTheme() {
   return value;
 }
 
+function MoonIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className="block h-[1em] w-[1em]">
+      <path d="M12.1 2a9.9 9.9 0 0 0-1.2.07 8 8 0 1 0 11.03 11.03A10 10 0 0 1 12.1 2z" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className="block h-[1em] w-[1em]">
+      <path d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zm0-5h1v3h-2V2h1zm0 17h1v3h-2v-3h1zM2 11h3v2H2v-2zm17 0h3v2h-3v-2zM4.9 4.2l2.1 2.1-1.4 1.4-2.1-2.1 1.4-1.4zm12.5 12.5 2.1 2.1-1.4 1.4-2.1-2.1 1.4-1.4zM19.1 4.2l1.4 1.4-2.1 2.1-1.4-1.4 2.1-2.1zM6.4 16.7l1.4 1.4-2.1 2.1-1.4-1.4 2.1-2.1z" />
+    </svg>
+  );
+}
+
 export function AdminThemeToggle({ className = "" }: { className?: string }) {
   const { isDark, toggleTheme, ready } = useAdminTheme();
+  const label = isDark ? "Switch to light mode" : "Switch to dark mode";
 
   return (
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-      title={isDark ? "Light mode" : "Dark mode"}
-      className={`inline-flex h-9 items-center gap-2 rounded-md border border-sbc-gray-light bg-sbc-white px-3 text-[10px] font-semibold uppercase tracking-widest text-sbc-gray transition hover:border-sbc-gold/50 hover:text-sbc-gold-dark ${className}`}
+      aria-label={label}
+      title={label}
+      className={`inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-sbc-gray transition-colors hover:bg-sbc-gold/10 hover:text-sbc-gold-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/30 ${className}`}
     >
-      {ready ? (isDark ? "Light" : "Dark") : "Theme"}
+      <span className="text-[20px] leading-none">
+        {ready && isDark ? <SunIcon /> : <MoonIcon />}
+      </span>
     </button>
   );
 }
