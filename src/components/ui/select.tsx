@@ -28,14 +28,14 @@ const sizeStyles: Record<
 > = {
   sm: {
     label: "text-[10px] tracking-[0.14em]",
-    field: "h-10 py-0 pl-3 pr-11 text-sm font-medium",
-    chevron: "w-10",
+    field: "h-10 py-0 pl-3 pr-9 text-sm font-medium",
+    chevron: "right-2.5",
     icon: "h-4 w-4",
   },
   md: {
     label: "text-xs tracking-widest",
-    field: "h-12 py-0 pl-4 pr-12 text-sm font-semibold",
-    chevron: "w-11",
+    field: "h-12 py-0 pl-4 pr-10 text-sm font-semibold",
+    chevron: "right-3",
     icon: "h-4 w-4",
   },
 };
@@ -61,7 +61,7 @@ export function Select({
           {label}
         </label>
       )}
-      <div className={`group relative overflow-hidden ${radii.control}`}>
+      <div className={`relative ${radii.control}`}>
         <select
           id={selectId}
           className={`sbc-select w-full cursor-pointer appearance-none border border-sbc-gray-light/90 bg-sbc-white text-sbc-black shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-all duration-200 hover:border-sbc-gold/45 focus:border-sbc-gold focus:outline-none focus:ring-2 focus:ring-sbc-gold/20 ${styles.field} ${className}`}
@@ -70,7 +70,7 @@ export function Select({
           {children}
         </select>
         <span
-          className={`pointer-events-none absolute inset-y-0 right-0 flex items-center justify-center border-l border-sbc-gold/25 bg-sbc-off-white transition-colors group-hover:border-sbc-gold/40 group-hover:bg-sbc-gold/10 group-focus-within:border-sbc-gold/50 group-focus-within:bg-sbc-gold/10 ${styles.chevron}`}
+          className={`pointer-events-none absolute inset-y-0 flex items-center ${styles.chevron}`}
         >
           <ChevronDown className={`${styles.icon} text-sbc-gold`} />
         </span>
