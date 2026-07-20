@@ -162,8 +162,8 @@ function AdminDayCell({
     <div
       className={`mx-auto flex w-[148px] flex-col items-center gap-1 rounded-md border px-1.5 py-1.5 ${
         present
-          ? "border-emerald-500/35 bg-emerald-50/60"
-          : "border-red-300/40 bg-red-50/50"
+          ? "border-sbc-gold/35 bg-sbc-gold/5"
+          : "border-sbc-gray-light bg-sbc-gray-light/40"
       }`}
     >
       <TimePicker12h
@@ -180,13 +180,15 @@ function AdminDayCell({
       />
       <span
         className={`text-[9px] font-semibold uppercase tracking-[0.08em] ${
-          present ? "text-emerald-700" : "text-red-500"
+          present ? "text-sbc-gold-dark" : "text-sbc-gray"
         }`}
       >
         {present ? `${formatTime12(entry.timeIn)} – ${formatTime12(entry.timeOut)}` : "Off"}
       </span>
       {present && (
-        <span className="text-[9px] font-medium text-emerald-700">{formatHours(hours)}</span>
+        <span className="text-[9px] font-medium text-sbc-gold-dark">
+          {formatHours(hours)}
+        </span>
       )}
     </div>
   );
