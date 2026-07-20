@@ -34,11 +34,7 @@ import {
   type EmployeeCategory,
 } from "@/lib/employee-categories";
 import type { Employee } from "@/lib/mvp-data";
-import {
-  defaultRateTypeForCategory,
-  formatRateAmount,
-  type RateType,
-} from "@/lib/rate-types";
+import { formatRateAmount } from "@/lib/rate-types";
 import type { Site } from "@/lib/actions/sites";
 
 type Props = {
@@ -65,7 +61,6 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
     category: EmployeeCategory;
     designation: string;
     rate: string;
-    rateType: RateType;
     status: "active" | "inactive";
     assignedSite: string;
   }>({
@@ -73,7 +68,6 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
     category: "construction",
     designation: defaultDesignation,
     rate: "",
-    rateType: "daily",
     status: "active",
     assignedSite: "",
   });
@@ -108,7 +102,6 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
       ...form,
       category,
       designation: designations[0],
-      rateType: editingId ? form.rateType : defaultRateTypeForCategory(category),
     });
   }
 
@@ -123,7 +116,6 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
       category: "construction",
       designation: getDesignationsForCategory("construction")[0],
       rate: "",
-      rateType: "daily",
       status: "active",
       assignedSite: "",
     });
@@ -136,7 +128,6 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
       category: emp.category,
       designation: emp.designation,
       rate: String(emp.rate),
-      rateType: emp.rateType,
       status: emp.status,
       assignedSite: emp.assignedSite || "",
     });
@@ -158,7 +149,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
         category: form.category,
         designation: form.designation,
         rate,
-        rate_type: form.rateType,
+        rate_type: "hourly" as const,
         status: form.status,
         assigned_site: form.assignedSite.trim(),
       };
@@ -170,7 +161,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
             category: form.category,
             designation: form.designation,
             rate,
-            rate_type: form.rateType,
+            rate_type: "hourly",
             assigned_site: form.assignedSite.trim(),
           });
 
@@ -189,7 +180,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
                   category: form.category,
                   designation: form.designation as Employee["designation"],
                   rate,
-                  rateType: form.rateType,
+                  rateType: "hourly",
                   status: form.status,
                   assignedSite: form.assignedSite.trim(),
                 }
@@ -211,7 +202,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
             category: form.category,
             designation: form.designation as Employee["designation"],
             rate,
-            rateType: form.rateType,
+            rateType: "hourly",
             status: "active",
             assignedSite: form.assignedSite.trim(),
           },
@@ -252,8 +243,8 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
         </p>
         <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Employees</h1>
         <p className="mt-2 text-sm font-semibold text-sbc-gray">
-          Set each employee&apos;s own pay rate and basis — daily, monthly, or
-          hourly. Payroll always uses the rate saved here.
+          Set each employee&apos;s hourly rate. Payment basis is hourly for
+          everyone — payroll uses the rate saved here.
         </p>
       </div>
 
@@ -321,29 +312,21 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
               ))}
           </Select>
 
-          <Input
-            label="Rate (PHP)"
-            size="sm"
-            type="number"
-            min="0.01"
-            step="0.01"
-            value={form.rate}
-            onChange={(e) => setForm({ ...form, rate: e.target.value })}
-            required
-          />
-
-          <Select
-            label="Pay Basis"
-            size="sm"
-            value={form.rateType}
-            onChange={(e) =>
-              setForm({ ...form, rateType: e.target.value as RateType })
-            }
-          >
-            <option value="daily">Daily</option>
-            <option value="monthly">Monthly</option>
-            <option value="hourly">Hourly</option>
-          </Select>
+          <div>
+            <Input
+              label="Hourly Rate (PHP)"
+              size="sm"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={form.rate}
+              onChange={(e) => setForm({ ...form, rate: e.target.value })}
+              required
+            />
+            <p className="mt-1.5 text-xs font-medium text-sbc-gray">
+              Payment basis is hourly for all employees.
+            </p>
+          </div>
 
           {editingId && (
             <Select
@@ -456,7 +439,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
                           {emp.assignedSite || "—"}
                         </TableCell>
                         <TableCell numeric className="!font-semibold !text-sbc-black">
-                          {formatRateAmount(emp.rate, emp.rateType)}
+                          {formatRateAmount(emp.rate, "hourly")}
                         </TableCell>
                         <TableCell align="right">
                           <span

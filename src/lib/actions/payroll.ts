@@ -383,7 +383,7 @@ export async function createEmployee(input: {
         category: input.category,
         designation: input.designation,
         rate: input.rate,
-        rate_type: input.rate_type,
+        rate_type: "hourly",
         assigned_site: input.assigned_site || null,
         status: "active",
       })
@@ -415,7 +415,18 @@ export async function updateEmployee(
   await requireAdmin();
   try {
     const supabase = await createClient();
-    const { error } = await supabase.from("employees").update(input).eq("id", id);
+    const { error } = await supabase
+      .from("employees")
+      .update({
+        name: input.name,
+        category: input.category,
+        designation: input.designation,
+        rate: input.rate,
+        rate_type: "hourly",
+        status: input.status,
+        assigned_site: input.assigned_site || null,
+      })
+      .eq("id", id);
     if (error) return { error: error.message };
   } catch {
     return { error: "Could not update employee." };

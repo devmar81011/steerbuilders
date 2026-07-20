@@ -41,7 +41,7 @@ export const adminTourSteps: AdminTourStep[] = [
     id: "employees",
     title: "2 · Employees",
     description:
-      "Add workers and set each person’s own rate and pay basis — daily, monthly, or hourly.",
+      "Add workers and set each person’s hourly rate. Payment basis is hourly for everyone.",
     target: '[data-admin-tour="nav-employees"]',
     navigateTo: "/admin/employees",
   },
