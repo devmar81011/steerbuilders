@@ -59,8 +59,8 @@ type Props = {
   employeeSites: Record<string, string>;
 };
 
-type ConstructionSortKey = "name" | "present";
-type HourlySortKey = "name" | "hours";
+type ConstructionSortKey = "name" | "site" | "present";
+type HourlySortKey = "name" | "site" | "hours";
 
 const tabs: { id: AttendanceTab; label: string; description: string }[] = [
   {
@@ -249,6 +249,7 @@ export function AttendanceClient({
         constructionSort,
         (row, key) => {
           if (key === "present") return countTotalHours(row);
+          if (key === "site") return employeeSites[row.employeeId] || "Unassigned";
           return row.employeeName;
         }
       ),
@@ -262,6 +263,7 @@ export function AttendanceClient({
         hourlySort,
         (row, key) => {
           if (key === "hours") return countAdminHours(row);
+          if (key === "site") return employeeSites[row.employeeId] || "Unassigned";
           return row.employeeName;
         }
       ),
@@ -456,7 +458,14 @@ export function AttendanceClient({
                 >
                   Employee
                 </SortableTableHead>
-                <TableHead>Site</TableHead>
+                <SortableTableHead
+                  sortKey="site"
+                  activeKey={constructionSort.key}
+                  direction={constructionSort.direction}
+                  onSort={(key) => toggleConstructionSort(key as ConstructionSortKey)}
+                >
+                  Site
+                </SortableTableHead>
                 {ATTENDANCE_DAYS.map(({ key, label }) => (
                   <TableHead key={key} className="text-center">
                     {label}
@@ -527,7 +536,14 @@ export function AttendanceClient({
                 >
                   Employee
                 </SortableTableHead>
-                <TableHead>Site</TableHead>
+                <SortableTableHead
+                  sortKey="site"
+                  activeKey={hourlySort.key}
+                  direction={hourlySort.direction}
+                  onSort={(key) => toggleHourlySort(key as HourlySortKey)}
+                >
+                  Site
+                </SortableTableHead>
                 {ATTENDANCE_DAYS.map(({ key, label }) => (
                   <TableHead key={key} className="text-center">
                     {label}
