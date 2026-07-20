@@ -5,19 +5,28 @@ import { SitesClient } from "@/components/admin/sites-client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { setDisbursementMethods } from "@/lib/actions/site-settings";
+import {
+  setDisbursementMethods,
+  setOtPayPercent,
+} from "@/lib/actions/site-settings";
 import type { Site } from "@/lib/actions/sites";
+import { otPayMultiplierFromPercent } from "@/lib/ot-pay-rate";
 
 type Props = {
   sites: Site[];
   initialDisbursementMethods: string[];
+  initialOtPayPercent: number;
 };
 
 export function SettingsClient({
   sites,
   initialDisbursementMethods,
+  initialOtPayPercent,
 }: Props) {
   const [methods, setMethods] = useState(initialDisbursementMethods);
+  const [otPayPercent, setOtPayPercentState] = useState(
+    String(initialOtPayPercent)
+  );
   const [newMethod, setNewMethod] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -62,6 +71,26 @@ export function SettingsClient({
     });
   }
 
+  function handleSaveOtPercent(e: React.FormEvent) {
+    e.preventDefault();
+    const value = Number(otPayPercent);
+    if (!Number.isFinite(value) || value < 0) {
+      setMessage("Enter a valid OT pay percent (for example 100 or 125).");
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await setOtPayPercent(value);
+      if (result.error) {
+        setMessage(result.error);
+        return;
+      }
+      const saved = result.percent ?? value;
+      setOtPayPercentState(String(saved));
+      setMessage(`OT pay saved at ${saved}% (${otPayMultiplierFromPercent(saved)}× hourly).`);
+    });
+  }
+
   return (
     <>
       <div className="mb-8">
@@ -70,8 +99,7 @@ export function SettingsClient({
         </p>
         <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Settings</h1>
         <p className="mt-2 text-sm font-semibold text-sbc-gray">
-          Manage project sites and payroll disbursement options used across
-          attendance and payroll.
+          Manage project sites, OT pay rate, and payroll disbursement options.
         </p>
       </div>
 
@@ -83,6 +111,45 @@ export function SettingsClient({
 
       <section className="mb-10">
         <SitesClient sites={sites} embedded />
+      </section>
+
+      <section className="mb-10">
+        <Card>
+          <p className="mb-1 text-xs font-medium uppercase tracking-widest text-sbc-gold">
+            OT Pay Rate
+          </p>
+          <p className="mb-4 text-sm text-sbc-gray">
+            Percent of hourly rate used for overtime. 100% = normal hourly
+            (Excel sample). 125% = 1.25× hourly.
+          </p>
+          <form
+            onSubmit={handleSaveOtPercent}
+            className="flex flex-wrap items-end gap-3"
+          >
+            <div className="min-w-[180px]">
+              <Input
+                label="OT Pay %"
+                size="sm"
+                type="number"
+                min="0"
+                max="300"
+                step="0.01"
+                value={otPayPercent}
+                onChange={(e) => setOtPayPercentState(e.target.value)}
+                required
+              />
+            </div>
+            <Button type="submit" size="sm" disabled={pending}>
+              Save OT Rate
+            </Button>
+            <p className="text-sm font-semibold text-sbc-gray">
+              Current multiplier:{" "}
+              <span className="text-sbc-black">
+                {otPayMultiplierFromPercent(Number(otPayPercent) || 0)}×
+              </span>
+            </p>
+          </form>
+        </Card>
       </section>
 
       <section>

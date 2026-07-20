@@ -76,6 +76,7 @@ type Props = {
   ojtAttendance: AdminAttendanceRow[];
   payrollAdjustments: PayrollAdjustment[];
   disbursementMethods: string[];
+  otPayPercent: number;
 };
 
 type PayrollForm = {
@@ -200,7 +201,8 @@ function applyPreviewAttendanceToPayroll(
   hourlyAttendance: AdminAttendanceRow[],
   category: PayrollTab,
   period: PayrollPeriod,
-  payrollAdjustments: PayrollAdjustment[]
+  payrollAdjustments: PayrollAdjustment[],
+  otPayPercent: number
 ): PayrollEntry[] {
   let computed: PayrollEntry[];
 
@@ -215,7 +217,8 @@ function applyPreviewAttendanceToPayroll(
       merged,
       [],
       category,
-      payrollAdjustments
+      payrollAdjustments,
+      otPayPercent
     );
   } else {
     const weekStarts = getWeekStartsForPayrollPeriod(category, period);
@@ -230,7 +233,8 @@ function applyPreviewAttendanceToPayroll(
       [],
       mergedHourly,
       category,
-      payrollAdjustments
+      payrollAdjustments,
+      otPayPercent
     );
   }
 
@@ -675,6 +679,7 @@ export function PayrollClient({
   ojtAttendance,
   payrollAdjustments,
   disbursementMethods,
+  otPayPercent,
 }: Props) {
   const [activeTab, setActiveTab] = useState<PayrollTab>("construction");
   const [constructionEntries, setConstructionEntries] = useState(() =>
@@ -685,7 +690,8 @@ export function PayrollClient({
       adminAttendance,
       "construction",
       initialConstructionPeriod,
-      payrollAdjustments
+      payrollAdjustments,
+      otPayPercent
     )
   );
   const [adminEntries, setAdminEntries] = useState(() =>
@@ -696,7 +702,8 @@ export function PayrollClient({
       adminAttendance,
       "admin",
       initialAdminPeriod,
-      payrollAdjustments
+      payrollAdjustments,
+      otPayPercent
     )
   );
   const [ojtEntries, setOjtEntries] = useState(() =>
@@ -707,7 +714,8 @@ export function PayrollClient({
       ojtAttendance,
       "ojt",
       initialOjtPeriod,
-      payrollAdjustments
+      payrollAdjustments,
+      otPayPercent
     )
   );
   const [constructionPeriod, setConstructionPeriod] = useState(
@@ -781,7 +789,8 @@ export function PayrollClient({
           [],
           tab,
           result.period,
-          payrollAdjustments
+          payrollAdjustments,
+          otPayPercent
         )
       );
       setConstructionPeriod(result.period);
@@ -798,7 +807,8 @@ export function PayrollClient({
           result.hourlyAttendance,
           tab,
           result.period,
-          payrollAdjustments
+          payrollAdjustments,
+          otPayPercent
         )
       );
       setAdminPeriod(result.period);
@@ -814,7 +824,8 @@ export function PayrollClient({
         result.hourlyAttendance,
         tab,
         result.period,
-        payrollAdjustments
+        payrollAdjustments,
+        otPayPercent
       )
     );
     setOjtPeriod(result.period);
@@ -833,11 +844,12 @@ export function PayrollClient({
       hourlyRate: editingEntry?.hourlyRate ?? 0,
       regularHours: Number(form.hours) || 0,
       overtimeHours: Number(form.overtimeHours) || 0,
+      otPayPercent,
       cashAdvance: Number(form.cashAdvance) || 0,
       additionalPay: Number(form.additionalPay) || 0,
       statutoryDeductions: deductions,
     });
-  }, [editingEntry?.hourlyRate, form, payrollAdjustments]);
+  }, [editingEntry?.hourlyRate, form, payrollAdjustments, otPayPercent]);
 
   const totalDeductionPreview = useMemo(
     () => sumDeductionLines(breakdownFromForm(form, payrollAdjustments)),
@@ -898,6 +910,7 @@ export function PayrollClient({
       hourlyRate: editingEntry?.hourlyRate ?? 0,
       regularHours: Number(next.hours) || 0,
       overtimeHours: Number(next.overtimeHours) || 0,
+      otPayPercent,
     });
     setForm({
       ...next,
@@ -1079,6 +1092,7 @@ export function PayrollClient({
       hourlyRate: entry.hourlyRate,
       regularHours: entry.hours,
       overtimeHours: entry.overtimeHours,
+      otPayPercent,
       cashAdvance,
       additionalPay,
       statutoryDeductions: entry.deductions,

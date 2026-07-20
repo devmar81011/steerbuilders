@@ -22,6 +22,7 @@ import {
   type PayrollTab,
 } from "@/lib/payroll-periods";
 import { getPayrollAdjustments } from "@/lib/actions/adjustments";
+import { getOtPayPercent } from "@/lib/actions/site-settings";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import {
   calculatePayrollAmounts,
@@ -45,7 +46,8 @@ function mapEmployee(row: Record<string, unknown>): Employee {
 function mapPayrollRow(
   row: Record<string, unknown>,
   period: PayrollPeriod,
-  category: EmployeeCategory
+  category: EmployeeCategory,
+  otPayPercent?: number
 ): PayrollEntry {
   const employee = row.employees as
     | {
@@ -68,6 +70,7 @@ function mapPayrollRow(
     hourlyRate,
     regularHours: hours,
     overtimeHours,
+    otPayPercent,
     cashAdvance: Number(row.cash_advance) || 0,
     additionalPay: Number(row.additional_pay) || 0,
     statutoryDeductions: Number(row.deductions) || 0,
@@ -186,14 +189,18 @@ async function getPayrollFromDatabase(
     const { data, error } = await supabase
       .from("payslips")
       .select(
-        "*, employees(employee_number, name, category, role, rate, rate_type), payroll_runs!inner(period_start, period_end)"
+        "*, employees(employee_number, name, category, designation, rate, rate_type), payroll_runs!inner(period_start, period_end)"
       )
       .eq("payroll_runs.period_start", period.periodStart)
       .eq("payroll_runs.period_end", period.periodEnd);
 
     if (error) return null;
 
-    const employees = (await getEmployees()).filter(
+    const [employees, otPayPercent] = await Promise.all([
+      getEmployees(),
+      getOtPayPercent(),
+    ]);
+    const categoryEmployees = employees.filter(
       (e) => e.status === "active" && e.category === category
     );
 
@@ -205,11 +212,11 @@ async function getPayrollFromDatabase(
     const byEmployee = new Map(
       rows.map((row: Record<string, unknown>) => [
         row.employee_id as string,
-        mapPayrollRow(row, period, category),
+        mapPayrollRow(row, period, category, otPayPercent),
       ])
     );
 
-    return employees.map((employee) => {
+    return categoryEmployees.map((employee) => {
       const existing = byEmployee.get(employee.id);
       if (existing) return existing;
       return buildMockEntry(employee, period);
@@ -257,6 +264,7 @@ async function enrichPayrollFromAttendance(
     (employee) => employee.status === "active" && employee.category === category
   );
   const adjustments = await getPayrollAdjustments();
+  const otPayPercent = await getOtPayPercent();
 
   return applyAttendanceToPayrollEntries(
     entries,
@@ -264,7 +272,8 @@ async function enrichPayrollFromAttendance(
     constructionRows,
     hourlyRows,
     category,
-    adjustments
+    adjustments,
+    otPayPercent
   );
 }
 

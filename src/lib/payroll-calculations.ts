@@ -1,4 +1,8 @@
 import { MONTHLY_WORK_DAYS, type RateType } from "@/lib/rate-types";
+import {
+  DEFAULT_OT_PAY_PERCENT,
+  otPayMultiplierFromPercent,
+} from "@/lib/ot-pay-rate";
 
 export function roundPayrollAmount(value: number): number {
   return Math.round(value * 100) / 100;
@@ -25,12 +29,19 @@ export function calculatePayrollAmounts(input: {
   hourlyRate: number;
   regularHours: number;
   overtimeHours: number;
+  /** OT pay percent of hourly rate. 100 = 1.0×, 125 = 1.25×. */
+  otPayPercent?: number;
   cashAdvance?: number;
   additionalPay?: number;
   statutoryDeductions?: number;
 }) {
+  const otMultiplier = otPayMultiplierFromPercent(
+    input.otPayPercent ?? DEFAULT_OT_PAY_PERCENT
+  );
   const regularPay = roundPayrollAmount(input.regularHours * input.hourlyRate);
-  const overtimePay = roundPayrollAmount(input.overtimeHours * input.hourlyRate);
+  const overtimePay = roundPayrollAmount(
+    input.overtimeHours * input.hourlyRate * otMultiplier
+  );
   const grossPay = roundPayrollAmount(regularPay + overtimePay);
   const cashAdvance = input.cashAdvance ?? 0;
   const additionalPay = input.additionalPay ?? 0;

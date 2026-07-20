@@ -5,16 +5,17 @@ import {
 } from "@/lib/actions/attendance";
 import { getPayrollAdjustments } from "@/lib/actions/adjustments";
 import { getEmployees, getPayrollEntries } from "@/lib/actions/payroll";
-import { getDisbursementMethods } from "@/lib/actions/site-settings";
+import { getDisbursementMethods, getOtPayPercent } from "@/lib/actions/site-settings";
 import { getWeekStartsForPayrollPeriod } from "@/lib/payroll-from-attendance";
 
 export default async function PayrollPage() {
-  const [payroll, employees, payrollAdjustments, disbursementMethods] =
+  const [payroll, employees, payrollAdjustments, disbursementMethods, otPayPercent] =
     await Promise.all([
       getPayrollEntries(),
       getEmployees(),
       getPayrollAdjustments(),
       getDisbursementMethods(),
+      getOtPayPercent(),
     ]);
 
   const { constructionPeriod, adminPeriod, ojtPeriod } = payroll;
@@ -54,6 +55,7 @@ export default async function PayrollPage() {
         ojtAttendance={ojtAttendance}
         payrollAdjustments={payrollAdjustments}
         disbursementMethods={disbursementMethods}
+        otPayPercent={otPayPercent}
     />
   );
 }

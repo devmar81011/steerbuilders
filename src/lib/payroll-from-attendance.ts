@@ -46,7 +46,8 @@ export function applyAttendanceToPayrollEntry(
   constructionAttendance: AttendanceRow[],
   hourlyAttendance: AdminAttendanceRow[],
   category: PayrollTab,
-  adjustments: PayrollAdjustment[] = []
+  adjustments: PayrollAdjustment[] = [],
+  otPayPercent?: number
 ): PayrollEntry {
   if (entry.status === "processed") return entry;
 
@@ -87,6 +88,7 @@ export function applyAttendanceToPayrollEntry(
     hourlyRate,
     regularHours: hours,
     overtimeHours,
+    otPayPercent,
   });
 
   const { deductionLines, totalDeductions } = computePayrollAdjustments(
@@ -104,6 +106,7 @@ export function applyAttendanceToPayrollEntry(
     hourlyRate,
     regularHours: hours,
     overtimeHours,
+    otPayPercent,
     cashAdvance: Number(entry.cashAdvance) || 0,
     additionalPay: Number(entry.additionalPay) || 0,
     statutoryDeductions: deductions,
@@ -133,7 +136,8 @@ export function applyAttendanceToPayrollEntries(
   constructionAttendance: AttendanceRow[],
   hourlyAttendance: AdminAttendanceRow[],
   category: PayrollTab,
-  adjustments: PayrollAdjustment[] = []
+  adjustments: PayrollAdjustment[] = [],
+  otPayPercent?: number
 ): PayrollEntry[] {
   return entries.map((entry) => {
     const employee = employees.find((item) => item.id === entry.employeeId);
@@ -145,7 +149,8 @@ export function applyAttendanceToPayrollEntries(
       constructionAttendance,
       hourlyAttendance,
       category,
-      adjustments
+      adjustments,
+      otPayPercent
     );
   });
 }

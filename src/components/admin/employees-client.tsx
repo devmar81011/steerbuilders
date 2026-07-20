@@ -11,6 +11,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableEmpty,
   TableHead,
   TableHeader,
   TableMeta,
@@ -29,6 +30,7 @@ import {
   formatEmployeeCategory,
   getCategoryLabelClass,
   getDesignationsForCategory,
+  payrollCategories,
   type EmployeeCategory,
 } from "@/lib/employee-categories";
 import type { Employee } from "@/lib/mvp-data";
@@ -92,6 +94,16 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
       }),
     [employees, sort]
   );
+
+  const employeesByCategory = useMemo(() => {
+    return payrollCategories
+      .map((category) => ({
+        category,
+        label: formatEmployeeCategory(category),
+        rows: sortedEmployees.filter((employee) => employee.category === category),
+      }))
+      .filter((group) => group.rows.length > 0);
+  }, [sortedEmployees]);
 
   function handleCategoryChange(category: EmployeeCategory) {
     const designations = getDesignationsForCategory(category);
@@ -380,110 +392,136 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
         </form>
       </Card>
 
-      <TableShell minWidth="880px" scrollable>
-        <Table>
-          <TableHeader>
-            <tr>
-              <SortableTableHead
-                sortKey="employeeNumber"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => toggleSort(key as EmployeeSortKey)}
-              >
-                Employee No.
-              </SortableTableHead>
-              <SortableTableHead
-                sortKey="name"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => toggleSort(key as EmployeeSortKey)}
-              >
-                Name
-              </SortableTableHead>
-              <SortableTableHead
-                sortKey="category"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => toggleSort(key as EmployeeSortKey)}
-              >
-                Category
-              </SortableTableHead>
-              <SortableTableHead
-                sortKey="designation"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => toggleSort(key as EmployeeSortKey)}
-              >
-                Designation
-              </SortableTableHead>
-              <TableHead>Assigned Site</TableHead>
-              <SortableTableHead
-                sortKey="rate"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => toggleSort(key as EmployeeSortKey)}
-              >
-                Rate
-              </SortableTableHead>
-              <SortableTableHead
-                sortKey="status"
-                align="right"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => toggleSort(key as EmployeeSortKey)}
-              >
-                Status
-              </SortableTableHead>
-              <TableHead align="right">Actions</TableHead>
-            </tr>
-          </TableHeader>
-          <TableBody>
-            {sortedEmployees.map((emp) => (
-              <TableRow key={emp.id}>
-                <TableCell className="!font-medium !text-sbc-gray">
-                  {emp.employeeNumber || "—"}
-                </TableCell>
-                <TablePrimaryCell>{emp.name}</TablePrimaryCell>
-                <TableCell>
-                  <span
-                    className={`text-xs font-semibold uppercase tracking-widest ${getCategoryLabelClass(emp.category)}`}
+      <div className="space-y-8">
+        {employeesByCategory.length === 0 ? (
+          <TableShell minWidth="880px" scrollable>
+            <Table>
+              <TableBody>
+                <TableEmpty
+                  colSpan={8}
+                  message="No employees yet. Add the first employee above."
+                />
+              </TableBody>
+            </Table>
+          </TableShell>
+        ) : (
+          employeesByCategory.map((group) => (
+            <div key={group.category}>
+              <div className="mb-3 flex items-end justify-between gap-3">
+                <div>
+                  <p
+                    className={`text-xs font-semibold uppercase tracking-widest ${getCategoryLabelClass(group.category)}`}
                   >
-                    {formatEmployeeCategory(emp.category)}
+                    {group.label}
+                  </p>
+                  <p className="mt-1 text-sm text-sbc-gray">
+                    {group.rows.length} employee
+                    {group.rows.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+              </div>
+
+              <TableShell minWidth="880px" scrollable>
+                <Table>
+                  <TableHeader>
+                    <tr>
+                      <SortableTableHead
+                        sortKey="employeeNumber"
+                        activeKey={sort.key}
+                        direction={sort.direction}
+                        onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                      >
+                        Employee No.
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="name"
+                        activeKey={sort.key}
+                        direction={sort.direction}
+                        onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                      >
+                        Name
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="designation"
+                        activeKey={sort.key}
+                        direction={sort.direction}
+                        onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                      >
+                        Designation
+                      </SortableTableHead>
+                      <TableHead>Assigned Site</TableHead>
+                      <SortableTableHead
+                        sortKey="rate"
+                        activeKey={sort.key}
+                        direction={sort.direction}
+                        onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                      >
+                        Rate
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="status"
+                        align="right"
+                        activeKey={sort.key}
+                        direction={sort.direction}
+                        onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                      >
+                        Status
+                      </SortableTableHead>
+                      <TableHead align="right">Actions</TableHead>
+                    </tr>
+                  </TableHeader>
+                  <TableBody>
+                    {group.rows.map((emp) => (
+                      <TableRow key={emp.id}>
+                        <TableCell className="!font-medium !text-sbc-gray">
+                          {emp.employeeNumber || "—"}
+                        </TableCell>
+                        <TablePrimaryCell>{emp.name}</TablePrimaryCell>
+                        <TableCell className="!text-sbc-gray">
+                          {emp.designation}
+                        </TableCell>
+                        <TableCell className="!text-sbc-gray">
+                          {emp.assignedSite || "—"}
+                        </TableCell>
+                        <TableCell numeric className="!font-semibold !text-sbc-black">
+                          {formatRateAmount(emp.rate, emp.rateType)}
+                        </TableCell>
+                        <TableCell align="right">
+                          <span
+                            className={`text-xs font-semibold uppercase tracking-widest ${
+                              emp.status === "active"
+                                ? "text-sbc-gold"
+                                : "text-sbc-gray"
+                            }`}
+                          >
+                            {emp.status}
+                          </span>
+                        </TableCell>
+                        <TableCell align="right">
+                          <TableRowActions>
+                            <TableEditButton onClick={() => startEdit(emp)} />
+                            <TableDeleteButton
+                              label="Remove"
+                              onClick={() => handleDelete(emp.id, emp.name)}
+                              disabled={pending}
+                            />
+                          </TableRowActions>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TableMeta>
+                  <span>
+                    {group.rows.length} {group.label.toLowerCase()}
                   </span>
-                </TableCell>
-                <TableCell className="!text-sbc-gray">{emp.designation}</TableCell>
-                <TableCell className="!text-sbc-gray">{emp.assignedSite || "—"}</TableCell>
-                <TableCell numeric className="!font-semibold !text-sbc-black">
-                  {formatRateAmount(emp.rate, emp.rateType)}
-                </TableCell>
-                <TableCell align="right">
-                  <span
-                    className={`text-xs font-semibold uppercase tracking-widest ${
-                      emp.status === "active" ? "text-sbc-gold" : "text-sbc-gray"
-                    }`}
-                  >
-                    {emp.status}
-                  </span>
-                </TableCell>
-                <TableCell align="right">
-                  <TableRowActions>
-                    <TableEditButton onClick={() => startEdit(emp)} />
-                    <TableDeleteButton
-                      label="Remove"
-                      onClick={() => handleDelete(emp.id, emp.name)}
-                      disabled={pending}
-                    />
-                  </TableRowActions>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        <TableMeta>
-          <span>{employees.length} employees</span>
-          <span className="text-sbc-gold">{"Construction & Admin roster"}</span>
-        </TableMeta>
-      </TableShell>
+                  <span className="text-sbc-gold">Grouped by category</span>
+                </TableMeta>
+              </TableShell>
+            </div>
+          ))
+        )}
+      </div>
     </>
   );
 }

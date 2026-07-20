@@ -13,6 +13,11 @@ import {
   DISBURSEMENT_METHODS_KEY,
   normalizeDisbursementMethods,
 } from "@/lib/disbursement-methods";
+import {
+  DEFAULT_OT_PAY_PERCENT,
+  OT_PAY_PERCENT_KEY,
+  normalizeOtPayPercent,
+} from "@/lib/ot-pay-rate";
 
 export async function getFeaturedProjectLimit(): Promise<number> {
   try {
@@ -109,4 +114,49 @@ export async function setDisbursementMethods(methods: string[]) {
   revalidatePath("/admin/settings");
   revalidatePath("/admin/payroll");
   return { success: true, methods: value };
+}
+
+export async function getOtPayPercent(): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", OT_PAY_PERCENT_KEY)
+      .maybeSingle();
+
+    if (error || data?.value === undefined || data?.value === null) {
+      return DEFAULT_OT_PAY_PERCENT;
+    }
+
+    return normalizeOtPayPercent(data.value);
+  } catch {
+    return DEFAULT_OT_PAY_PERCENT;
+  }
+}
+
+export async function setOtPayPercent(percent: number) {
+  await requireAdmin();
+  const value = normalizeOtPayPercent(percent);
+
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("site_settings").upsert(
+      {
+        key: OT_PAY_PERCENT_KEY,
+        value,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Could not save OT pay percent." };
+  }
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/payroll");
+  revalidatePath("/admin/attendance");
+  return { success: true, percent: value };
 }
