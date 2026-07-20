@@ -6,6 +6,10 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logout } from "@/lib/actions/auth";
 import { IconButton } from "@/components/ui/icon-button";
+import {
+  AdminThemeProvider,
+  AdminThemeToggle,
+} from "@/components/admin/admin-theme";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", exact: true },
@@ -78,7 +82,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }, [mobileMenuOpen]);
 
   return (
-    <div className="flex min-h-screen bg-sbc-off-white">
+    <AdminThemeProvider>
+      <div className="flex min-h-screen bg-sbc-off-white">
       <aside className="hidden w-64 flex-col border-r border-sbc-gray-light bg-sbc-white md:flex">
         <div className="border-b border-sbc-gray-light p-6">
           <Link href="/admin" className="flex items-center gap-3">
@@ -201,7 +206,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               Steer Builders — Payroll System
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-4">
+          <div className="flex shrink-0 items-center gap-3 sm:gap-4">
+            <AdminThemeToggle />
             <form action={logout}>
               <button
                 type="submit"
@@ -216,5 +222,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>
     </div>
+    </AdminThemeProvider>
   );
 }

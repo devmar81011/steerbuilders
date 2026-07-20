@@ -34,7 +34,8 @@ body {
   font-family: var(--font-montserrat), system-ui, sans-serif;
 }
 
-/* Super Admin scoped dark mode — remaps brand tokens for that subtree only */
+/* Admin / Super Admin scoped dark mode — remaps brand tokens for that subtree only */
+.sbc-dark,
 .sa-dark {
   color-scheme: dark;
   --sbc-black: #f2f2f2;
@@ -50,39 +51,48 @@ body {
   color: var(--foreground);
 }
 
+.sbc-dark input,
+.sbc-dark textarea,
+.sbc-dark select,
 .sa-dark input,
 .sa-dark textarea,
 .sa-dark select {
   color-scheme: dark;
 }
 
+.sbc-dark .sa-alert-error,
 .sa-dark .sa-alert-error {
   border-color: rgb(239 68 68 / 0.4);
   background: rgb(127 29 29 / 0.35);
   color: rgb(254 202 202);
 }
 
+.sbc-dark .sa-alert-ok,
 .sa-dark .sa-alert-ok {
   border-color: rgb(184 143 63 / 0.45);
   background: rgb(184 143 63 / 0.12);
   color: #f2f2f2;
 }
 
+.sbc-dark .sa-option,
 .sa-dark .sa-option {
   background: var(--sbc-white);
   border-color: var(--sbc-gray-light);
 }
 
+.sbc-dark .sa-option-selected,
 .sa-dark .sa-option-selected {
   border-color: rgb(184 143 63 / 0.45);
   background: rgb(184 143 63 / 0.12);
 }
 
+.sbc-dark .sa-option-danger,
 .sa-dark .sa-option-danger {
   border-color: rgb(239 68 68 / 0.4);
   background: rgb(127 29 29 / 0.28);
 }
 
+.sbc-dark .sa-option-danger-title,
 .sa-dark .sa-option-danger-title {
   color: rgb(254 202 202);
 }

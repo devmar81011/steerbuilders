@@ -74,7 +74,7 @@ export function LoginForm({
       {state.error && (
         <p
           role="alert"
-          className="border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"
+          className="sa-alert-error border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"
         >
           {state.error}
         </p>
