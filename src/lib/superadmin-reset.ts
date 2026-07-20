@@ -1,5 +1,7 @@
 import "server-only";
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 
 export const RESET_TARGETS = [
@@ -22,8 +24,27 @@ export type ResetCounts = {
   inquiries: number;
 };
 
+/** Prefer service role; otherwise use the signed-in admin session. */
+async function getResetClient(): Promise<SupabaseClient> {
+  const service = createServiceClient();
+  if (service) return service;
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user || user.app_metadata.role !== "admin") {
+    throw new Error(
+      "Sign in at /admin first (keep that session), then retry reset. Or add SUPABASE_SERVICE_ROLE_KEY in Vercel."
+    );
+  }
+
+  return supabase;
+}
+
 async function countRows(
-  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
+  supabase: SupabaseClient,
   table: string
 ): Promise<number> {
   const { count, error } = await supabase
@@ -34,22 +55,27 @@ async function countRows(
 }
 
 export async function getResetCounts(): Promise<ResetCounts> {
-  const supabase = createServiceClient();
-  if (!supabase) {
-    throw new Error("Service role key is not configured.");
-  }
+  const supabase = await getResetClient();
 
-  const [constructionAttendance, adminAttendance, payslips, payrollRuns, employees, sites, projects, inquiries] =
-    await Promise.all([
-      countRows(supabase, "attendance_weeks"),
-      countRows(supabase, "admin_attendance_weeks"),
-      countRows(supabase, "payslips"),
-      countRows(supabase, "payroll_runs"),
-      countRows(supabase, "employees"),
-      countRows(supabase, "sites"),
-      countRows(supabase, "projects"),
-      countRows(supabase, "inquiries"),
-    ]);
+  const [
+    constructionAttendance,
+    adminAttendance,
+    payslips,
+    payrollRuns,
+    employees,
+    sites,
+    projects,
+    inquiries,
+  ] = await Promise.all([
+    countRows(supabase, "attendance_weeks"),
+    countRows(supabase, "admin_attendance_weeks"),
+    countRows(supabase, "payslips"),
+    countRows(supabase, "payroll_runs"),
+    countRows(supabase, "employees"),
+    countRows(supabase, "sites"),
+    countRows(supabase, "projects"),
+    countRows(supabase, "inquiries"),
+  ]);
 
   return {
     attendance: constructionAttendance + adminAttendance,
@@ -62,13 +88,16 @@ export async function getResetCounts(): Promise<ResetCounts> {
 }
 
 async function deleteAll(
-  supabase: NonNullable<ReturnType<typeof createServiceClient>>,
+  supabase: SupabaseClient,
   table: string
 ): Promise<number> {
   const before = await countRows(supabase, table);
   if (before === 0) return 0;
 
-  const { error } = await supabase.from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
+  const { error } = await supabase
+    .from(table)
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
   if (error) throw new Error(`${table}: ${error.message}`);
   return before;
 }
@@ -76,10 +105,7 @@ async function deleteAll(
 export async function runOperationalReset(
   targets: ResetTarget[]
 ): Promise<Record<string, number>> {
-  const supabase = createServiceClient();
-  if (!supabase) {
-    throw new Error("Service role key is not configured.");
-  }
+  const supabase = await getResetClient();
 
   const cleared: Record<string, number> = {};
   const selected = new Set(targets);
@@ -101,7 +127,8 @@ export async function runOperationalReset(
   if (selected.has("employees")) {
     // Payslips restrict employee deletes — clear remaining payroll first.
     if (!selected.has("payroll")) {
-      cleared.payslips = (cleared.payslips ?? 0) + (await deleteAll(supabase, "payslips"));
+      cleared.payslips =
+        (cleared.payslips ?? 0) + (await deleteAll(supabase, "payslips"));
       cleared.payrollRuns =
         (cleared.payrollRuns ?? 0) + (await deleteAll(supabase, "payroll_runs"));
     }

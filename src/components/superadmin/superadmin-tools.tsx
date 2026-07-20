@@ -118,8 +118,12 @@ export function SuperadminTools() {
       <div>
         <p className="text-sm font-semibold text-sbc-gray">
           Clear test data yourself before demos — no need to ask the agent.
-          Settings (OT %, disbursement methods, deduction rules) are kept.
-          Destructive actions require typing{" "}
+          Stay signed in at{" "}
+          <a href="/admin" className="text-sbc-gold-dark underline">
+            /admin
+          </a>{" "}
+          in this browser so resets can run. Settings (OT %, disbursement
+          methods, deduction rules) are kept. Destructive actions require typing{" "}
           <span className="font-bold text-sbc-black">RESET</span>.
         </p>
       </div>
