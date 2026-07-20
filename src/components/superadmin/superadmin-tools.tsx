@@ -166,11 +166,11 @@ export function SuperadminTools() {
             return (
               <label
                 key={opt.id}
-                className={`flex cursor-pointer gap-3 rounded-lg border px-4 py-3 ${
+                className={`sa-option flex cursor-pointer gap-3 rounded-lg border px-4 py-3 ${
                   checked
                     ? opt.danger
-                      ? "border-red-300 bg-red-50"
-                      : "border-sbc-gold/40 bg-sbc-gold/10"
+                      ? "sa-option-danger border-red-300 bg-red-50"
+                      : "sa-option-selected border-sbc-gold/40 bg-sbc-gold/10"
                     : "border-sbc-gray-light bg-sbc-white"
                 }`}
               >
@@ -183,7 +183,9 @@ export function SuperadminTools() {
                 <span>
                   <span
                     className={`block text-sm font-semibold ${
-                      opt.danger ? "text-red-800" : "text-sbc-black"
+                      opt.danger
+                        ? "sa-option-danger-title text-red-800"
+                        : "text-sbc-black"
                     }`}
                   >
                     {opt.title}
@@ -210,13 +212,13 @@ export function SuperadminTools() {
         {error && (
           <p
             role="alert"
-            className="mt-4 border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"
+            className="sa-alert-error mt-4 border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"
           >
             {error}
           </p>
         )}
         {message && (
-          <p className="mt-4 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-3 py-2 text-sm font-semibold text-sbc-black">
+          <p className="sa-alert-ok mt-4 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-3 py-2 text-sm font-semibold text-sbc-black">
             {message}
           </p>
         )}

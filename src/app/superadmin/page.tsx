@@ -7,9 +7,5 @@ export default async function SuperadminPage() {
     redirect("/superadmin/tools");
   }
 
-  return (
-    <div className="flex min-h-screen items-center bg-sbc-off-white px-4 py-12">
-      <SuperadminLoginForm />
-    </div>
-  );
+  return <SuperadminLoginForm />;
 }

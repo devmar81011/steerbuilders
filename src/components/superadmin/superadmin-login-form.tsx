@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import {
+  SuperadminThemeProvider,
+  SuperadminThemeToggle,
+} from "@/components/superadmin/superadmin-theme";
 
 export function SuperadminLoginForm() {
   const router = useRouter();
@@ -37,38 +41,45 @@ export function SuperadminLoginForm() {
   }
 
   return (
-    <Card className="mx-auto w-full max-w-md">
-      <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
-        Super Admin
-      </p>
-      <h1 className="mt-2 text-2xl font-bold text-sbc-black">Sign in</h1>
-      <p className="mt-2 text-sm text-sbc-gray">
-        Use this area only to reset operational data for demos and testing.
-      </p>
-
-      <form onSubmit={onSubmit} className="mt-6 space-y-4">
-        <Input
-          label="Password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-          required
-        />
-
-        {error && (
-          <p
-            role="alert"
-            className="border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"
-          >
-            {error}
+    <SuperadminThemeProvider>
+      <div className="relative flex min-h-screen items-center bg-sbc-off-white px-4 py-12">
+        <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+          <SuperadminThemeToggle />
+        </div>
+        <Card className="mx-auto w-full max-w-md">
+          <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
+            Super Admin
           </p>
-        )}
+          <h1 className="mt-2 text-2xl font-bold text-sbc-black">Sign in</h1>
+          <p className="mt-2 text-sm text-sbc-gray">
+            Use this area only to reset operational data for demos and testing.
+          </p>
 
-        <Button type="submit" size="sm" disabled={pending || !password}>
-          {pending ? "Signing in…" : "Continue"}
-        </Button>
-      </form>
-    </Card>
+          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+            <Input
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+
+            {error && (
+              <p
+                role="alert"
+                className="sa-alert-error border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700"
+              >
+                {error}
+              </p>
+            )}
+
+            <Button type="submit" size="sm" disabled={pending || !password}>
+              {pending ? "Signing in…" : "Continue"}
+            </Button>
+          </form>
+        </Card>
+      </div>
+    </SuperadminThemeProvider>
   );
 }
