@@ -48,6 +48,7 @@ import {
 import { sortRows, useTableSort } from "@/lib/table-sort";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
 import { formatTime12 } from "@/lib/time-format";
+import { Select } from "@/components/ui/select";
 
 type Props = {
   initialConstructionRows: AttendanceRow[];
@@ -55,6 +56,7 @@ type Props = {
   initialOjtRows: AdminAttendanceRow[];
   initialWeekStart: string;
   usingDatabase: boolean;
+  employeeSites: Record<string, string>;
 };
 
 type ConstructionSortKey = "name" | "present";
@@ -196,9 +198,11 @@ export function AttendanceClient({
   initialOjtRows,
   initialWeekStart,
   usingDatabase,
+  employeeSites,
 }: Props) {
   const [activeTab, setActiveTab] = useState<AttendanceTab>("construction");
   const [weekStart, setWeekStart] = useState(initialWeekStart);
+  const [siteFilter, setSiteFilter] = useState<string>("all");
   const [constructionRows, setConstructionRows] = useState(() =>
     mergeConstructionRowsWithPreview(initialWeekStart, initialConstructionRows)
   );
@@ -226,23 +230,40 @@ export function AttendanceClient({
       ? "No active admin employees."
       : "No active OJT trainees.";
 
+  const siteOptions = useMemo(() => {
+    const names = new Set(Object.values(employeeSites));
+    return Array.from(names).sort((a, b) => a.localeCompare(b));
+  }, [employeeSites]);
+
+  function matchesSiteFilter(employeeId: string) {
+    if (siteFilter === "all") return true;
+    return (employeeSites[employeeId] || "Unassigned") === siteFilter;
+  }
 
   const sortedConstructionRows = useMemo(
     () =>
-      sortRows(constructionRows, constructionSort, (row, key) => {
-        if (key === "present") return countTotalHours(row);
-        return row.employeeName;
-      }),
-    [constructionRows, constructionSort]
+      sortRows(
+        constructionRows.filter((row) => matchesSiteFilter(row.employeeId)),
+        constructionSort,
+        (row, key) => {
+          if (key === "present") return countTotalHours(row);
+          return row.employeeName;
+        }
+      ),
+    [constructionRows, constructionSort, siteFilter, employeeSites]
   );
 
   const sortedHourlyRows = useMemo(
     () =>
-      sortRows(hourlyRows, hourlySort, (row, key) => {
-        if (key === "hours") return countAdminHours(row);
-        return row.employeeName;
-      }),
-    [hourlyRows, hourlySort]
+      sortRows(
+        hourlyRows.filter((row) => matchesSiteFilter(row.employeeId)),
+        hourlySort,
+        (row, key) => {
+          if (key === "hours") return countAdminHours(row);
+          return row.employeeName;
+        }
+      ),
+    [hourlyRows, hourlySort, siteFilter, employeeSites]
   );
 
   const activeTabMeta = tabs.find((tab) => tab.id === activeTab)!;
@@ -346,6 +367,21 @@ export function AttendanceClient({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-[180px]">
+            <Select
+              label="Site"
+              size="sm"
+              value={siteFilter}
+              onChange={(e) => setSiteFilter(e.target.value)}
+            >
+              <option value="all">All sites</option>
+              {siteOptions.map((site) => (
+                <option key={site} value={site}>
+                  {site}
+                </option>
+              ))}
+            </Select>
+          </div>
           <Button
             type="button"
             variant="ghost"
@@ -418,6 +454,7 @@ export function AttendanceClient({
                 >
                   Employee
                 </SortableTableHead>
+                <TableHead>Site</TableHead>
                 {ATTENDANCE_DAYS.map(({ key, label }) => (
                   <TableHead key={key} className="text-center">
                     {label}
@@ -438,13 +475,20 @@ export function AttendanceClient({
             <TableBody>
               {sortedConstructionRows.length === 0 ? (
                 <TableEmpty
-                  colSpan={ATTENDANCE_DAYS.length + 3}
-                  message="No active construction employees."
+                  colSpan={ATTENDANCE_DAYS.length + 4}
+                  message={
+                    siteFilter === "all"
+                      ? "No active construction employees."
+                      : `No construction employees for ${siteFilter}.`
+                  }
                 />
               ) : (
                 sortedConstructionRows.map((row) => (
                   <TableRow key={row.employeeId}>
                     <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
+                    <TableCell className="!text-sbc-gray">
+                      {employeeSites[row.employeeId] || "Unassigned"}
+                    </TableCell>
                     {ATTENDANCE_DAYS.map(({ key }) => (
                       <TableCell key={key} className="text-center">
                         <ConstructionDayCell
@@ -481,6 +525,7 @@ export function AttendanceClient({
                 >
                   Employee
                 </SortableTableHead>
+                <TableHead>Site</TableHead>
                 {ATTENDANCE_DAYS.map(({ key, label }) => (
                   <TableHead key={key} className="text-center">
                     {label}
@@ -500,13 +545,20 @@ export function AttendanceClient({
             <TableBody>
               {sortedHourlyRows.length === 0 ? (
                 <TableEmpty
-                  colSpan={ATTENDANCE_DAYS.length + 2}
-                  message={hourlyEmptyMessage}
+                  colSpan={ATTENDANCE_DAYS.length + 3}
+                  message={
+                    siteFilter === "all"
+                      ? hourlyEmptyMessage
+                      : `No ${activeTab} employees for ${siteFilter}.`
+                  }
                 />
               ) : (
                 sortedHourlyRows.map((row) => (
                   <TableRow key={row.employeeId}>
                     <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
+                    <TableCell className="!text-sbc-gray">
+                      {employeeSites[row.employeeId] || "Unassigned"}
+                    </TableCell>
                     {ATTENDANCE_DAYS.map(({ key }) => (
                       <TableCell key={key} className="text-center">
                         <AdminDayCell

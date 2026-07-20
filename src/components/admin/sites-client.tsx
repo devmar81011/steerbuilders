@@ -27,11 +27,13 @@ import {
 
 type Props = {
   sites: Site[];
+  /** When true, hide the page-level Admin header (used inside Settings). */
+  embedded?: boolean;
 };
 
 type SiteSortKey = "name" | "status";
 
-export function SitesClient({ sites: initialSites }: Props) {
+export function SitesClient({ sites: initialSites, embedded = false }: Props) {
   const [sites, setSites] = useState(initialSites);
   const { sort, toggleSort } = useTableSort<SiteSortKey>({ defaultKey: "name" });
   const [message, setMessage] = useState<string | null>(null);
@@ -149,18 +151,35 @@ export function SitesClient({ sites: initialSites }: Props) {
 
   return (
     <>
-      <div className="mb-8">
-        <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
-          Admin
-        </p>
-        <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Sites</h1>
-        <p className="mt-2 text-sm font-semibold text-sbc-gray">
-          Manage project sites. Employees can be assigned to these sites.
-        </p>
-      </div>
+      {!embedded && (
+        <div className="mb-8">
+          <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
+            Admin
+          </p>
+          <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Sites</h1>
+          <p className="mt-2 text-sm font-semibold text-sbc-gray">
+            Manage project sites. Employees can be assigned to these sites.
+          </p>
+        </div>
+      )}
 
-      {message && (
+      {embedded && (
+        <div className="mb-4">
+          <h2 className="text-lg font-bold text-sbc-black">Project Sites</h2>
+          <p className="mt-1 text-sm text-sbc-gray">
+            Used for employee assignment and attendance grouping.
+          </p>
+        </div>
+      )}
+
+      {message && !embedded && (
         <p className="mb-6 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
+          {message}
+        </p>
+      )}
+
+      {message && embedded && (
+        <p className="mb-4 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
           {message}
         </p>
       )}

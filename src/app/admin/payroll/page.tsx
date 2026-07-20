@@ -5,14 +5,17 @@ import {
 } from "@/lib/actions/attendance";
 import { getPayrollAdjustments } from "@/lib/actions/adjustments";
 import { getEmployees, getPayrollEntries } from "@/lib/actions/payroll";
+import { getDisbursementMethods } from "@/lib/actions/site-settings";
 import { getWeekStartsForPayrollPeriod } from "@/lib/payroll-from-attendance";
 
 export default async function PayrollPage() {
-  const [payroll, employees, payrollAdjustments] = await Promise.all([
-    getPayrollEntries(),
-    getEmployees(),
-    getPayrollAdjustments(),
-  ]);
+  const [payroll, employees, payrollAdjustments, disbursementMethods] =
+    await Promise.all([
+      getPayrollEntries(),
+      getEmployees(),
+      getPayrollAdjustments(),
+      getDisbursementMethods(),
+    ]);
 
   const { constructionPeriod, adminPeriod, ojtPeriod } = payroll;
   const { rows: constructionAttendance } =
@@ -50,6 +53,7 @@ export default async function PayrollPage() {
         adminAttendance={adminAttendance}
         ojtAttendance={ojtAttendance}
         payrollAdjustments={payrollAdjustments}
+        disbursementMethods={disbursementMethods}
     />
   );
 }

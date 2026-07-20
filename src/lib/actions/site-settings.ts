@@ -2,12 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { requireAdminForAction } from "@/lib/auth/require-admin";
+import { requireAdmin, requireAdminForAction } from "@/lib/auth/require-admin";
 import {
   clampFeaturedProjectLimit,
   DEFAULT_FEATURED_PROJECT_LIMIT,
   FEATURED_PROJECT_LIMIT_KEY,
 } from "@/lib/featured-projects-config";
+import {
+  DEFAULT_DISBURSEMENT_METHODS,
+  DISBURSEMENT_METHODS_KEY,
+  normalizeDisbursementMethods,
+} from "@/lib/disbursement-methods";
 
 export async function getFeaturedProjectLimit(): Promise<number> {
   try {
@@ -60,4 +65,48 @@ export async function setFeaturedProjectLimit(
   revalidatePath("/admin/projects");
   revalidatePath("/");
   return { success: true, limit: value };
+}
+
+export async function getDisbursementMethods(): Promise<string[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("site_settings")
+      .select("value")
+      .eq("key", DISBURSEMENT_METHODS_KEY)
+      .maybeSingle();
+
+    if (error || data?.value === undefined || data?.value === null) {
+      return [...DEFAULT_DISBURSEMENT_METHODS];
+    }
+
+    return normalizeDisbursementMethods(data.value);
+  } catch {
+    return [...DEFAULT_DISBURSEMENT_METHODS];
+  }
+}
+
+export async function setDisbursementMethods(methods: string[]) {
+  await requireAdmin();
+  const value = normalizeDisbursementMethods(methods);
+
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.from("site_settings").upsert(
+      {
+        key: DISBURSEMENT_METHODS_KEY,
+        value,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+
+    if (error) return { error: error.message };
+  } catch {
+    return { error: "Could not save disbursement methods." };
+  }
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/payroll");
+  return { success: true, methods: value };
 }

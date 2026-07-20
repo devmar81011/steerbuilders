@@ -2,7 +2,7 @@ export const company = {
   name: "Steer Builders Corporation",
   shortName: "SBC",
   mantra: "We help build your vision.",
-  tagline: "Leading construction firm for homeowners and developers in Cebu and the region.",
+  tagline: "Reliable Construction Services for Homeowners and Developers",
   address: "Space 308 OneTree Plaza Hotel, R. Duterte St., Banawa, Cebu City",
   /** Google Maps search / open-in-app link */
   mapsHref:

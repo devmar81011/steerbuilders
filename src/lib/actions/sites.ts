@@ -68,8 +68,9 @@ export async function createSite(input: { name: string }) {
     }
     if (!data?.id) return { error: "Site was not created." };
 
-    revalidatePath("/admin/sites");
+    revalidatePath("/admin/settings");
     revalidatePath("/admin/employees");
+    revalidatePath("/admin/attendance");
     return { success: true, id: data.id as string };
   } catch {
     return { error: "Could not create site." };
@@ -105,8 +106,9 @@ export async function updateSite(
     return { error: "Could not update site." };
   }
 
-  revalidatePath("/admin/sites");
+  revalidatePath("/admin/settings");
   revalidatePath("/admin/employees");
+  revalidatePath("/admin/attendance");
   return { success: true };
 }
 
@@ -126,7 +128,8 @@ export async function deleteSite(id: string) {
     return { error: "Could not delete site." };
   }
 
-  revalidatePath("/admin/sites");
+  revalidatePath("/admin/settings");
   revalidatePath("/admin/employees");
+  revalidatePath("/admin/attendance");
   return { success: true };
 }

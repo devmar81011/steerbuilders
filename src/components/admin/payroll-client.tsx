@@ -74,6 +74,7 @@ type Props = {
   adminAttendance: AdminAttendanceRow[];
   ojtAttendance: AdminAttendanceRow[];
   payrollAdjustments: PayrollAdjustment[];
+  disbursementMethods: string[];
 };
 
 type PayrollForm = {
@@ -558,6 +559,7 @@ export function PayrollClient({
   adminAttendance,
   ojtAttendance,
   payrollAdjustments,
+  disbursementMethods,
 }: Props) {
   const [activeTab, setActiveTab] = useState<PayrollTab>("construction");
   const [constructionEntries, setConstructionEntries] = useState(() =>
@@ -1126,6 +1128,10 @@ export function PayrollClient({
             onChange={(e) => setForm({ ...form, cashAdvance: e.target.value })}
             required
           />
+          <p className="md:col-span-2 -mt-2 text-xs text-sbc-gray">
+            Deducted from this pay period&apos;s net (this week for construction,
+            this semi-monthly cutoff for admin/OJT).
+          </p>
           <Input
             label="Additional Pay (PHP)"
             size="sm"
@@ -1149,8 +1155,11 @@ export function PayrollClient({
             onChange={(e) => setForm({ ...form, disbursement: e.target.value })}
           >
             <option value="">Select disbursement method</option>
-            <option value="MLhuilier">MLhuilier</option>
-            <option value="BPI">BPI</option>
+            {disbursementMethods.map((method) => (
+              <option key={method} value={method}>
+                {method}
+              </option>
+            ))}
           </Select>
           <Input
             label="Remarks"
