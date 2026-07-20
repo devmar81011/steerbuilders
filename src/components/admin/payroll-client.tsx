@@ -146,6 +146,52 @@ function chunkEntries(entries: PayrollEntry[], size: number): PayrollEntry[][] {
   return chunks;
 }
 
+const tableFieldClass =
+  "h-9 w-full min-w-[96px] rounded-md border border-sbc-gray-light/90 bg-sbc-white px-2 text-sm font-medium text-sbc-black outline-none transition-colors hover:border-sbc-gold/45 focus:border-sbc-gold focus:ring-2 focus:ring-sbc-gold/20 disabled:cursor-not-allowed disabled:opacity-60";
+
+function InlineTextField({
+  value,
+  onCommit,
+  disabled,
+  type = "text",
+  align = "left",
+  className = "",
+}: {
+  value: string;
+  onCommit: (value: string) => void;
+  disabled?: boolean;
+  type?: "text" | "number";
+  align?: "left" | "right";
+  className?: string;
+}) {
+  return (
+    <input
+      key={value}
+      type={type}
+      disabled={disabled}
+      defaultValue={value}
+      min={type === "number" ? "0" : undefined}
+      step={type === "number" ? "0.01" : undefined}
+      onBlur={(e) => {
+        if (e.target.value !== value) onCommit(e.target.value);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+      className={`${tableFieldClass} ${align === "right" ? "text-right" : ""} ${className}`}
+    />
+  );
+}
+
+type InlinePayrollField =
+  | "cashAdvance"
+  | "additionalPay"
+  | "disbursement"
+  | "remarks"
+  | "chargedTo";
+
 function applyPreviewAttendanceToPayroll(
   entries: PayrollEntry[],
   employees: Employee[],
@@ -339,9 +385,11 @@ function PayrollTable({
   form,
   pendingId,
   sort,
+  disbursementMethods,
   onToggleSort,
   onStartEdit,
   onProcess,
+  onInlineUpdate,
 }: {
   entries: PayrollEntry[];
   category: PayrollTab;
@@ -350,9 +398,15 @@ function PayrollTable({
   form: PayrollForm;
   pendingId: string | null;
   sort: ReturnType<typeof useTableSort<PayrollSortKey>>["sort"];
+  disbursementMethods: string[];
   onToggleSort: (key: PayrollSortKey) => void;
   onStartEdit: (entry: PayrollEntry) => void;
   onProcess: (id: string) => void;
+  onInlineUpdate: (
+    entry: PayrollEntry,
+    field: InlinePayrollField,
+    value: string
+  ) => void;
 }) {
   const columnCount = 19;
   const sortedEntries = useMemo(
@@ -467,6 +521,16 @@ function PayrollTable({
               />
             ) : (
               sortedEntries.map((entry) => {
+                const rowBusy = pendingId === entry.id;
+                const disbursementOptions = Array.from(
+                  new Set(
+                    [
+                      ...disbursementMethods,
+                      entry.disbursement,
+                    ].filter(Boolean)
+                  )
+                );
+
                 return (
                 <TableRow key={entry.id}>
                   <TableCell className="!text-sbc-gray">
@@ -494,18 +558,68 @@ function PayrollTable({
                   <TableCell align="right" numeric className="!font-semibold !text-sbc-black">
                     {formatCurrency(entry.grossPay)}
                   </TableCell>
-                  <TableCell align="right" numeric>
-                    {formatCurrency(entry.cashAdvance)}
+                  <TableCell align="right">
+                    <InlineTextField
+                      type="number"
+                      align="right"
+                      value={String(entry.cashAdvance || 0)}
+                      disabled={rowBusy}
+                      onCommit={(value) =>
+                        onInlineUpdate(entry, "cashAdvance", value)
+                      }
+                    />
                   </TableCell>
-                  <TableCell align="right" numeric>
-                    {formatCurrency(entry.additionalPay)}
+                  <TableCell align="right">
+                    <InlineTextField
+                      type="number"
+                      align="right"
+                      value={String(entry.additionalPay || 0)}
+                      disabled={rowBusy}
+                      onCommit={(value) =>
+                        onInlineUpdate(entry, "additionalPay", value)
+                      }
+                    />
                   </TableCell>
                   <TableCell align="right" numeric className="!font-bold !text-sbc-gold">
                     {formatCurrency(entry.netPay)}
                   </TableCell>
-                  <TableCell>{entry.disbursement || "—"}</TableCell>
-                  <TableCell>{entry.remarks || "—"}</TableCell>
-                  <TableCell>{entry.chargedTo || "—"}</TableCell>
+                  <TableCell>
+                    <select
+                      disabled={rowBusy}
+                      value={entry.disbursement || ""}
+                      onChange={(e) =>
+                        onInlineUpdate(entry, "disbursement", e.target.value)
+                      }
+                      className={`${tableFieldClass} min-w-[120px] appearance-none bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22none%22%3E%3Cpath d=%22M5 7.5L10 12.5L15 7.5%22 stroke=%22%23b88f3f%22 stroke-width=%221.75%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat pr-8`}
+                    >
+                      <option value="">Select</option>
+                      {disbursementOptions.map((method) => (
+                        <option key={method} value={method}>
+                          {method}
+                        </option>
+                      ))}
+                    </select>
+                  </TableCell>
+                  <TableCell>
+                    <InlineTextField
+                      value={entry.remarks || ""}
+                      disabled={rowBusy}
+                      className="min-w-[140px]"
+                      onCommit={(value) =>
+                        onInlineUpdate(entry, "remarks", value)
+                      }
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <InlineTextField
+                      value={entry.chargedTo || ""}
+                      disabled={rowBusy}
+                      className="min-w-[120px]"
+                      onCommit={(value) =>
+                        onInlineUpdate(entry, "chargedTo", value)
+                      }
+                    />
+                  </TableCell>
                   <TableCell align="right">
                     <span
                       className={`text-xs font-semibold uppercase tracking-widest ${
@@ -941,6 +1055,93 @@ export function PayrollClient({
     });
   }
 
+  function handleInlineUpdate(
+    entry: PayrollEntry,
+    field: InlinePayrollField,
+    rawValue: string
+  ) {
+    const cashAdvance =
+      field === "cashAdvance"
+        ? Math.max(Number(rawValue) || 0, 0)
+        : entry.cashAdvance;
+    const additionalPay =
+      field === "additionalPay"
+        ? Math.max(Number(rawValue) || 0, 0)
+        : entry.additionalPay;
+    const disbursement =
+      field === "disbursement" ? rawValue.trim() : entry.disbursement;
+    const remarks = field === "remarks" ? rawValue.trim() : entry.remarks;
+    const chargedTo =
+      field === "chargedTo" ? rawValue.trim() : entry.chargedTo;
+
+    const amounts = calculatePayrollAmounts({
+      hourlyRate: entry.hourlyRate,
+      regularHours: entry.hours,
+      overtimeHours: entry.overtimeHours,
+      cashAdvance,
+      additionalPay,
+      statutoryDeductions: entry.deductions,
+    });
+
+    const updatedEntry: PayrollEntry = {
+      ...entry,
+      cashAdvance,
+      additionalPay,
+      disbursement,
+      remarks,
+      chargedTo,
+      regularPay: amounts.regularPay,
+      overtimePay: amounts.overtimePay,
+      grossPay: amounts.grossPay,
+      netPay: amounts.netPay,
+    };
+
+    setPendingId(entry.id);
+    setActiveEntries((prev) =>
+      prev.map((item) => (item.id === entry.id ? updatedEntry : item))
+    );
+    savePayrollEntryPreview(updatedEntry);
+
+    if (editingId === entry.id) {
+      setForm((current) => ({
+        ...current,
+        cashAdvance: String(cashAdvance),
+        additionalPay: String(additionalPay),
+        disbursement,
+        remarks,
+        chargedTo,
+      }));
+    }
+
+    startTransition(async () => {
+      const result = await updatePayrollEntry(entry.id, {
+        hours: updatedEntry.hours,
+        overtime_hours: updatedEntry.overtimeHours,
+        regular_pay: updatedEntry.regularPay,
+        overtime_pay: updatedEntry.overtimePay,
+        gross_pay: updatedEntry.grossPay,
+        cash_advance: updatedEntry.cashAdvance,
+        additional_pay: updatedEntry.additionalPay,
+        deductions: updatedEntry.deductions,
+        net_pay: updatedEntry.netPay,
+        site_assignment: updatedEntry.siteAssignment,
+        disbursement: updatedEntry.disbursement,
+        remarks: updatedEntry.remarks,
+        charged_to: updatedEntry.chargedTo,
+        status: updatedEntry.status,
+      });
+
+      if (result.error) {
+        setMessage(result.error);
+        setActiveEntries((prev) =>
+          prev.map((item) => (item.id === entry.id ? entry : item))
+        );
+        savePayrollEntryPreview(entry);
+      }
+      setPendingId(null);
+    });
+  }
+
   function handleExportPayroll() {
     const csv = buildPayrollCsv({
       entries: activeEntries,
@@ -1155,7 +1356,11 @@ export function PayrollClient({
             onChange={(e) => setForm({ ...form, disbursement: e.target.value })}
           >
             <option value="">Select disbursement method</option>
-            {disbursementMethods.map((method) => (
+            {Array.from(
+              new Set(
+                [...disbursementMethods, form.disbursement].filter(Boolean)
+              )
+            ).map((method) => (
               <option key={method} value={method}>
                 {method}
               </option>
@@ -1224,9 +1429,11 @@ export function PayrollClient({
         form={form}
         pendingId={pendingId}
         sort={sort}
+        disbursementMethods={disbursementMethods}
         onToggleSort={toggleSort}
         onStartEdit={startEdit}
         onProcess={handleProcess}
+        onInlineUpdate={handleInlineUpdate}
       />
       </div>
 
