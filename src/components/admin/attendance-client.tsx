@@ -47,6 +47,7 @@ import {
 import { sortRows, useTableSort } from "@/lib/table-sort";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
 import { Select } from "@/components/ui/select";
+import { formatTime12 } from "@/lib/time-format";
 
 type Props = {
   initialConstructionRows: AttendanceRow[];
@@ -132,17 +133,45 @@ const AdminDayCell = memo(function AdminDayCell({
   disabled?: boolean;
   onTimeChange: (field: AdminTimeField, value: string) => void;
 }) {
+  const [editing, setEditing] = useState(false);
   const present = isAdminDayPresent(entry);
   const hours = calculateDayHours(entry);
+  const shellClass = `flex w-full max-w-[120px] flex-col items-start gap-0.5 rounded-md border px-0.5 py-1 ${
+    present
+      ? "border-sbc-gold/35 bg-sbc-gold/5"
+      : "border-sbc-gray-light bg-sbc-gray-light/40"
+  }`;
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setEditing(true)}
+        className={`${shellClass} cursor-pointer text-left disabled:cursor-not-allowed disabled:opacity-60`}
+        title="Click to edit time in / out"
+      >
+        {present ? (
+          <>
+            <span className="text-[10px] font-medium text-sbc-black">
+              {formatTime12(entry.timeIn)}
+            </span>
+            <span className="text-[10px] font-medium text-sbc-black">
+              {formatTime12(entry.timeOut)}
+            </span>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-sbc-gold-dark">
+              {formatHours(hours)}
+            </span>
+          </>
+        ) : (
+          <span className="text-[10px] font-medium text-sbc-gray">Off · set</span>
+        )}
+      </button>
+    );
+  }
 
   return (
-    <div
-      className={`flex w-full max-w-[120px] flex-col items-start gap-0.5 rounded-md border px-0.5 py-1 ${
-        present
-          ? "border-sbc-gold/35 bg-sbc-gold/5"
-          : "border-sbc-gray-light bg-sbc-gray-light/40"
-      }`}
-    >
+    <div className={shellClass}>
       <TimePicker12h
         label="In"
         value={entry.timeIn}
@@ -155,13 +184,22 @@ const AdminDayCell = memo(function AdminDayCell({
         disabled={disabled}
         onChange={(value) => onTimeChange("timeOut", value)}
       />
-      <span
-        className={`text-[9px] font-semibold uppercase tracking-[0.08em] ${
-          present ? "text-sbc-gold-dark" : "text-sbc-gray"
-        }`}
-      >
-        {present ? formatHours(hours) : "Off"}
-      </span>
+      <div className="flex w-full items-center justify-between gap-1">
+        <span
+          className={`text-[9px] font-semibold uppercase tracking-[0.08em] ${
+            present ? "text-sbc-gold-dark" : "text-sbc-gray"
+          }`}
+        >
+          {present ? formatHours(hours) : "Off"}
+        </span>
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          className="cursor-pointer text-[9px] font-semibold uppercase tracking-[0.08em] text-sbc-gold-dark hover:underline"
+        >
+          Done
+        </button>
+      </div>
     </div>
   );
 });
@@ -382,9 +420,6 @@ export function AttendanceClient({
   employeeSites,
 }: Props) {
   const [activeTab, setActiveTab] = useState<AttendanceTab>("construction");
-  const [mountedTabs, setMountedTabs] = useState<Set<AttendanceTab>>(
-    () => new Set<AttendanceTab>(["construction"])
-  );
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [siteFilter, setSiteFilter] = useState<string>("all");
   const [constructionRows, setConstructionRows] = useState(() =>
@@ -397,7 +432,8 @@ export function AttendanceClient({
     mergeAdminRowsWithPreview(initialWeekStart, initialOjtRows)
   );
   const [message, setMessage] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const [pendingSaves, setPendingSaves] = useState(0);
   const [loadingWeek, setLoadingWeek] = useState(false);
   const { sort: constructionSort, toggleSort: toggleConstructionSort } =
     useTableSort<ConstructionSortKey>({ defaultKey: "name" });
@@ -461,20 +497,17 @@ export function AttendanceClient({
   const activeTabMeta = tabs.find((tab) => tab.id === activeTab)!;
   const weekNavBusy = loadingWeek;
 
-  const selectTab = useCallback(
-    (tabId: AttendanceTab) => {
-      setActiveTab(tabId);
-      startTransition(() => {
-        setMountedTabs((current) => {
-          if (current.has(tabId)) return current;
-          const next = new Set(current);
-          next.add(tabId);
-          return next;
-        });
-      });
-    },
-    [startTransition]
-  );
+  const selectTab = useCallback((tabId: AttendanceTab) => {
+    setActiveTab(tabId);
+  }, []);
+
+  const beginSave = useCallback(() => {
+    setPendingSaves((count) => count + 1);
+  }, []);
+
+  const endSave = useCallback(() => {
+    setPendingSaves((count) => Math.max(0, count - 1));
+  }, []);
 
   const onConstructionToggleSort = useCallback(
     (key: ConstructionSortKey) => toggleConstructionSort(key),
@@ -524,26 +557,31 @@ export function AttendanceClient({
       saveConstructionAttendanceRow(nextRow);
       setMessage(null);
 
+      beginSave();
       startTransition(async () => {
-        const result = await updateAttendanceDay(
-          row.employeeId,
-          weekStart,
-          dayKey,
-          hours,
-          overtimeHours
-        );
-        if (result.error) {
-          setConstructionRows((current) =>
-            current.map((item) =>
-              item.employeeId === row.employeeId ? row : item
-            )
+        try {
+          const result = await updateAttendanceDay(
+            row.employeeId,
+            weekStart,
+            dayKey,
+            hours,
+            overtimeHours
           );
-          saveConstructionAttendanceRow(row);
-          setMessage(result.error);
+          if (result.error) {
+            setConstructionRows((current) =>
+              current.map((item) =>
+                item.employeeId === row.employeeId ? row : item
+              )
+            );
+            saveConstructionAttendanceRow(row);
+            setMessage(result.error);
+          }
+        } finally {
+          endSave();
         }
       });
     },
-    [weekStart, startTransition]
+    [weekStart, startTransition, beginSave, endSave]
   );
 
   const handleAdminTimeChange = useCallback(
@@ -563,26 +601,31 @@ export function AttendanceClient({
       saveAdminAttendanceRow(nextRow);
       setMessage(null);
 
+      beginSave();
       startTransition(async () => {
-        const result = await updateAdminAttendanceTime(
-          row.employeeId,
-          weekStart,
-          dayKey,
-          field,
-          value
-        );
-        if (result.error) {
-          setAdminRows((current) =>
-            current.map((item) =>
-              item.employeeId === row.employeeId ? row : item
-            )
+        try {
+          const result = await updateAdminAttendanceTime(
+            row.employeeId,
+            weekStart,
+            dayKey,
+            field,
+            value
           );
-          saveAdminAttendanceRow(row);
-          setMessage(result.error);
+          if (result.error) {
+            setAdminRows((current) =>
+              current.map((item) =>
+                item.employeeId === row.employeeId ? row : item
+              )
+            );
+            saveAdminAttendanceRow(row);
+            setMessage(result.error);
+          }
+        } finally {
+          endSave();
         }
       });
     },
-    [weekStart, startTransition]
+    [weekStart, startTransition, beginSave, endSave]
   );
 
   const handleOjtTimeChange = useCallback(
@@ -602,30 +645,35 @@ export function AttendanceClient({
       saveAdminAttendanceRow(nextRow);
       setMessage(null);
 
+      beginSave();
       startTransition(async () => {
-        const result = await updateAdminAttendanceTime(
-          row.employeeId,
-          weekStart,
-          dayKey,
-          field,
-          value
-        );
-        if (result.error) {
-          setOjtRows((current) =>
-            current.map((item) =>
-              item.employeeId === row.employeeId ? row : item
-            )
+        try {
+          const result = await updateAdminAttendanceTime(
+            row.employeeId,
+            weekStart,
+            dayKey,
+            field,
+            value
           );
-          saveAdminAttendanceRow(row);
-          setMessage(result.error);
+          if (result.error) {
+            setOjtRows((current) =>
+              current.map((item) =>
+                item.employeeId === row.employeeId ? row : item
+              )
+            );
+            saveAdminAttendanceRow(row);
+            setMessage(result.error);
+          }
+        } finally {
+          endSave();
         }
       });
     },
-    [weekStart, startTransition]
+    [weekStart, startTransition, beginSave, endSave]
   );
 
   const weekLabel = formatWeekRange(weekStart);
-  const cellsBusy = pending || loadingWeek;
+  const cellsBusy = pendingSaves > 0 || loadingWeek;
 
   return (
     <>
@@ -710,50 +758,44 @@ export function AttendanceClient({
         </p>
       )}
 
-      {mountedTabs.has("construction") && (
-        <div hidden={activeTab !== "construction"}>
-          <ConstructionAttendancePanel
-            rows={sortedConstructionRows}
-            sort={constructionSort}
-            onToggleSort={onConstructionToggleSort}
-            employeeSites={employeeSites}
-            siteFilter={siteFilter}
-            cellsBusy={cellsBusy}
-            onHoursChange={handleConstructionToggle}
-          />
-        </div>
+      {activeTab === "construction" && (
+        <ConstructionAttendancePanel
+          rows={sortedConstructionRows}
+          sort={constructionSort}
+          onToggleSort={onConstructionToggleSort}
+          employeeSites={employeeSites}
+          siteFilter={siteFilter}
+          cellsBusy={cellsBusy}
+          onHoursChange={handleConstructionToggle}
+        />
       )}
 
-      {mountedTabs.has("admin") && (
-        <div hidden={activeTab !== "admin"}>
-          <HourlyAttendancePanel
-            rows={sortedAdminRows}
-            sort={adminSort}
-            onToggleSort={onAdminToggleSort}
-            employeeSites={employeeSites}
-            siteFilter={siteFilter}
-            cellsBusy={cellsBusy}
-            emptyAllMessage="No active admin employees."
-            emptyFilteredMessage={`No admin employees for ${siteFilter}.`}
-            onTimeChange={handleAdminTimeChange}
-          />
-        </div>
+      {activeTab === "admin" && (
+        <HourlyAttendancePanel
+          rows={sortedAdminRows}
+          sort={adminSort}
+          onToggleSort={onAdminToggleSort}
+          employeeSites={employeeSites}
+          siteFilter={siteFilter}
+          cellsBusy={cellsBusy}
+          emptyAllMessage="No active admin employees."
+          emptyFilteredMessage={`No admin employees for ${siteFilter}.`}
+          onTimeChange={handleAdminTimeChange}
+        />
       )}
 
-      {mountedTabs.has("ojt") && (
-        <div hidden={activeTab !== "ojt"}>
-          <HourlyAttendancePanel
-            rows={sortedOjtRows}
-            sort={ojtSort}
-            onToggleSort={onOjtToggleSort}
-            employeeSites={employeeSites}
-            siteFilter={siteFilter}
-            cellsBusy={cellsBusy}
-            emptyAllMessage="No active OJT trainees."
-            emptyFilteredMessage={`No ojt employees for ${siteFilter}.`}
-            onTimeChange={handleOjtTimeChange}
-          />
-        </div>
+      {activeTab === "ojt" && (
+        <HourlyAttendancePanel
+          rows={sortedOjtRows}
+          sort={ojtSort}
+          onToggleSort={onOjtToggleSort}
+          employeeSites={employeeSites}
+          siteFilter={siteFilter}
+          cellsBusy={cellsBusy}
+          emptyAllMessage="No active OJT trainees."
+          emptyFilteredMessage={`No ojt employees for ${siteFilter}.`}
+          onTimeChange={handleOjtTimeChange}
+        />
       )}
     </>
   );
