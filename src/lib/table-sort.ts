@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export type SortDirection = "asc" | "desc";
 
@@ -53,13 +53,13 @@ export function useTableSort<TKey extends string>(
     direction: options.defaultDirection ?? "asc",
   });
 
-  function toggleSort(key: TKey) {
+  const toggleSort = useCallback((key: TKey) => {
     setSort((current) =>
       current.key === key
         ? { key, direction: current.direction === "asc" ? "desc" : "asc" }
         : { key, direction: "asc" }
     );
-  }
+  }, []);
 
   return { sort, toggleSort, setSort };
 }

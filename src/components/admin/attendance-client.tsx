@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { memo, useCallback, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import {
@@ -59,6 +59,10 @@ type Props = {
 
 type ConstructionSortKey = "name" | "site" | "present";
 type HourlySortKey = "name" | "site" | "hours";
+type TableSortState<K extends string> = {
+  key: K | null;
+  direction: "asc" | "desc";
+};
 
 const tabs: { id: AttendanceTab; label: string; description: string }[] = [
   {
@@ -78,7 +82,7 @@ const tabs: { id: AttendanceTab; label: string; description: string }[] = [
   },
 ];
 
-function ConstructionDayCell({
+const ConstructionDayCell = memo(function ConstructionDayCell({
   entry,
   disabled,
   onHoursChange,
@@ -117,9 +121,9 @@ function ConstructionDayCell({
       />
     </div>
   );
-}
+});
 
-function AdminDayCell({
+const AdminDayCell = memo(function AdminDayCell({
   entry,
   disabled,
   onTimeChange,
@@ -160,17 +164,227 @@ function AdminDayCell({
       </span>
     </div>
   );
-}
+});
+
+const ConstructionAttendancePanel = memo(function ConstructionAttendancePanel({
+  rows,
+  sort,
+  onToggleSort,
+  employeeSites,
+  siteFilter,
+  cellsBusy,
+  onHoursChange,
+}: {
+  rows: AttendanceRow[];
+  sort: TableSortState<ConstructionSortKey>;
+  onToggleSort: (key: ConstructionSortKey) => void;
+  employeeSites: Record<string, string>;
+  siteFilter: string;
+  cellsBusy: boolean;
+  onHoursChange: (
+    row: AttendanceRow,
+    dayKey: AttendanceDayKey,
+    hours: number,
+    overtimeHours: number
+  ) => void;
+}) {
+  return (
+    <TableShell minWidth="0" scrollable>
+      <Table className="table-fixed">
+        <TableHeader>
+          <tr>
+            <SortableTableHead
+              sortKey="name"
+              activeKey={sort.key}
+              direction={sort.direction}
+              onSort={(key) => onToggleSort(key as ConstructionSortKey)}
+              className="!w-[11%] !px-2"
+            >
+              Employee
+            </SortableTableHead>
+            <SortableTableHead
+              sortKey="site"
+              activeKey={sort.key}
+              direction={sort.direction}
+              onSort={(key) => onToggleSort(key as ConstructionSortKey)}
+              className="!w-[7%] !px-1"
+            >
+              Site
+            </SortableTableHead>
+            {ATTENDANCE_DAYS.map(({ key, label }) => (
+              <TableHead key={key} className="!w-[10%] !px-1 text-left">
+                {label}
+              </TableHead>
+            ))}
+            <SortableTableHead
+              sortKey="present"
+              activeKey={sort.key}
+              direction={sort.direction}
+              onSort={(key) => onToggleSort(key as ConstructionSortKey)}
+              className="!w-[6%] !px-1"
+            >
+              Total Hrs
+            </SortableTableHead>
+            <TableHead className="!w-[6%] !px-1">Total OT</TableHead>
+          </tr>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 ? (
+            <TableEmpty
+              colSpan={ATTENDANCE_DAYS.length + 4}
+              message={
+                siteFilter === "all"
+                  ? "No active construction employees."
+                  : `No construction employees for ${siteFilter}.`
+              }
+            />
+          ) : (
+            rows.map((row) => (
+              <TableRow key={row.employeeId}>
+                <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
+                <TableCell className="!px-1 !text-sbc-gray">
+                  {employeeSites[row.employeeId] || "Unassigned"}
+                </TableCell>
+                {ATTENDANCE_DAYS.map(({ key }) => (
+                  <TableCell key={key} className="!px-1 text-left">
+                    <ConstructionDayCell
+                      entry={row[key]}
+                      disabled={cellsBusy}
+                      onHoursChange={(hours, overtimeHours) =>
+                        onHoursChange(row, key, hours, overtimeHours)
+                      }
+                    />
+                  </TableCell>
+                ))}
+                <TableCell numeric className="!px-1 !text-sbc-black">
+                  {formatHours(countTotalHours(row))}
+                </TableCell>
+                <TableCell numeric className="!px-1 !text-sbc-black">
+                  {formatHours(countTotalOvertimeHours(row))}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </TableShell>
+  );
+});
+
+const HourlyAttendancePanel = memo(function HourlyAttendancePanel({
+  rows,
+  sort,
+  onToggleSort,
+  employeeSites,
+  siteFilter,
+  cellsBusy,
+  emptyAllMessage,
+  emptyFilteredMessage,
+  onTimeChange,
+}: {
+  rows: AdminAttendanceRow[];
+  sort: TableSortState<HourlySortKey>;
+  onToggleSort: (key: HourlySortKey) => void;
+  employeeSites: Record<string, string>;
+  siteFilter: string;
+  cellsBusy: boolean;
+  emptyAllMessage: string;
+  emptyFilteredMessage: string;
+  onTimeChange: (
+    row: AdminAttendanceRow,
+    dayKey: AttendanceDayKey,
+    field: AdminTimeField,
+    value: string
+  ) => void;
+}) {
+  return (
+    <TableShell minWidth="0" scrollable>
+      <Table className="table-fixed">
+        <TableHeader>
+          <tr>
+            <SortableTableHead
+              sortKey="name"
+              activeKey={sort.key}
+              direction={sort.direction}
+              onSort={(key) => onToggleSort(key as HourlySortKey)}
+              className="!w-[11%] !px-2"
+            >
+              Employee
+            </SortableTableHead>
+            <SortableTableHead
+              sortKey="site"
+              activeKey={sort.key}
+              direction={sort.direction}
+              onSort={(key) => onToggleSort(key as HourlySortKey)}
+              className="!w-[7%] !px-1"
+            >
+              Site
+            </SortableTableHead>
+            {ATTENDANCE_DAYS.map(({ key, label }) => (
+              <TableHead key={key} className="!w-[11%] !px-1 text-left">
+                {label}
+              </TableHead>
+            ))}
+            <SortableTableHead
+              sortKey="hours"
+              activeKey={sort.key}
+              direction={sort.direction}
+              onSort={(key) => onToggleSort(key as HourlySortKey)}
+              className="!w-[5%] !px-1"
+            >
+              Total Hours
+            </SortableTableHead>
+          </tr>
+        </TableHeader>
+        <TableBody>
+          {rows.length === 0 ? (
+            <TableEmpty
+              colSpan={ATTENDANCE_DAYS.length + 3}
+              message={
+                siteFilter === "all" ? emptyAllMessage : emptyFilteredMessage
+              }
+            />
+          ) : (
+            rows.map((row) => (
+              <TableRow key={row.employeeId}>
+                <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
+                <TableCell className="!px-1 !text-sbc-gray">
+                  {employeeSites[row.employeeId] || "Unassigned"}
+                </TableCell>
+                {ATTENDANCE_DAYS.map(({ key }) => (
+                  <TableCell key={key} className="!px-1 text-left">
+                    <AdminDayCell
+                      entry={row[key]}
+                      disabled={cellsBusy}
+                      onTimeChange={(field, value) =>
+                        onTimeChange(row, key, field, value)
+                      }
+                    />
+                  </TableCell>
+                ))}
+                <TableCell numeric className="!px-1 !text-sbc-black">
+                  {formatHours(countAdminHours(row))}
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </TableShell>
+  );
+});
 
 export function AttendanceClient({
   initialConstructionRows,
   initialAdminRows,
   initialOjtRows,
   initialWeekStart,
-  usingDatabase,
   employeeSites,
 }: Props) {
   const [activeTab, setActiveTab] = useState<AttendanceTab>("construction");
+  const [mountedTabs, setMountedTabs] = useState<Set<AttendanceTab>>(
+    () => new Set<AttendanceTab>(["construction"])
+  );
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [siteFilter, setSiteFilter] = useState<string>("all");
   const [constructionRows, setConstructionRows] = useState(() =>
@@ -247,6 +461,34 @@ export function AttendanceClient({
   const activeTabMeta = tabs.find((tab) => tab.id === activeTab)!;
   const weekNavBusy = loadingWeek;
 
+  const selectTab = useCallback(
+    (tabId: AttendanceTab) => {
+      setActiveTab(tabId);
+      startTransition(() => {
+        setMountedTabs((current) => {
+          if (current.has(tabId)) return current;
+          const next = new Set(current);
+          next.add(tabId);
+          return next;
+        });
+      });
+    },
+    [startTransition]
+  );
+
+  const onConstructionToggleSort = useCallback(
+    (key: ConstructionSortKey) => toggleConstructionSort(key),
+    [toggleConstructionSort]
+  );
+  const onAdminToggleSort = useCallback(
+    (key: HourlySortKey) => toggleAdminSort(key),
+    [toggleAdminSort]
+  );
+  const onOjtToggleSort = useCallback(
+    (key: HourlySortKey) => toggleOjtSort(key),
+    [toggleOjtSort]
+  );
+
   function loadWeek(nextWeekStart: string) {
     setLoadingWeek(true);
     setMessage(null);
@@ -265,74 +507,122 @@ export function AttendanceClient({
     });
   }
 
-  function handleConstructionToggle(row: AttendanceRow, dayKey: AttendanceDayKey, hours: number, overtimeHours: number) {
-    const nextRow = setDayValue(row, dayKey, hours, overtimeHours);
+  const handleConstructionToggle = useCallback(
+    (
+      row: AttendanceRow,
+      dayKey: AttendanceDayKey,
+      hours: number,
+      overtimeHours: number
+    ) => {
+      const nextRow = setDayValue(row, dayKey, hours, overtimeHours);
 
-    setConstructionRows((current) =>
-      current.map((item) =>
-        item.employeeId === row.employeeId ? nextRow : item
-      )
-    );
-    saveConstructionAttendanceRow(nextRow);
-    setMessage(null);
-
-    startTransition(async () => {
-      const result = await updateAttendanceDay(
-        row.employeeId,
-        weekStart,
-        dayKey,
-        hours,
-        overtimeHours
+      setConstructionRows((current) =>
+        current.map((item) =>
+          item.employeeId === row.employeeId ? nextRow : item
+        )
       );
-      if (result.error) {
-        setConstructionRows((current) =>
-          current.map((item) =>
-            item.employeeId === row.employeeId ? row : item
-          )
+      saveConstructionAttendanceRow(nextRow);
+      setMessage(null);
+
+      startTransition(async () => {
+        const result = await updateAttendanceDay(
+          row.employeeId,
+          weekStart,
+          dayKey,
+          hours,
+          overtimeHours
         );
-        saveConstructionAttendanceRow(row);
-        setMessage(result.error);
-      }
-    });
-  }
+        if (result.error) {
+          setConstructionRows((current) =>
+            current.map((item) =>
+              item.employeeId === row.employeeId ? row : item
+            )
+          );
+          saveConstructionAttendanceRow(row);
+          setMessage(result.error);
+        }
+      });
+    },
+    [weekStart, startTransition]
+  );
 
-  function handleHourlyTimeChange(
-    row: AdminAttendanceRow,
-    dayKey: AttendanceDayKey,
-    field: AdminTimeField,
-    value: string,
-    category: "admin" | "ojt"
-  ) {
-    const nextRow = setAdminDayTime(row, dayKey, field, value);
-    const updateRows = category === "admin" ? setAdminRows : setOjtRows;
+  const handleAdminTimeChange = useCallback(
+    (
+      row: AdminAttendanceRow,
+      dayKey: AttendanceDayKey,
+      field: AdminTimeField,
+      value: string
+    ) => {
+      const nextRow = setAdminDayTime(row, dayKey, field, value);
 
-    updateRows((current) =>
-      current.map((item) =>
-        item.employeeId === row.employeeId ? nextRow : item
-      )
-    );
-    saveAdminAttendanceRow(nextRow);
-    setMessage(null);
-
-    startTransition(async () => {
-      const result = await updateAdminAttendanceTime(
-        row.employeeId,
-        weekStart,
-        dayKey,
-        field,
-        value
+      setAdminRows((current) =>
+        current.map((item) =>
+          item.employeeId === row.employeeId ? nextRow : item
+        )
       );
-      if (result.error) {
-        updateRows((current) =>
-          current.map((item) =>
-            item.employeeId === row.employeeId ? row : item
-          )
+      saveAdminAttendanceRow(nextRow);
+      setMessage(null);
+
+      startTransition(async () => {
+        const result = await updateAdminAttendanceTime(
+          row.employeeId,
+          weekStart,
+          dayKey,
+          field,
+          value
         );
-        saveAdminAttendanceRow(row);
-        setMessage(result.error);
-      }
-    });
-  }
+        if (result.error) {
+          setAdminRows((current) =>
+            current.map((item) =>
+              item.employeeId === row.employeeId ? row : item
+            )
+          );
+          saveAdminAttendanceRow(row);
+          setMessage(result.error);
+        }
+      });
+    },
+    [weekStart, startTransition]
+  );
+
+  const handleOjtTimeChange = useCallback(
+    (
+      row: AdminAttendanceRow,
+      dayKey: AttendanceDayKey,
+      field: AdminTimeField,
+      value: string
+    ) => {
+      const nextRow = setAdminDayTime(row, dayKey, field, value);
+
+      setOjtRows((current) =>
+        current.map((item) =>
+          item.employeeId === row.employeeId ? nextRow : item
+        )
+      );
+      saveAdminAttendanceRow(nextRow);
+      setMessage(null);
+
+      startTransition(async () => {
+        const result = await updateAdminAttendanceTime(
+          row.employeeId,
+          weekStart,
+          dayKey,
+          field,
+          value
+        );
+        if (result.error) {
+          setOjtRows((current) =>
+            current.map((item) =>
+              item.employeeId === row.employeeId ? row : item
+            )
+          );
+          saveAdminAttendanceRow(row);
+          setMessage(result.error);
+        }
+      });
+    },
+    [weekStart, startTransition]
+  );
 
   const weekLabel = formatWeekRange(weekStart);
   const cellsBusy = pending || loadingWeek;
@@ -401,7 +691,7 @@ export function AttendanceClient({
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => selectTab(tab.id)}
               className={`cursor-pointer border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] ${
                 active
                   ? "border-sbc-gold text-sbc-gold-dark"
@@ -420,243 +710,51 @@ export function AttendanceClient({
         </p>
       )}
 
-      <div hidden={activeTab !== "construction"}>
-        <TableShell minWidth="0" scrollable>
-          <Table className="table-fixed">
-            <TableHeader>
-              <tr>
-                <SortableTableHead
-                  sortKey="name"
-                  activeKey={constructionSort.key}
-                  direction={constructionSort.direction}
-                  onSort={(key) => toggleConstructionSort(key as ConstructionSortKey)}
-                  className="!w-[11%] !px-2"
-                >
-                  Employee
-                </SortableTableHead>
-                <SortableTableHead
-                  sortKey="site"
-                  activeKey={constructionSort.key}
-                  direction={constructionSort.direction}
-                  onSort={(key) => toggleConstructionSort(key as ConstructionSortKey)}
-                  className="!w-[7%] !px-1"
-                >
-                  Site
-                </SortableTableHead>
-                {ATTENDANCE_DAYS.map(({ key, label }) => (
-                  <TableHead key={key} className="!w-[10%] !px-1 text-left">
-                    {label}
-                  </TableHead>
-                ))}
-                <SortableTableHead
-                  sortKey="present"
-                  activeKey={constructionSort.key}
-                  direction={constructionSort.direction}
-                  onSort={(key) => toggleConstructionSort(key as ConstructionSortKey)}
-                  className="!w-[6%] !px-1"
-                >
-                  Total Hrs
-                </SortableTableHead>
-                <TableHead className="!w-[6%] !px-1">Total OT</TableHead>
-              </tr>
-            </TableHeader>
-            <TableBody>
-              {sortedConstructionRows.length === 0 ? (
-                <TableEmpty
-                  colSpan={ATTENDANCE_DAYS.length + 4}
-                  message={
-                    siteFilter === "all"
-                      ? "No active construction employees."
-                      : `No construction employees for ${siteFilter}.`
-                  }
-                />
-              ) : (
-                sortedConstructionRows.map((row) => (
-                  <TableRow key={row.employeeId}>
-                    <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
-                    <TableCell className="!px-1 !text-sbc-gray">
-                      {employeeSites[row.employeeId] || "Unassigned"}
-                    </TableCell>
-                    {ATTENDANCE_DAYS.map(({ key }) => (
-                      <TableCell key={key} className="!px-1 text-left">
-                        <ConstructionDayCell
-                          entry={row[key]}
-                          disabled={cellsBusy}
-                          onHoursChange={(hours, overtimeHours) =>
-                            handleConstructionToggle(row, key, hours, overtimeHours)
-                          }
-                        />
-                      </TableCell>
-                    ))}
-                    <TableCell numeric className="!px-1 !text-sbc-black">
-                      {formatHours(countTotalHours(row))}
-                    </TableCell>
-                    <TableCell numeric className="!px-1 !text-sbc-black">
-                      {formatHours(countTotalOvertimeHours(row))}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableShell>
-      </div>
+      {mountedTabs.has("construction") && (
+        <div hidden={activeTab !== "construction"}>
+          <ConstructionAttendancePanel
+            rows={sortedConstructionRows}
+            sort={constructionSort}
+            onToggleSort={onConstructionToggleSort}
+            employeeSites={employeeSites}
+            siteFilter={siteFilter}
+            cellsBusy={cellsBusy}
+            onHoursChange={handleConstructionToggle}
+          />
+        </div>
+      )}
 
-      <div hidden={activeTab !== "admin"}>
-        <TableShell minWidth="0" scrollable>
-          <Table className="table-fixed">
-            <TableHeader>
-              <tr>
-                <SortableTableHead
-                  sortKey="name"
-                  activeKey={adminSort.key}
-                  direction={adminSort.direction}
-                  onSort={(key) => toggleAdminSort(key as HourlySortKey)}
-                  className="!w-[11%] !px-2"
-                >
-                  Employee
-                </SortableTableHead>
-                <SortableTableHead
-                  sortKey="site"
-                  activeKey={adminSort.key}
-                  direction={adminSort.direction}
-                  onSort={(key) => toggleAdminSort(key as HourlySortKey)}
-                  className="!w-[7%] !px-1"
-                >
-                  Site
-                </SortableTableHead>
-                {ATTENDANCE_DAYS.map(({ key, label }) => (
-                  <TableHead key={key} className="!w-[11%] !px-1 text-left">
-                    {label}
-                  </TableHead>
-                ))}
-                <SortableTableHead
-                  sortKey="hours"
-                  activeKey={adminSort.key}
-                  direction={adminSort.direction}
-                  onSort={(key) => toggleAdminSort(key as HourlySortKey)}
-                  className="!w-[5%] !px-1"
-                >
-                  Total Hours
-                </SortableTableHead>
-              </tr>
-            </TableHeader>
-            <TableBody>
-              {sortedAdminRows.length === 0 ? (
-                <TableEmpty
-                  colSpan={ATTENDANCE_DAYS.length + 3}
-                  message={
-                    siteFilter === "all"
-                      ? "No active admin employees."
-                      : `No admin employees for ${siteFilter}.`
-                  }
-                />
-              ) : (
-                sortedAdminRows.map((row) => (
-                  <TableRow key={row.employeeId}>
-                    <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
-                    <TableCell className="!px-1 !text-sbc-gray">
-                      {employeeSites[row.employeeId] || "Unassigned"}
-                    </TableCell>
-                    {ATTENDANCE_DAYS.map(({ key }) => (
-                      <TableCell key={key} className="!px-1 text-left">
-                        <AdminDayCell
-                          entry={row[key]}
-                          disabled={cellsBusy}
-                          onTimeChange={(field, value) =>
-                            handleHourlyTimeChange(row, key, field, value, "admin")
-                          }
-                        />
-                      </TableCell>
-                    ))}
-                    <TableCell numeric className="!px-1 !text-sbc-black">
-                      {formatHours(countAdminHours(row))}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableShell>
-      </div>
+      {mountedTabs.has("admin") && (
+        <div hidden={activeTab !== "admin"}>
+          <HourlyAttendancePanel
+            rows={sortedAdminRows}
+            sort={adminSort}
+            onToggleSort={onAdminToggleSort}
+            employeeSites={employeeSites}
+            siteFilter={siteFilter}
+            cellsBusy={cellsBusy}
+            emptyAllMessage="No active admin employees."
+            emptyFilteredMessage={`No admin employees for ${siteFilter}.`}
+            onTimeChange={handleAdminTimeChange}
+          />
+        </div>
+      )}
 
-      <div hidden={activeTab !== "ojt"}>
-        <TableShell minWidth="0" scrollable>
-          <Table className="table-fixed">
-            <TableHeader>
-              <tr>
-                <SortableTableHead
-                  sortKey="name"
-                  activeKey={ojtSort.key}
-                  direction={ojtSort.direction}
-                  onSort={(key) => toggleOjtSort(key as HourlySortKey)}
-                  className="!w-[11%] !px-2"
-                >
-                  Employee
-                </SortableTableHead>
-                <SortableTableHead
-                  sortKey="site"
-                  activeKey={ojtSort.key}
-                  direction={ojtSort.direction}
-                  onSort={(key) => toggleOjtSort(key as HourlySortKey)}
-                  className="!w-[7%] !px-1"
-                >
-                  Site
-                </SortableTableHead>
-                {ATTENDANCE_DAYS.map(({ key, label }) => (
-                  <TableHead key={key} className="!w-[11%] !px-1 text-left">
-                    {label}
-                  </TableHead>
-                ))}
-                <SortableTableHead
-                  sortKey="hours"
-                  activeKey={ojtSort.key}
-                  direction={ojtSort.direction}
-                  onSort={(key) => toggleOjtSort(key as HourlySortKey)}
-                  className="!w-[5%] !px-1"
-                >
-                  Total Hours
-                </SortableTableHead>
-              </tr>
-            </TableHeader>
-            <TableBody>
-              {sortedOjtRows.length === 0 ? (
-                <TableEmpty
-                  colSpan={ATTENDANCE_DAYS.length + 3}
-                  message={
-                    siteFilter === "all"
-                      ? "No active OJT trainees."
-                      : `No ojt employees for ${siteFilter}.`
-                  }
-                />
-              ) : (
-                sortedOjtRows.map((row) => (
-                  <TableRow key={row.employeeId}>
-                    <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
-                    <TableCell className="!px-1 !text-sbc-gray">
-                      {employeeSites[row.employeeId] || "Unassigned"}
-                    </TableCell>
-                    {ATTENDANCE_DAYS.map(({ key }) => (
-                      <TableCell key={key} className="!px-1 text-left">
-                        <AdminDayCell
-                          entry={row[key]}
-                          disabled={cellsBusy}
-                          onTimeChange={(field, value) =>
-                            handleHourlyTimeChange(row, key, field, value, "ojt")
-                          }
-                        />
-                      </TableCell>
-                    ))}
-                    <TableCell numeric className="!px-1 !text-sbc-black">
-                      {formatHours(countAdminHours(row))}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableShell>
-      </div>
+      {mountedTabs.has("ojt") && (
+        <div hidden={activeTab !== "ojt"}>
+          <HourlyAttendancePanel
+            rows={sortedOjtRows}
+            sort={ojtSort}
+            onToggleSort={onOjtToggleSort}
+            employeeSites={employeeSites}
+            siteFilter={siteFilter}
+            cellsBusy={cellsBusy}
+            emptyAllMessage="No active OJT trainees."
+            emptyFilteredMessage={`No ojt employees for ${siteFilter}.`}
+            onTimeChange={handleOjtTimeChange}
+          />
+        </div>
+      )}
     </>
   );
 }

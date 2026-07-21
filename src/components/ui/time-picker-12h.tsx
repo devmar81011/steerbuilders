@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import {
   formatTime12,
   getHourOptions,
@@ -18,7 +19,12 @@ type Props = {
   disabled?: boolean;
 };
 
-export function TimePicker12h({ value, onChange, label, disabled }: Props) {
+export const TimePicker12h = memo(function TimePicker12h({
+  value,
+  onChange,
+  label,
+  disabled,
+}: Props) {
   const normalized = normalizeTime24(value);
   const parts = splitTime24(normalized);
   const hourOptions = getHourOptions(parts.period);
@@ -88,4 +94,4 @@ export function TimePicker12h({ value, onChange, label, disabled }: Props) {
       </div>
     </label>
   );
-}
+});
