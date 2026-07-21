@@ -89,7 +89,7 @@ function ConstructionDayCell({
   onHoursChange: (hours: number, overtimeHours: number) => void;
 }) {
   return (
-    <div className="mx-auto flex w-[68px] flex-col items-center gap-1">
+    <div className="mx-auto flex w-[76px] flex-col items-center gap-1">
       <input
         type="number"
         min="0"
@@ -134,7 +134,7 @@ function AdminDayCell({
 
   return (
     <div
-      className={`mx-auto flex w-full max-w-[112px] flex-col items-center gap-0.5 rounded-md border px-0.5 py-1 ${
+      className={`mx-auto flex w-full max-w-[120px] flex-col items-center gap-0.5 rounded-md border px-0.5 py-1 ${
         present
           ? "border-sbc-gold/35 bg-sbc-gold/5"
           : "border-sbc-gray-light bg-sbc-gray-light/40"
@@ -424,7 +424,7 @@ export function AttendanceClient({
                   activeKey={constructionSort.key}
                   direction={constructionSort.direction}
                   onSort={(key) => toggleConstructionSort(key as ConstructionSortKey)}
-                  className="!w-[18%] !px-3"
+                  className="!w-[11%] !px-2"
                 >
                   Employee
                 </SortableTableHead>
@@ -433,12 +433,12 @@ export function AttendanceClient({
                   activeKey={constructionSort.key}
                   direction={constructionSort.direction}
                   onSort={(key) => toggleConstructionSort(key as ConstructionSortKey)}
-                  className="!w-[12%] !px-2"
+                  className="!w-[7%] !px-1"
                 >
                   Site
                 </SortableTableHead>
                 {ATTENDANCE_DAYS.map(({ key, label }) => (
-                  <TableHead key={key} className="!w-[8%] !px-1 text-center">
+                  <TableHead key={key} className="!w-[10%] !px-1 text-center">
                     {label}
                   </TableHead>
                 ))}
@@ -448,11 +448,11 @@ export function AttendanceClient({
                   direction={constructionSort.direction}
                   onSort={(key) => toggleConstructionSort(key as ConstructionSortKey)}
                   align="right"
-                  className="!w-[8%] !px-2"
+                  className="!w-[6%] !px-1"
                 >
                   Total Hrs
                 </SortableTableHead>
-                <TableHead align="right" className="!w-[8%] !px-2">
+                <TableHead align="right" className="!w-[6%] !px-1">
                   Total OT
                 </TableHead>
               </tr>
@@ -471,7 +471,7 @@ export function AttendanceClient({
                 sortedConstructionRows.map((row) => (
                   <TableRow key={row.employeeId}>
                     <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
-                    <TableCell className="!px-2 !text-sbc-gray">
+                    <TableCell className="!px-1 !text-sbc-gray">
                       {employeeSites[row.employeeId] || "Unassigned"}
                     </TableCell>
                     {ATTENDANCE_DAYS.map(({ key }) => (
@@ -485,10 +485,10 @@ export function AttendanceClient({
                         />
                       </TableCell>
                     ))}
-                    <TableCell align="right" numeric className="!px-2 !text-sbc-black">
+                    <TableCell align="right" numeric className="!px-1 !text-sbc-black">
                       {formatHours(countTotalHours(row))}
                     </TableCell>
-                    <TableCell align="right" numeric className="!px-2 !text-sbc-black">
+                    <TableCell align="right" numeric className="!px-1 !text-sbc-black">
                       {formatHours(countTotalOvertimeHours(row))}
                     </TableCell>
                   </TableRow>
@@ -507,7 +507,7 @@ export function AttendanceClient({
                   activeKey={hourlySort.key}
                   direction={hourlySort.direction}
                   onSort={(key) => toggleHourlySort(key as HourlySortKey)}
-                  className="!w-[16%] !px-3"
+                  className="!w-[11%] !px-2"
                 >
                   Employee
                 </SortableTableHead>
@@ -516,12 +516,12 @@ export function AttendanceClient({
                   activeKey={hourlySort.key}
                   direction={hourlySort.direction}
                   onSort={(key) => toggleHourlySort(key as HourlySortKey)}
-                  className="!w-[10%] !px-2"
+                  className="!w-[7%] !px-1"
                 >
                   Site
                 </SortableTableHead>
                 {ATTENDANCE_DAYS.map(({ key, label }) => (
-                  <TableHead key={key} className="!w-[10%] !px-1 text-center">
+                  <TableHead key={key} className="!w-[11%] !px-1 text-center">
                     {label}
                   </TableHead>
                 ))}
@@ -531,7 +531,7 @@ export function AttendanceClient({
                   direction={hourlySort.direction}
                   onSort={(key) => toggleHourlySort(key as HourlySortKey)}
                   align="right"
-                  className="!w-[8%] !px-2"
+                  className="!w-[5%] !px-1"
                 >
                   Total Hours
                 </SortableTableHead>
@@ -551,7 +551,7 @@ export function AttendanceClient({
                 sortedHourlyRows.map((row) => (
                   <TableRow key={row.employeeId}>
                     <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
-                    <TableCell className="!px-2 !text-sbc-gray">
+                    <TableCell className="!px-1 !text-sbc-gray">
                       {employeeSites[row.employeeId] || "Unassigned"}
                     </TableCell>
                     {ATTENDANCE_DAYS.map(({ key }) => (
@@ -565,7 +565,7 @@ export function AttendanceClient({
                         />
                       </TableCell>
                     ))}
-                    <TableCell align="right" numeric className="!px-2 !text-sbc-black">
+                    <TableCell align="right" numeric className="!px-1 !text-sbc-black">
                       {formatHours(countAdminHours(row))}
                     </TableCell>
                   </TableRow>
