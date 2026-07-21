@@ -8,6 +8,7 @@
   --sbc-gold: #b88f3f;
   --sbc-gold-dark: #96732f;
   --sbc-white: #ffffff;
+  --sbc-number: var(--sbc-black);
 
   --background: var(--sbc-off-white);
   --foreground: var(--sbc-black);
@@ -45,6 +46,7 @@ body {
   --sbc-white: #181818;
   --sbc-gold: #c9a24d;
   --sbc-gold-dark: #dbb45c;
+  --sbc-number: #e6c86a;
   --background: var(--sbc-off-white);
   --foreground: var(--sbc-black);
   background: var(--background);
@@ -58,6 +60,25 @@ body {
 .sa-dark textarea,
 .sa-dark select {
   color-scheme: dark;
+}
+
+/* Numbers / money / hours — gold for contrast on dark surfaces */
+.sbc-dark td.tabular-nums,
+.sa-dark td.tabular-nums,
+.sbc-dark .tabular-nums,
+.sa-dark .tabular-nums {
+  color: var(--sbc-number) !important;
+}
+
+.sbc-dark input[type="number"],
+.sa-dark input[type="number"] {
+  color: var(--sbc-number);
+  font-variant-numeric: tabular-nums;
+}
+
+.sbc-dark input[type="number"]::placeholder,
+.sa-dark input[type="number"]::placeholder {
+  color: color-mix(in srgb, var(--sbc-number) 45%, transparent);
 }
 
 .sbc-dark .sa-alert-error,

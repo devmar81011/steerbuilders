@@ -112,9 +112,15 @@ export function TableCell({
   return (
     <td
       className={`px-6 py-4 align-middle ${alignClass} ${
-        numeric ? "tabular-nums" : ""
+        numeric ? "tabular-nums text-[color:var(--sbc-number)]" : ""
       } ${
-        emphasis ? "font-semibold text-sbc-black" : "font-medium text-sbc-gray"
+        emphasis
+          ? numeric
+            ? "font-semibold"
+            : "font-semibold text-sbc-black"
+          : numeric
+            ? "font-medium"
+            : "font-medium text-sbc-gray"
       } ${className}`}
     >
       {children}
