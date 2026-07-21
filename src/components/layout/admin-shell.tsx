@@ -54,6 +54,7 @@ function AdminNavLinks({
           <li key={item.href}>
             <Link
               href={item.href}
+              prefetch
               onClick={onNavigate}
               className={`block border-l-2 px-4 py-2.5 text-xs font-medium uppercase tracking-widest transition-colors ${
                 active

@@ -92,6 +92,27 @@ const ConstructionDayCell = memo(function ConstructionDayCell({
   disabled?: boolean;
   onHoursChange: (hours: number, overtimeHours: number) => void;
 }) {
+  const [editing, setEditing] = useState(false);
+
+  if (!editing) {
+    return (
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setEditing(true)}
+        className="flex w-[76px] cursor-pointer flex-col items-start gap-0.5 rounded border border-sbc-gray-light bg-sbc-gray-light/30 px-1 py-1 text-left disabled:cursor-not-allowed disabled:opacity-60"
+        title="Click to edit hours"
+      >
+        <span className="text-[11px] font-semibold text-sbc-black">
+          {entry.hours}
+        </span>
+        <span className="text-[9px] font-medium text-sbc-gray">
+          OT {entry.overtimeHours}
+        </span>
+      </button>
+    );
+  }
+
   return (
     <div className="flex w-[76px] flex-col items-start gap-1">
       <input
@@ -120,6 +141,13 @@ const ConstructionDayCell = memo(function ConstructionDayCell({
         title="OT hours"
         aria-label="OT hours"
       />
+      <button
+        type="button"
+        onClick={() => setEditing(false)}
+        className="cursor-pointer text-[9px] font-semibold uppercase tracking-[0.08em] text-sbc-gold-dark hover:underline"
+      >
+        Done
+      </button>
     </div>
   );
 });
@@ -732,13 +760,19 @@ export function AttendanceClient({
         </div>
       </div>
 
-      <div className="mb-6 flex gap-1 border-b border-sbc-gray-light">
+      <div
+        className="mb-6 flex gap-1 border-b border-sbc-gray-light"
+        role="tablist"
+        aria-label="Attendance category"
+      >
         {tabs.map((tab) => {
           const active = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               type="button"
+              role="tab"
+              aria-selected={active}
               onClick={() => selectTab(tab.id)}
               className={`cursor-pointer border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] ${
                 active
@@ -758,7 +792,12 @@ export function AttendanceClient({
         </p>
       )}
 
-      {activeTab === "construction" && (
+      {/* Keep all panels mounted — only toggle visibility so switches stay instant. */}
+      <div
+        role="tabpanel"
+        hidden={activeTab !== "construction"}
+        className={activeTab === "construction" ? undefined : "hidden"}
+      >
         <ConstructionAttendancePanel
           rows={sortedConstructionRows}
           sort={constructionSort}
@@ -768,9 +807,13 @@ export function AttendanceClient({
           cellsBusy={cellsBusy}
           onHoursChange={handleConstructionToggle}
         />
-      )}
+      </div>
 
-      {activeTab === "admin" && (
+      <div
+        role="tabpanel"
+        hidden={activeTab !== "admin"}
+        className={activeTab === "admin" ? undefined : "hidden"}
+      >
         <HourlyAttendancePanel
           rows={sortedAdminRows}
           sort={adminSort}
@@ -779,12 +822,20 @@ export function AttendanceClient({
           siteFilter={siteFilter}
           cellsBusy={cellsBusy}
           emptyAllMessage="No active admin employees."
-          emptyFilteredMessage={`No admin employees for ${siteFilter}.`}
+          emptyFilteredMessage={
+            siteFilter === "all"
+              ? "No admin employees for this site."
+              : `No admin employees for ${siteFilter}.`
+          }
           onTimeChange={handleAdminTimeChange}
         />
-      )}
+      </div>
 
-      {activeTab === "ojt" && (
+      <div
+        role="tabpanel"
+        hidden={activeTab !== "ojt"}
+        className={activeTab === "ojt" ? undefined : "hidden"}
+      >
         <HourlyAttendancePanel
           rows={sortedOjtRows}
           sort={ojtSort}
@@ -793,10 +844,14 @@ export function AttendanceClient({
           siteFilter={siteFilter}
           cellsBusy={cellsBusy}
           emptyAllMessage="No active OJT trainees."
-          emptyFilteredMessage={`No ojt employees for ${siteFilter}.`}
+          emptyFilteredMessage={
+            siteFilter === "all"
+              ? "No ojt employees for this site."
+              : `No ojt employees for ${siteFilter}.`
+          }
           onTimeChange={handleOjtTimeChange}
         />
-      )}
+      </div>
     </>
   );
 }
