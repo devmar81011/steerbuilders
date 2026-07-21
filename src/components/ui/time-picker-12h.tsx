@@ -53,7 +53,7 @@ export function TimePicker12h({ value, onChange, label, disabled }: Props) {
           disabled={disabled}
           value={parts.hour}
           onChange={(e) => update({ hour: e.target.value })}
-          className={`${selectClass} w-[42px]`}
+          className={`${selectClass} w-[34px]`}
         >
           {hourOptions.map((hour) => (
             <option key={hour} value={hour}>
@@ -67,7 +67,7 @@ export function TimePicker12h({ value, onChange, label, disabled }: Props) {
           disabled={disabled}
           value={parts.minute}
           onChange={(e) => update({ minute: e.target.value })}
-          className={`${selectClass} w-[42px]`}
+          className={`${selectClass} w-[34px]`}
         >
           {TIME_MINUTE_OPTIONS.map((minute) => (
             <option key={minute} value={minute}>
@@ -80,7 +80,7 @@ export function TimePicker12h({ value, onChange, label, disabled }: Props) {
           disabled={disabled}
           value={parts.period}
           onChange={(e) => update({ period: e.target.value as TimePeriod })}
-          className={`${selectClass} w-[44px]`}
+          className={`${selectClass} w-[38px]`}
         >
           <option value="AM">AM</option>
           <option value="PM">PM</option>

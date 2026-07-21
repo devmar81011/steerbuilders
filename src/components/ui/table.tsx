@@ -16,13 +16,15 @@ export function TableShell({
   scrollable = false,
   maxHeight = "520px",
 }: TableShellProps) {
+  const forceMinWidth = minWidth && minWidth !== "0";
+
   return (
     <div className={`overflow-hidden ${radii.surface} border border-sbc-gray-light/80 ${className}`}>
       <div
         className={scrollable ? "overflow-auto" : "overflow-x-auto"}
         style={scrollable ? { maxHeight } : undefined}
       >
-        <div style={{ minWidth }}>{children}</div>
+        <div style={forceMinWidth ? { minWidth } : { width: "100%" }}>{children}</div>
       </div>
     </div>
   );

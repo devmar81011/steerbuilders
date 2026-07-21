@@ -28,7 +28,6 @@ import {
 import {
   employeeCategories,
   formatEmployeeCategory,
-  getCategoryLabelClass,
   getDesignationsForCategory,
   payrollCategories,
   type EmployeeCategory,
@@ -49,12 +48,20 @@ type EmployeeSortKey =
   | "rate"
   | "status";
 
+const employeeTabs: { id: EmployeeCategory; label: string }[] = payrollCategories.map(
+  (category) => ({
+    id: category,
+    label: formatEmployeeCategory(category),
+  })
+);
+
 export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
   const [employees, setEmployees] = useState(initialEmployees);
   const { sort, toggleSort } = useTableSort<EmployeeSortKey>({ defaultKey: "name" });
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<EmployeeCategory>("construction");
   const defaultDesignation = getDesignationsForCategory("construction")[0];
   const [form, setForm] = useState<{
     name: string;
@@ -77,24 +84,30 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
     [form.category]
   );
 
+  const tabCounts = useMemo(() => {
+    const counts: Record<EmployeeCategory, number> = {
+      construction: 0,
+      admin: 0,
+      ojt: 0,
+    };
+    for (const employee of employees) {
+      counts[employee.category] += 1;
+    }
+    return counts;
+  }, [employees]);
+
   const sortedEmployees = useMemo(
     () =>
-      sortRows(employees, sort, (row, key) => {
-        if (key === "rate") return row.rate;
-        return row[key];
-      }),
-    [employees, sort]
+      sortRows(
+        employees.filter((employee) => employee.category === activeTab),
+        sort,
+        (row, key) => {
+          if (key === "rate") return row.rate;
+          return row[key];
+        }
+      ),
+    [employees, activeTab, sort]
   );
-
-  const employeesByCategory = useMemo(() => {
-    return payrollCategories
-      .map((category) => ({
-        category,
-        label: formatEmployeeCategory(category),
-        rows: sortedEmployees.filter((employee) => employee.category === category),
-      }))
-      .filter((group) => group.rows.length > 0);
-  }, [sortedEmployees]);
 
   function handleCategoryChange(category: EmployeeCategory) {
     const designations = getDesignationsForCategory(category);
@@ -105,6 +118,18 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
     });
   }
 
+  function handleTabChange(category: EmployeeCategory) {
+    setActiveTab(category);
+    if (!editingId) {
+      const designations = getDesignationsForCategory(category);
+      setForm((prev) => ({
+        ...prev,
+        category,
+        designation: designations[0],
+      }));
+    }
+  }
+
   function handleDesignationChange(designation: string) {
     setForm({ ...form, designation });
   }
@@ -113,8 +138,8 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
     setEditingId(null);
     setForm({
       name: "",
-      category: "construction",
-      designation: getDesignationsForCategory("construction")[0],
+      category: activeTab,
+      designation: getDesignationsForCategory(activeTab)[0],
       rate: "",
       status: "active",
       assignedSite: "",
@@ -123,6 +148,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
 
   function startEdit(emp: Employee) {
     setEditingId(emp.id);
+    setActiveTab(emp.category);
     setForm({
       name: emp.name,
       category: emp.category,
@@ -188,6 +214,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
           )
         );
         setMessage("Employee updated.");
+        setActiveTab(form.category);
       } else {
         const newId =
           "id" in result && typeof result.id === "string"
@@ -208,6 +235,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
           },
         ]);
         setMessage("Employee added.");
+        setActiveTab(form.category);
       }
 
       resetForm();
@@ -358,125 +386,122 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
         </form>
       </Card>
 
-      <div className="space-y-8">
-        {employeesByCategory.length === 0 ? (
-          <TableShell minWidth="880px" scrollable>
-            <Table>
-              <TableBody>
-                <TableEmpty
-                  colSpan={8}
-                  message="No employees yet. Add the first employee above."
-                />
-              </TableBody>
-            </Table>
-          </TableShell>
-        ) : (
-          employeesByCategory.map((group) => (
-            <div key={group.category}>
-              <div className="mb-3 flex items-end justify-between gap-3">
-                <div>
-                  <p
-                    className={`text-xs font-semibold uppercase tracking-widest ${getCategoryLabelClass(group.category)}`}
-                  >
-                    {group.label}
-                  </p>
-                  <p className="mt-1 text-sm text-sbc-gray">
-                    {group.rows.length} employee
-                    {group.rows.length === 1 ? "" : "s"}
-                  </p>
-                </div>
-              </div>
-
-              <TableShell minWidth="800px" scrollable>
-                <Table>
-                  <TableHeader>
-                    <tr>
-                      <SortableTableHead
-                        sortKey="name"
-                        activeKey={sort.key}
-                        direction={sort.direction}
-                        onSort={(key) => toggleSort(key as EmployeeSortKey)}
-                      >
-                        Name
-                      </SortableTableHead>
-                      <SortableTableHead
-                        sortKey="designation"
-                        activeKey={sort.key}
-                        direction={sort.direction}
-                        onSort={(key) => toggleSort(key as EmployeeSortKey)}
-                      >
-                        Designation
-                      </SortableTableHead>
-                      <TableHead>Assigned Site</TableHead>
-                      <SortableTableHead
-                        sortKey="rate"
-                        activeKey={sort.key}
-                        direction={sort.direction}
-                        onSort={(key) => toggleSort(key as EmployeeSortKey)}
-                      >
-                        Rate
-                      </SortableTableHead>
-                      <SortableTableHead
-                        sortKey="status"
-                        align="right"
-                        activeKey={sort.key}
-                        direction={sort.direction}
-                        onSort={(key) => toggleSort(key as EmployeeSortKey)}
-                      >
-                        Status
-                      </SortableTableHead>
-                      <TableHead align="right">Actions</TableHead>
-                    </tr>
-                  </TableHeader>
-                  <TableBody>
-                    {group.rows.map((emp) => (
-                      <TableRow key={emp.id}>
-                        <TablePrimaryCell>{emp.name}</TablePrimaryCell>
-                        <TableCell className="!text-sbc-gray">
-                          {emp.designation}
-                        </TableCell>
-                        <TableCell className="!text-sbc-gray">
-                          {emp.assignedSite || "—"}
-                        </TableCell>
-                        <TableCell numeric className="!font-semibold !text-sbc-black">
-                          {formatRateAmount(emp.rate, "hourly")}
-                        </TableCell>
-                        <TableCell align="right">
-                          <span
-                            className={`text-xs font-semibold uppercase tracking-widest ${
-                              emp.status === "active"
-                                ? "text-sbc-gold"
-                                : "text-sbc-gray"
-                            }`}
-                          >
-                            {emp.status}
-                          </span>
-                        </TableCell>
-                        <TableCell align="right">
-                          <TableRowActions>
-                            <TableEditButton onClick={() => startEdit(emp)} />
-                            <TableDeleteButton
-                              label="Remove"
-                              onClick={() => handleDelete(emp.id, emp.name)}
-                              disabled={pending}
-                            />
-                          </TableRowActions>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-                <TableMeta>
-                  <span>
-                    {group.rows.length} {group.label.toLowerCase()}
-                  </span>
-                  <span className="text-sbc-gold">Grouped by category</span>
-                </TableMeta>
-              </TableShell>
-            </div>
-          ))
-        )}
+      <div className="mb-6 flex gap-1 border-b border-sbc-gray-light">
+        {employeeTabs.map((tab) => {
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => handleTabChange(tab.id)}
+              className={`cursor-pointer border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${
+                active
+                  ? "border-sbc-gold text-sbc-gold-dark"
+                  : "border-transparent text-sbc-gray hover:border-sbc-gold/40 hover:text-sbc-gold-dark"
+              }`}
+            >
+              {tab.label}
+              <span className="ml-2 text-[10px] font-medium text-sbc-gray">
+                {tabCounts[tab.id]}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      <TableShell minWidth="720px" scrollable>
+        <Table>
+          <TableHeader>
+            <tr>
+              <SortableTableHead
+                sortKey="name"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as EmployeeSortKey)}
+              >
+                Name
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="designation"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as EmployeeSortKey)}
+              >
+                Designation
+              </SortableTableHead>
+              <TableHead>Assigned Site</TableHead>
+              <SortableTableHead
+                sortKey="rate"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as EmployeeSortKey)}
+              >
+                Rate
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="status"
+                align="right"
+                activeKey={sort.key}
+                direction={sort.direction}
+                onSort={(key) => toggleSort(key as EmployeeSortKey)}
+              >
+                Status
+              </SortableTableHead>
+              <TableHead align="right">Actions</TableHead>
+            </tr>
+          </TableHeader>
+          <TableBody>
+            {sortedEmployees.length === 0 ? (
+              <TableEmpty
+                colSpan={6}
+                message={`No ${formatEmployeeCategory(activeTab).toLowerCase()} employees yet. Add one above.`}
+              />
+            ) : (
+              sortedEmployees.map((emp) => (
+                <TableRow key={emp.id}>
+                  <TablePrimaryCell>{emp.name}</TablePrimaryCell>
+                  <TableCell className="!text-sbc-gray">
+                    {emp.designation}
+                  </TableCell>
+                  <TableCell className="!text-sbc-gray">
+                    {emp.assignedSite || "—"}
+                  </TableCell>
+                  <TableCell numeric className="!font-semibold !text-sbc-black">
+                    {formatRateAmount(emp.rate, "hourly")}
+                  </TableCell>
+                  <TableCell align="right">
+                    <span
+                      className={`text-xs font-semibold uppercase tracking-widest ${
+                        emp.status === "active"
+                          ? "text-sbc-gold"
+                          : "text-sbc-gray"
+                      }`}
+                    >
+                      {emp.status}
+                    </span>
+                  </TableCell>
+                  <TableCell align="right">
+                    <TableRowActions>
+                      <TableEditButton onClick={() => startEdit(emp)} />
+                      <TableDeleteButton
+                        label="Remove"
+                        onClick={() => handleDelete(emp.id, emp.name)}
+                        disabled={pending}
+                      />
+                    </TableRowActions>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        <TableMeta>
+          <span>
+            {sortedEmployees.length} {formatEmployeeCategory(activeTab).toLowerCase()}
+          </span>
+          <span className="text-sbc-gold">{employees.length} total roster</span>
+        </TableMeta>
+      </TableShell>
     </>
   );
 }
