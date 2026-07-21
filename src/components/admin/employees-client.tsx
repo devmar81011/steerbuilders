@@ -394,7 +394,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
               key={tab.id}
               type="button"
               onClick={() => handleTabChange(tab.id)}
-              className={`cursor-pointer border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${
+              className={`cursor-pointer border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] ${
                 active
                   ? "border-sbc-gold text-sbc-gold-dark"
                   : "border-transparent text-sbc-gray hover:border-sbc-gold/40 hover:text-sbc-gold-dark"
