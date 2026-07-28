@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition, Fragment } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { sortRows, useTableSort } from "@/lib/table-sort";
 import { Button } from "@/components/ui/button";
@@ -413,12 +413,7 @@ function PayrollTable({
     value: string
   ) => void;
 }) {
-  const columnCount = 9;
-  const [detailId, setDetailId] = useState<string | null>(null);
-
-  useEffect(() => {
-    setDetailId(null);
-  }, [category, period.key]);
+  const columnCount = 18;
 
   const sortedEntries = useMemo(
     () => sortRows(entries, sort, (row, key) => row[key]),
@@ -433,10 +428,6 @@ function PayrollTable({
     () => entries.reduce((s, p) => s + p.netPay, 0),
     [entries]
   );
-
-  function toggleDetail(id: string) {
-    setDetailId((current) => (current === id ? null : id));
-  }
 
   return (
     <>
@@ -464,12 +455,7 @@ function PayrollTable({
         </div>
       </div>
 
-      <p className="mb-3 text-xs text-sbc-gray">
-        Compact run view — open <span className="font-semibold text-sbc-black">Details</span>{" "}
-        on a row for rates, pay breakdown, disbursement, remarks, and charged to.
-      </p>
-
-      <TableShell minWidth="1080px" scrollable>
+      <TableShell minWidth="2700px" scrollable>
         <Table>
           <TableHeader>
             <tr>
@@ -482,6 +468,10 @@ function PayrollTable({
               >
                 Employee
               </SortableTableHead>
+              <TableHead>Site Assignment</TableHead>
+              <TableHead align="right">Daily Rate</TableHead>
+              <TableHead>Designation</TableHead>
+              <TableHead align="right">Hourly Rate</TableHead>
               <SortableTableHead
                 sortKey="hours"
                 align="center"
@@ -491,7 +481,9 @@ function PayrollTable({
               >
                 Hours
               </SortableTableHead>
-              <TableHead align="right">OT</TableHead>
+              <TableHead align="right">OT Hours</TableHead>
+              <TableHead align="right">Regular Pay</TableHead>
+              <TableHead align="right">OT Pay</TableHead>
               <SortableTableHead
                 sortKey="grossPay"
                 align="right"
@@ -501,8 +493,8 @@ function PayrollTable({
               >
                 Gross
               </SortableTableHead>
-              <TableHead align="right">Cash Adv.</TableHead>
-              <TableHead align="right">Add&apos;l</TableHead>
+              <TableHead align="right">Cash Advance</TableHead>
+              <TableHead align="right">Additional Pay</TableHead>
               <SortableTableHead
                 sortKey="netPay"
                 align="right"
@@ -512,6 +504,9 @@ function PayrollTable({
               >
                 Net
               </SortableTableHead>
+              <TableHead>Disbursement</TableHead>
+              <TableHead>Remarks</TableHead>
+              <TableHead>Charged To</TableHead>
               <SortableTableHead
                 sortKey="status"
                 align="right"
@@ -533,7 +528,6 @@ function PayrollTable({
             ) : (
               sortedEntries.map((entry) => {
                 const rowBusy = pendingId === entry.id;
-                const detailOpen = detailId === entry.id;
                 const disbursementOptions = Array.from(
                   new Set(
                     [...disbursementMethods, entry.disbursement].filter(Boolean)
@@ -541,175 +535,130 @@ function PayrollTable({
                 );
 
                 return (
-                  <Fragment key={entry.id}>
-                    <TableRow>
-                      <TablePrimaryCell
-                        sticky
-                        subtitle={
-                          [entry.siteAssignment, entry.designation]
-                            .filter(Boolean)
-                            .join(" · ") || undefined
+                  <TableRow key={entry.id}>
+                    <TablePrimaryCell sticky>
+                      {entry.employeeName}
+                    </TablePrimaryCell>
+                    <TableCell>{entry.siteAssignment || "—"}</TableCell>
+                    <TableCell align="right" numeric>
+                      {formatCurrency(entry.dailyRate)}
+                    </TableCell>
+                    <TableCell>{entry.designation || "—"}</TableCell>
+                    <TableCell align="right" numeric>
+                      {formatCurrency(entry.hourlyRate)}
+                    </TableCell>
+                    <TableCell align="center" numeric>
+                      {entry.hours}h
+                    </TableCell>
+                    <TableCell align="right" numeric>
+                      {entry.overtimeHours}h
+                    </TableCell>
+                    <TableCell align="right" numeric>
+                      {formatCurrency(entry.regularPay)}
+                    </TableCell>
+                    <TableCell align="right" numeric>
+                      {formatCurrency(entry.overtimePay)}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      numeric
+                      className="!font-semibold !text-sbc-black"
+                    >
+                      {formatCurrency(entry.grossPay)}
+                    </TableCell>
+                    <TableCell align="right">
+                      <InlineTextField
+                        type="number"
+                        align="right"
+                        value={String(entry.cashAdvance || 0)}
+                        disabled={rowBusy}
+                        onCommit={(value) =>
+                          onInlineUpdate(entry, "cashAdvance", value)
                         }
-                      >
-                        {entry.employeeName}
-                      </TablePrimaryCell>
-                      <TableCell align="center" numeric>
-                        {entry.hours}h
-                      </TableCell>
-                      <TableCell align="right" numeric>
-                        {entry.overtimeHours}h
-                      </TableCell>
-                      <TableCell
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <InlineTextField
+                        type="number"
                         align="right"
-                        numeric
-                        className="!font-semibold !text-sbc-black"
+                        value={String(entry.additionalPay || 0)}
+                        disabled={rowBusy}
+                        onCommit={(value) =>
+                          onInlineUpdate(entry, "additionalPay", value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      numeric
+                      className="!font-bold !text-sbc-gold"
+                    >
+                      {formatCurrency(entry.netPay)}
+                    </TableCell>
+                    <TableCell>
+                      <select
+                        disabled={rowBusy}
+                        value={entry.disbursement || ""}
+                        onChange={(e) =>
+                          onInlineUpdate(
+                            entry,
+                            "disbursement",
+                            e.target.value
+                          )
+                        }
+                        className={`${tableFieldClass} min-w-[120px] appearance-none bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22none%22%3E%3Cpath d=%22M5 7.5L10 12.5L15 7.5%22 stroke=%22%23b88f3f%22 stroke-width=%221.75%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat pr-8`}
                       >
-                        {formatCurrency(entry.grossPay)}
-                      </TableCell>
-                      <TableCell align="right">
-                        <InlineTextField
-                          type="number"
-                          align="right"
-                          value={String(entry.cashAdvance || 0)}
-                          disabled={rowBusy}
-                          onCommit={(value) =>
-                            onInlineUpdate(entry, "cashAdvance", value)
-                          }
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <InlineTextField
-                          type="number"
-                          align="right"
-                          value={String(entry.additionalPay || 0)}
-                          disabled={rowBusy}
-                          onCommit={(value) =>
-                            onInlineUpdate(entry, "additionalPay", value)
-                          }
-                        />
-                      </TableCell>
-                      <TableCell
-                        align="right"
-                        numeric
-                        className="!font-bold !text-sbc-gold"
+                        <option value="">Select</option>
+                        {disbursementOptions.map((method) => (
+                          <option key={method} value={method}>
+                            {method}
+                          </option>
+                        ))}
+                      </select>
+                    </TableCell>
+                    <TableCell>
+                      <InlineTextField
+                        value={entry.remarks || ""}
+                        disabled={rowBusy}
+                        className="min-w-[120px]"
+                        onCommit={(value) =>
+                          onInlineUpdate(entry, "remarks", value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <InlineTextField
+                        value={entry.chargedTo || ""}
+                        disabled={rowBusy}
+                        className="min-w-[120px]"
+                        onCommit={(value) =>
+                          onInlineUpdate(entry, "chargedTo", value)
+                        }
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <span
+                        className={`text-xs font-semibold uppercase tracking-widest ${
+                          entry.status === "processed"
+                            ? "text-sbc-gold"
+                            : "text-sbc-gray"
+                        }`}
                       >
-                        {formatCurrency(entry.netPay)}
-                      </TableCell>
-                      <TableCell align="right">
-                        <span
-                          className={`text-xs font-semibold uppercase tracking-widest ${
-                            entry.status === "processed"
-                              ? "text-sbc-gold"
-                              : "text-sbc-gray"
-                          }`}
-                        >
-                          {entry.status}
-                        </span>
-                      </TableCell>
-                      <TableCell align="right">
-                        <TableRowActions>
-                          <button
-                            type="button"
-                            onClick={() => toggleDetail(entry.id)}
-                            className="cursor-pointer text-[10px] font-semibold uppercase tracking-widest text-sbc-gray hover:text-sbc-gold-dark"
-                          >
-                            {detailOpen ? "Hide" : "Details"}
-                          </button>
-                          <TableEditButton onClick={() => onStartEdit(entry)} />
-                          {entry.status === "draft" && (
-                            <TableProcessButton
-                              onClick={() => onProcess(entry.id)}
-                              disabled={pendingId === entry.id}
-                            />
-                          )}
-                        </TableRowActions>
-                      </TableCell>
-                    </TableRow>
-                    {detailOpen && (
-                      <tr className="bg-sbc-off-white/80">
-                        <td
-                          colSpan={columnCount}
-                          className="border-b border-sbc-gray-light px-6 py-4"
-                        >
-                          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                            <div className="rounded-lg border border-sbc-gray-light bg-sbc-white px-3 py-2">
-                              <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
-                                Rates
-                              </p>
-                              <p className="mt-1 text-sm font-semibold text-sbc-black">
-                                Daily {formatCurrency(entry.dailyRate)} · Hourly{" "}
-                                {formatCurrency(entry.hourlyRate)}
-                              </p>
-                            </div>
-                            <div className="rounded-lg border border-sbc-gray-light bg-sbc-white px-3 py-2">
-                              <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
-                                Pay Breakdown
-                              </p>
-                              <p className="mt-1 text-sm font-semibold text-sbc-black">
-                                Reg {formatCurrency(entry.regularPay)} · OT{" "}
-                                {formatCurrency(entry.overtimePay)}
-                              </p>
-                              <p className="mt-1 text-xs text-sbc-gray">
-                                Deductions {formatCurrency(entry.deductions)}
-                              </p>
-                            </div>
-                            <div className="md:col-span-2 xl:col-span-2 grid gap-3 sm:grid-cols-3">
-                              <div>
-                                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
-                                  Disbursement
-                                </label>
-                                <select
-                                  disabled={rowBusy}
-                                  value={entry.disbursement || ""}
-                                  onChange={(e) =>
-                                    onInlineUpdate(
-                                      entry,
-                                      "disbursement",
-                                      e.target.value
-                                    )
-                                  }
-                                  className={`${tableFieldClass} w-full appearance-none bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22none%22%3E%3Cpath d=%22M5 7.5L10 12.5L15 7.5%22 stroke=%22%23b88f3f%22 stroke-width=%221.75%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat pr-8`}
-                                >
-                                  <option value="">Select</option>
-                                  {disbursementOptions.map((method) => (
-                                    <option key={method} value={method}>
-                                      {method}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
-                                  Remarks
-                                </label>
-                                <InlineTextField
-                                  value={entry.remarks || ""}
-                                  disabled={rowBusy}
-                                  className="w-full"
-                                  onCommit={(value) =>
-                                    onInlineUpdate(entry, "remarks", value)
-                                  }
-                                />
-                              </div>
-                              <div>
-                                <label className="mb-1.5 block text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
-                                  Charged To
-                                </label>
-                                <InlineTextField
-                                  value={entry.chargedTo || ""}
-                                  disabled={rowBusy}
-                                  className="w-full"
-                                  onCommit={(value) =>
-                                    onInlineUpdate(entry, "chargedTo", value)
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
+                        {entry.status}
+                      </span>
+                    </TableCell>
+                    <TableCell align="right">
+                      <TableRowActions>
+                        <TableEditButton onClick={() => onStartEdit(entry)} />
+                        {entry.status === "draft" && (
+                          <TableProcessButton
+                            onClick={() => onProcess(entry.id)}
+                            disabled={pendingId === entry.id}
+                          />
+                        )}
+                      </TableRowActions>
+                    </TableCell>
+                  </TableRow>
                 );
               })
             )}
