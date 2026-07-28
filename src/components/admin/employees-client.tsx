@@ -477,7 +477,15 @@ export function EmployeesClient({
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sbc-gray">
                 Admin deductions preview
               </p>
-              <div className="mt-2 grid gap-2 sm:grid-cols-3 text-sm">
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4 text-sm">
+                <div>
+                  <p className="text-xs text-sbc-gray">Basic Pay</p>
+                  <p className="font-semibold text-sbc-black">
+                    {formBasicPay > 0
+                      ? formatRateAmount(formBasicPay, "monthly")
+                      : "—"}
+                  </p>
+                </div>
                 <div>
                   <p className="text-xs text-sbc-gray">Pag-IBIG</p>
                   <p className="font-semibold text-sbc-black">
@@ -608,9 +616,9 @@ export function EmployeesClient({
                         <TableCell className="!text-sbc-gray">
                           {emp.designation}
                         </TableCell>
-                        <TableCell align="right" numeric>
+                        <TableCell align="right" numeric className="!font-semibold !text-sbc-black">
                           {emp.basicPay != null && emp.basicPay > 0
-                            ? formatDeductionAmount(emp.basicPay)
+                            ? formatRateAmount(emp.basicPay, "monthly")
                             : "—"}
                         </TableCell>
                         <TableCell align="right" numeric>
@@ -672,7 +680,7 @@ export function EmployeesClient({
                   direction={sort.direction}
                   onSort={(key) => toggleSort(key as EmployeeSortKey)}
                 >
-                  Rate
+                  Hourly Rate
                 </SortableTableHead>
                 {activeTab === "admin" && (
                   <SortableTableHead
@@ -717,9 +725,9 @@ export function EmployeesClient({
                       {formatRateAmount(emp.rate, "hourly")}
                     </TableCell>
                     {activeTab === "admin" && (
-                      <TableCell align="right" numeric>
+                      <TableCell align="right" numeric className="!font-semibold !text-sbc-black">
                         {emp.basicPay != null && emp.basicPay > 0
-                          ? formatDeductionAmount(emp.basicPay)
+                          ? formatRateAmount(emp.basicPay, "monthly")
                           : "—"}
                       </TableCell>
                     )}
