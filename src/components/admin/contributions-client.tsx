@@ -259,7 +259,7 @@ export function ContributionsClient({ initialAdjustments }: Props) {
   }
 
   const valueLabel =
-    form.calcType === "percent_of_gross"
+    form.calcType === "percent_of_gross" || form.calcType === "percent_of_basic"
       ? "Default rate (%)"
       : "Default amount per pay run (PHP)";
 
@@ -355,6 +355,7 @@ export function ContributionsClient({ initialAdjustments }: Props) {
         >
           <option value="fixed_per_period">Fixed per pay run</option>
           <option value="percent_of_gross">% of gross pay</option>
+          <option value="percent_of_basic">% of basic pay</option>
         </Select>
 
         <Input
@@ -362,7 +363,12 @@ export function ContributionsClient({ initialAdjustments }: Props) {
           size="sm"
           type="number"
           min="0"
-          step={form.calcType === "percent_of_gross" ? "0.01" : "1"}
+          step={
+            form.calcType === "percent_of_gross" ||
+            form.calcType === "percent_of_basic"
+              ? "0.01"
+              : "1"
+          }
           value={form.value}
           onChange={(e) => setForm({ ...form, value: e.target.value })}
           required
@@ -405,7 +411,12 @@ export function ContributionsClient({ initialAdjustments }: Props) {
                     size="sm"
                     type="number"
                     min="0"
-                    step={form.calcType === "percent_of_gross" ? "0.01" : "1"}
+                    step={
+            form.calcType === "percent_of_gross" ||
+            form.calcType === "percent_of_basic"
+              ? "0.01"
+              : "1"
+          }
                     value={form.roleRates[key] ?? ""}
                     placeholder={form.value || "Default"}
                     onChange={(e) =>

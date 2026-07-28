@@ -1,6 +1,9 @@
 import type { DeductionRoleRate } from "@/lib/deduction-role-rates";
 
-export type AdjustmentCalcType = "percent_of_gross" | "fixed_per_period";
+export type AdjustmentCalcType =
+  | "percent_of_gross"
+  | "percent_of_basic"
+  | "fixed_per_period";
 
 export type PayrollAdjustment = {
   id: string;
@@ -22,21 +25,21 @@ export const mockPayrollAdjustments: PayrollAdjustment[] = [
     code: "sss",
     label: "SSS",
     calcType: "fixed_per_period",
-    value: 600,
-    active: true,
+    value: 0,
+    active: false,
     description:
-      "Employee SSS contribution. Set a default amount, then optional overrides per role for weekly vs semi-monthly pay.",
+      "Employee SSS contribution — leave empty until contribution table is set.",
     sortOrder: 1,
   },
   {
     id: "adj-philhealth",
     code: "philhealth",
     label: "PhilHealth",
-    calcType: "percent_of_gross",
+    calcType: "percent_of_basic",
     value: 2.5,
     active: true,
     description:
-      "Employee share of PhilHealth premium (typically ~50% of the total ~5% premium on basic salary).",
+      "Employee PhilHealth share — 5% of basic pay divided by 2 (admin).",
     sortOrder: 2,
   },
   {
@@ -47,13 +50,14 @@ export const mockPayrollAdjustments: PayrollAdjustment[] = [
     value: 200,
     active: true,
     description:
-      "Employee Pag-IBIG share — commonly ₱100–₱200 or up to 2% of monthly compensation.",
+      "Employee Pag-IBIG share — fixed ₱200 per pay run (admin).",
     sortOrder: 3,
   },
 ];
 
 export function formatCalcTypeLabel(calcType: AdjustmentCalcType): string {
   if (calcType === "percent_of_gross") return "% of gross pay";
+  if (calcType === "percent_of_basic") return "% of basic pay";
   return "Fixed per pay run";
 }
 
@@ -61,7 +65,12 @@ export function formatAdjustmentValue(
   rule: PayrollAdjustment,
   value: number = rule.value
 ): string {
-  if (rule.calcType === "percent_of_gross") return `${value}%`;
+  if (
+    rule.calcType === "percent_of_gross" ||
+    rule.calcType === "percent_of_basic"
+  ) {
+    return `${value}%`;
+  }
   return `₱${value.toLocaleString("en-PH")}`;
 }
 

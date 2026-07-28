@@ -35,25 +35,33 @@ import {
 import type { Employee } from "@/lib/mvp-data";
 import { formatRateAmount } from "@/lib/rate-types";
 import type { Site } from "@/lib/actions/sites";
+import {
+  computeAdminStatutoryDeductions,
+  formatDeductionAmount,
+} from "@/lib/admin-deductions";
 
 type Props = {
   employees: Employee[];
   sites: Site[];
 };
 
+type EmployeeTab = EmployeeCategory | "deductions";
+
 type EmployeeSortKey =
   | "name"
   | "category"
   | "designation"
   | "rate"
+  | "basicPay"
   | "status";
 
-const employeeTabs: { id: EmployeeCategory; label: string }[] = payrollCategories.map(
-  (category) => ({
-    id: category,
+const employeeTabs: { id: EmployeeTab; label: string }[] = [
+  ...payrollCategories.map((category) => ({
+    id: category as EmployeeTab,
     label: formatEmployeeCategory(category),
-  })
-);
+  })),
+  { id: "deductions", label: "Deductions" },
+];
 
 export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
   const [employees, setEmployees] = useState(initialEmployees);
@@ -61,13 +69,14 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<EmployeeCategory>("construction");
+  const [activeTab, setActiveTab] = useState<EmployeeTab>("construction");
   const defaultDesignation = getDesignationsForCategory("construction")[0];
   const [form, setForm] = useState<{
     name: string;
     category: EmployeeCategory;
     designation: string;
     rate: string;
+    basicPay: string;
     status: "active" | "inactive";
     assignedSite: string;
   }>({
@@ -75,6 +84,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
     category: "construction",
     designation: defaultDesignation,
     rate: "",
+    basicPay: "",
     status: "active",
     assignedSite: "",
   });
@@ -82,6 +92,12 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
   const designationOptions = useMemo(
     () => getDesignationsForCategory(form.category),
     [form.category]
+  );
+
+  const showBasicPay = form.category === "admin";
+  const formBasicPay = Number(form.basicPay) || 0;
+  const formDeductions = computeAdminStatutoryDeductions(
+    showBasicPay ? formBasicPay : null
   );
 
   const tabCounts = useMemo(() => {
@@ -96,17 +112,31 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
     return counts;
   }, [employees]);
 
-  const sortedEmployees = useMemo(
+  const sortedEmployees = useMemo(() => {
+    if (activeTab === "deductions") return [];
+    return sortRows(
+      employees.filter((employee) => employee.category === activeTab),
+      sort,
+      (row, key) => {
+        if (key === "rate") return row.rate;
+        if (key === "basicPay") return row.basicPay ?? 0;
+        return row[key as keyof Employee] as string | number;
+      }
+    );
+  }, [employees, activeTab, sort]);
+
+  const adminDeductionRows = useMemo(
     () =>
       sortRows(
-        employees.filter((employee) => employee.category === activeTab),
+        employees.filter((employee) => employee.category === "admin"),
         sort,
         (row, key) => {
+          if (key === "basicPay") return row.basicPay ?? 0;
           if (key === "rate") return row.rate;
-          return row[key];
+          return row[key as keyof Employee] as string | number;
         }
       ),
-    [employees, activeTab, sort]
+    [employees, sort]
   );
 
   function handleCategoryChange(category: EmployeeCategory) {
@@ -115,17 +145,19 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
       ...form,
       category,
       designation: designations[0],
+      basicPay: category === "admin" ? form.basicPay : "",
     });
   }
 
-  function handleTabChange(category: EmployeeCategory) {
-    setActiveTab(category);
-    if (!editingId) {
-      const designations = getDesignationsForCategory(category);
+  function handleTabChange(tab: EmployeeTab) {
+    setActiveTab(tab);
+    if (!editingId && tab !== "deductions") {
+      const designations = getDesignationsForCategory(tab);
       setForm((prev) => ({
         ...prev,
-        category,
+        category: tab,
         designation: designations[0],
+        basicPay: tab === "admin" ? prev.basicPay : "",
       }));
     }
   }
@@ -136,11 +168,14 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
 
   function resetForm() {
     setEditingId(null);
+    const category: EmployeeCategory =
+      activeTab === "deductions" ? "admin" : activeTab;
     setForm({
       name: "",
-      category: activeTab,
-      designation: getDesignationsForCategory(activeTab)[0],
+      category,
+      designation: getDesignationsForCategory(category)[0],
       rate: "",
+      basicPay: "",
       status: "active",
       assignedSite: "",
     });
@@ -154,10 +189,23 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
       category: emp.category,
       designation: emp.designation,
       rate: String(emp.rate),
+      basicPay:
+        emp.basicPay != null && Number.isFinite(emp.basicPay)
+          ? String(emp.basicPay)
+          : "",
       status: emp.status,
       assignedSite: emp.assignedSite || "",
     });
     setMessage(null);
+  }
+
+  function parseBasicPay(): number | null {
+    if (form.category !== "admin") return null;
+    const trimmed = form.basicPay.trim();
+    if (!trimmed) return null;
+    const value = Number(trimmed);
+    if (!Number.isFinite(value) || value < 0) return null;
+    return value;
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -169,6 +217,16 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
       return;
     }
 
+    if (form.category === "admin" && form.basicPay.trim()) {
+      const basic = Number(form.basicPay);
+      if (!Number.isFinite(basic) || basic < 0) {
+        setMessage("Enter a valid basic pay amount.");
+        return;
+      }
+    }
+
+    const basicPay = parseBasicPay();
+
     startTransition(async () => {
       const payload = {
         name: form.name,
@@ -176,6 +234,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
         designation: form.designation,
         rate,
         rate_type: "hourly" as const,
+        basic_pay: basicPay,
         status: form.status,
         assigned_site: form.assignedSite.trim(),
       };
@@ -188,6 +247,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
             designation: form.designation,
             rate,
             rate_type: "hourly",
+            basic_pay: basicPay,
             assigned_site: form.assignedSite.trim(),
           });
 
@@ -207,6 +267,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
                   designation: form.designation as Employee["designation"],
                   rate,
                   rateType: "hourly",
+                  basicPay,
                   status: form.status,
                   assignedSite: form.assignedSite.trim(),
                 }
@@ -230,6 +291,7 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
             designation: form.designation as Employee["designation"],
             rate,
             rateType: "hourly",
+            basicPay,
             status: "active",
             assignedSite: form.assignedSite.trim(),
           },
@@ -271,8 +333,8 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
         </p>
         <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Employees</h1>
         <p className="mt-2 text-sm font-semibold text-sbc-gray">
-          Set each employee&apos;s hourly rate. Payment basis is hourly for
-          everyone — payroll uses the rate saved here.
+          Set each employee&apos;s hourly rate. Admin staff also use basic pay
+          for Pag-IBIG and PhilHealth deductions.
         </p>
       </div>
 
@@ -356,6 +418,24 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
             </p>
           </div>
 
+          {showBasicPay && (
+            <div>
+              <Input
+                label="Basic Pay (PHP)"
+                size="sm"
+                type="number"
+                min="0"
+                step="0.01"
+                value={form.basicPay}
+                onChange={(e) => setForm({ ...form, basicPay: e.target.value })}
+                placeholder="Monthly basic"
+              />
+              <p className="mt-1.5 text-xs font-medium text-sbc-gray">
+                Used for admin PhilHealth (5% ÷ 2). Pag-IBIG is fixed ₱200.
+              </p>
+            </div>
+          )}
+
           {editingId && (
             <Select
               label="Status"
@@ -371,6 +451,34 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
             </Select>
+          )}
+
+          {showBasicPay && (
+            <div className="md:col-span-2 rounded-lg border border-sbc-gray-light/80 bg-sbc-gray-light/20 px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sbc-gray">
+                Admin deductions preview
+              </p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-3 text-sm">
+                <div>
+                  <p className="text-xs text-sbc-gray">Pag-IBIG</p>
+                  <p className="font-semibold text-sbc-black">
+                    {formatDeductionAmount(formDeductions.pagibig)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-sbc-gray">PhilHealth</p>
+                  <p className="font-semibold text-sbc-black">
+                    {formatDeductionAmount(formDeductions.phic)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-sbc-gray">SSS</p>
+                  <p className="font-semibold text-sbc-black">
+                    {formatDeductionAmount(formDeductions.sss)}
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
 
           <div className="md:col-span-2 flex flex-wrap gap-3">
@@ -401,107 +509,224 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
               }`}
             >
               {tab.label}
-              <span className="ml-2 text-[10px] font-medium text-sbc-gray">
-                {tabCounts[tab.id]}
-              </span>
+              {tab.id !== "deductions" && (
+                <span className="ml-2 text-[10px] font-medium text-sbc-gray">
+                  {tabCounts[tab.id]}
+                </span>
+              )}
+              {tab.id === "deductions" && (
+                <span className="ml-2 text-[10px] font-medium text-sbc-gray">
+                  {tabCounts.admin}
+                </span>
+              )}
             </button>
           );
         })}
       </div>
 
-      <TableShell minWidth="720px" scrollable>
-        <Table>
-          <TableHeader>
-            <tr>
-              <SortableTableHead
-                sortKey="name"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => toggleSort(key as EmployeeSortKey)}
-              >
-                Name
-              </SortableTableHead>
-              <SortableTableHead
-                sortKey="designation"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => toggleSort(key as EmployeeSortKey)}
-              >
-                Designation
-              </SortableTableHead>
-              <TableHead>Assigned Site</TableHead>
-              <SortableTableHead
-                sortKey="rate"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => toggleSort(key as EmployeeSortKey)}
-              >
-                Rate
-              </SortableTableHead>
-              <SortableTableHead
-                sortKey="status"
-                align="right"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => toggleSort(key as EmployeeSortKey)}
-              >
-                Status
-              </SortableTableHead>
-              <TableHead align="right">Actions</TableHead>
-            </tr>
-          </TableHeader>
-          <TableBody>
-            {sortedEmployees.length === 0 ? (
-              <TableEmpty
-                colSpan={6}
-                message={`No ${formatEmployeeCategory(activeTab).toLowerCase()} employees yet. Add one above.`}
-              />
-            ) : (
-              sortedEmployees.map((emp) => (
-                <TableRow key={emp.id}>
-                  <TablePrimaryCell>{emp.name}</TablePrimaryCell>
-                  <TableCell className="!text-sbc-gray">
-                    {emp.designation}
-                  </TableCell>
-                  <TableCell className="!text-sbc-gray">
-                    {emp.assignedSite || "—"}
-                  </TableCell>
-                  <TableCell numeric className="!font-semibold !text-sbc-black">
-                    {formatRateAmount(emp.rate, "hourly")}
-                  </TableCell>
-                  <TableCell align="right">
-                    <span
-                      className={`text-xs font-semibold uppercase tracking-widest ${
-                        emp.status === "active"
-                          ? "text-sbc-gold"
-                          : "text-sbc-gray"
-                      }`}
-                    >
-                      {emp.status}
-                    </span>
-                  </TableCell>
-                  <TableCell align="right">
-                    <TableRowActions>
-                      <TableEditButton onClick={() => startEdit(emp)} />
-                      <TableDeleteButton
-                        label="Remove"
-                        onClick={() => handleDelete(emp.id, emp.name)}
-                        disabled={pending}
-                      />
-                    </TableRowActions>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        <TableMeta>
-          <span>
-            {sortedEmployees.length} {formatEmployeeCategory(activeTab).toLowerCase()}
-          </span>
-          <span className="text-sbc-gold">{employees.length} total roster</span>
-        </TableMeta>
-      </TableShell>
+      {activeTab === "deductions" ? (
+        <>
+          <p className="mb-4 text-sm text-sbc-gray">
+            Admin statutory deductions — Pag-IBIG fixed ₱200, PhilHealth = 5% of
+            basic ÷ 2, SSS left empty for now.
+          </p>
+          <TableShell minWidth="780px" scrollable>
+            <Table>
+              <TableHeader>
+                <tr>
+                  <SortableTableHead
+                    sortKey="name"
+                    activeKey={sort.key}
+                    direction={sort.direction}
+                    onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                  >
+                    Employee
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="designation"
+                    activeKey={sort.key}
+                    direction={sort.direction}
+                    onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                  >
+                    Designation
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="basicPay"
+                    align="right"
+                    activeKey={sort.key}
+                    direction={sort.direction}
+                    onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                  >
+                    Basic Pay
+                  </SortableTableHead>
+                  <TableHead align="right">Pag-IBIG</TableHead>
+                  <TableHead align="right">PhilHealth</TableHead>
+                  <TableHead align="right">SSS</TableHead>
+                  <TableHead align="right">Actions</TableHead>
+                </tr>
+              </TableHeader>
+              <TableBody>
+                {adminDeductionRows.length === 0 ? (
+                  <TableEmpty
+                    colSpan={7}
+                    message="No admin employees yet. Add an admin employee with basic pay above."
+                  />
+                ) : (
+                  adminDeductionRows.map((emp) => {
+                    const deductions = computeAdminStatutoryDeductions(
+                      emp.basicPay
+                    );
+                    return (
+                      <TableRow key={emp.id}>
+                        <TablePrimaryCell>{emp.name}</TablePrimaryCell>
+                        <TableCell className="!text-sbc-gray">
+                          {emp.designation}
+                        </TableCell>
+                        <TableCell align="right" numeric>
+                          {emp.basicPay != null && emp.basicPay > 0
+                            ? formatDeductionAmount(emp.basicPay)
+                            : "—"}
+                        </TableCell>
+                        <TableCell align="right" numeric>
+                          {formatDeductionAmount(deductions.pagibig)}
+                        </TableCell>
+                        <TableCell align="right" numeric>
+                          {formatDeductionAmount(deductions.phic)}
+                        </TableCell>
+                        <TableCell align="right" numeric>
+                          {formatDeductionAmount(deductions.sss)}
+                        </TableCell>
+                        <TableCell align="right">
+                          <TableRowActions>
+                            <TableEditButton onClick={() => startEdit(emp)} />
+                          </TableRowActions>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+            <TableMeta>
+              <span>{adminDeductionRows.length} admin</span>
+              <span className="text-sbc-gold">SSS pending setup</span>
+            </TableMeta>
+          </TableShell>
+        </>
+      ) : (
+        <TableShell minWidth="720px" scrollable>
+          <Table>
+            <TableHeader>
+              <tr>
+                <SortableTableHead
+                  sortKey="name"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                >
+                  Name
+                </SortableTableHead>
+                <SortableTableHead
+                  sortKey="designation"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                >
+                  Designation
+                </SortableTableHead>
+                <TableHead>Assigned Site</TableHead>
+                <SortableTableHead
+                  sortKey="rate"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                >
+                  Rate
+                </SortableTableHead>
+                {activeTab === "admin" && (
+                  <SortableTableHead
+                    sortKey="basicPay"
+                    align="right"
+                    activeKey={sort.key}
+                    direction={sort.direction}
+                    onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                  >
+                    Basic Pay
+                  </SortableTableHead>
+                )}
+                <SortableTableHead
+                  sortKey="status"
+                  align="right"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={(key) => toggleSort(key as EmployeeSortKey)}
+                >
+                  Status
+                </SortableTableHead>
+                <TableHead align="right">Actions</TableHead>
+              </tr>
+            </TableHeader>
+            <TableBody>
+              {sortedEmployees.length === 0 ? (
+                <TableEmpty
+                  colSpan={activeTab === "admin" ? 7 : 6}
+                  message={`No ${formatEmployeeCategory(activeTab).toLowerCase()} employees yet. Add one above.`}
+                />
+              ) : (
+                sortedEmployees.map((emp) => (
+                  <TableRow key={emp.id}>
+                    <TablePrimaryCell>{emp.name}</TablePrimaryCell>
+                    <TableCell className="!text-sbc-gray">
+                      {emp.designation}
+                    </TableCell>
+                    <TableCell className="!text-sbc-gray">
+                      {emp.assignedSite || "—"}
+                    </TableCell>
+                    <TableCell numeric className="!font-semibold !text-sbc-black">
+                      {formatRateAmount(emp.rate, "hourly")}
+                    </TableCell>
+                    {activeTab === "admin" && (
+                      <TableCell align="right" numeric>
+                        {emp.basicPay != null && emp.basicPay > 0
+                          ? formatDeductionAmount(emp.basicPay)
+                          : "—"}
+                      </TableCell>
+                    )}
+                    <TableCell align="right">
+                      <span
+                        className={`text-xs font-semibold uppercase tracking-widest ${
+                          emp.status === "active"
+                            ? "text-sbc-gold"
+                            : "text-sbc-gray"
+                        }`}
+                      >
+                        {emp.status}
+                      </span>
+                    </TableCell>
+                    <TableCell align="right">
+                      <TableRowActions>
+                        <TableEditButton onClick={() => startEdit(emp)} />
+                        <TableDeleteButton
+                          label="Remove"
+                          onClick={() => handleDelete(emp.id, emp.name)}
+                          disabled={pending}
+                        />
+                      </TableRowActions>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+          <TableMeta>
+            <span>
+              {sortedEmployees.length}{" "}
+              {formatEmployeeCategory(activeTab).toLowerCase()}
+            </span>
+            <span className="text-sbc-gold">{employees.length} total roster</span>
+          </TableMeta>
+        </TableShell>
+      )}
     </>
   );
 }

@@ -94,7 +94,11 @@ export function applyAttendanceToPayrollEntry(
   const { deductionLines, totalDeductions } = computePayrollAdjustments(
     baseAmounts.grossPay,
     rules,
-    { category: employee.category, designation: employee.designation }
+    {
+      category: employee.category,
+      designation: employee.designation,
+      basicPay: employee.basicPay,
+    }
   );
   const deductionBreakdown = deductionLines.map((line) => ({
     code: line.code,

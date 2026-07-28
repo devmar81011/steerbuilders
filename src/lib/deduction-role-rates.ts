@@ -12,6 +12,7 @@ export type DeductionRoleRate = {
 export type EmployeeDeductionContext = {
   category: EmployeeCategory;
   designation: EmployeeDesignation;
+  basicPay?: number | null;
 };
 
 export function roleRateKey(category: EmployeeCategory, designation: string) {

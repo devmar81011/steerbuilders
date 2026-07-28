@@ -21,7 +21,11 @@ function mapAdjustment(row: Record<string, unknown>): PayrollAdjustment | null {
   if (kind !== "deduction") return null;
 
   const calcType = row.calc_type as string;
-  if (calcType !== "percent_of_gross" && calcType !== "fixed_per_period") {
+  if (
+    calcType !== "percent_of_gross" &&
+    calcType !== "percent_of_basic" &&
+    calcType !== "fixed_per_period"
+  ) {
     return null;
   }
 

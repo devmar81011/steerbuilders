@@ -18,6 +18,11 @@ export function calculateAdjustmentAmount(
 ): number {
   if (!rule.active) return 0;
 
+  // Statutory deductions (Pag-IBIG / PhilHealth / SSS) apply to admin only.
+  if (employee && employee.category !== "admin") {
+    return 0;
+  }
+
   const appliedValue = resolveDeductionValue(
     rule.value,
     rule.roleRates,
@@ -26,6 +31,11 @@ export function calculateAdjustmentAmount(
 
   if (rule.calcType === "percent_of_gross") {
     return roundMoney(grossPay * (appliedValue / 100));
+  }
+
+  if (rule.calcType === "percent_of_basic") {
+    const basicPay = Number(employee?.basicPay) || 0;
+    return roundMoney(basicPay * (appliedValue / 100));
   }
 
   return roundMoney(appliedValue);
@@ -50,6 +60,10 @@ export function computePayrollAdjustments(
         appliedValue,
         amount: calculateAdjustmentAmount(rule, grossPay, employee),
       };
+    })
+    .filter((line) => {
+      if (employee && employee.category !== "admin") return false;
+      return true;
     });
 
   const totalDeductions = roundMoney(

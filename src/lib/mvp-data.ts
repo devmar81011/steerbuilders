@@ -10,6 +10,8 @@ export type Employee = {
   designation: EmployeeDesignation;
   rate: number;
   rateType: RateType;
+  /** Monthly basic pay — used for admin statutory deductions (PHIC). */
+  basicPay?: number | null;
   status: "active" | "inactive";
   assignedSite?: string;
 };
@@ -65,6 +67,7 @@ export const mockEmployees: Employee[] = [
     designation: "Operations",
     rate: 406.25,
     rateType: "hourly",
+    basicPay: 26000,
     status: "active",
     assignedSite: "Head Office",
   },

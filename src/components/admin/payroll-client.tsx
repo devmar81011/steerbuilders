@@ -109,7 +109,11 @@ function employeeContextFromEntry(
 ): EmployeeDeductionContext | undefined {
   const employee = employees.find((item) => item.id === entry.employeeId);
   if (!employee) return undefined;
-  return { category: employee.category, designation: employee.designation };
+  return {
+    category: employee.category,
+    designation: employee.designation,
+    basicPay: employee.basicPay,
+  };
 }
 
 function breakdownFromForm(

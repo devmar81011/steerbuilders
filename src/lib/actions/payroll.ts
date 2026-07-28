@@ -30,6 +30,12 @@ import {
 } from "@/lib/payroll-calculations";
 
 function mapEmployee(row: Record<string, unknown>): Employee {
+  const basicPayRaw = row.basic_pay;
+  const basicPay =
+    basicPayRaw == null || basicPayRaw === ""
+      ? null
+      : Number(basicPayRaw);
+
   return {
     id: row.id as string,
     employeeNumber: (row.employee_number as string) ?? "",
@@ -38,6 +44,7 @@ function mapEmployee(row: Record<string, unknown>): Employee {
     designation: row.designation as Employee["designation"],
     rate: Number(row.rate),
     rateType: normalizeRateType(row.rate_type as string, row.category as EmployeeCategory),
+    basicPay: Number.isFinite(basicPay) ? basicPay : null,
     status: (row.status as "active" | "inactive") ?? "active",
     assignedSite: (row.assigned_site as string) || undefined,
   };
@@ -366,6 +373,7 @@ export async function createEmployee(input: {
   designation: string;
   rate: number;
   rate_type: RateType;
+  basic_pay?: number | null;
   assigned_site?: string;
 }) {
   await requireAdmin();
@@ -384,6 +392,10 @@ export async function createEmployee(input: {
         designation: input.designation,
         rate: input.rate,
         rate_type: "hourly",
+        basic_pay:
+          input.basic_pay != null && Number.isFinite(input.basic_pay)
+            ? input.basic_pay
+            : null,
         assigned_site: input.assigned_site || null,
         status: "active",
       })
@@ -408,6 +420,7 @@ export async function updateEmployee(
     designation: string;
     rate: number;
     rate_type: RateType;
+    basic_pay?: number | null;
     status: "active" | "inactive";
     assigned_site?: string;
   }
@@ -423,6 +436,10 @@ export async function updateEmployee(
         designation: input.designation,
         rate: input.rate,
         rate_type: "hourly",
+        basic_pay:
+          input.basic_pay != null && Number.isFinite(input.basic_pay)
+            ? input.basic_pay
+            : null,
         status: input.status,
         assigned_site: input.assigned_site || null,
       })

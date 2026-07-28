@@ -40,6 +40,7 @@ export type EmployeeRow = {
   assigned_site: string | null;
   rate: number;
   rate_type: RateType;
+  basic_pay: number | null;
   status: "active" | "inactive";
   created_at: string;
   updated_at: string;
