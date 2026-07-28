@@ -31,6 +31,7 @@ import {
   getDesignationsForCategory,
   payrollCategories,
   type EmployeeCategory,
+  type EmployeeDesignation,
 } from "@/lib/employee-categories";
 import type { Employee } from "@/lib/mvp-data";
 import { formatRateAmount } from "@/lib/rate-types";
@@ -38,11 +39,14 @@ import type { Site } from "@/lib/actions/sites";
 import {
   computeAdminStatutoryDeductions,
   formatDeductionAmount,
+  formatDeductionRuleSummary,
 } from "@/lib/admin-deductions";
+import type { PayrollAdjustment } from "@/lib/payroll-adjustments";
 
 type Props = {
   employees: Employee[];
   sites: Site[];
+  adjustments: PayrollAdjustment[];
 };
 
 type EmployeeTab = EmployeeCategory | "deductions";
@@ -63,7 +67,11 @@ const employeeTabs: { id: EmployeeTab; label: string }[] = [
   { id: "deductions", label: "Deductions" },
 ];
 
-export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
+export function EmployeesClient({
+  employees: initialEmployees,
+  sites,
+  adjustments,
+}: Props) {
   const [employees, setEmployees] = useState(initialEmployees);
   const { sort, toggleSort } = useTableSort<EmployeeSortKey>({ defaultKey: "name" });
   const [message, setMessage] = useState<string | null>(null);
@@ -96,9 +104,13 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
 
   const showBasicPay = form.category === "admin";
   const formBasicPay = Number(form.basicPay) || 0;
+  const formDesignation = form.designation as EmployeeDesignation;
   const formDeductions = computeAdminStatutoryDeductions(
-    showBasicPay ? formBasicPay : null
+    showBasicPay ? formBasicPay : null,
+    adjustments,
+    formDesignation
   );
+  const deductionRuleSummary = formatDeductionRuleSummary(adjustments);
 
   const tabCounts = useMemo(() => {
     const counts: Record<EmployeeCategory, number> = {
@@ -431,7 +443,14 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
                 placeholder="Monthly basic"
               />
               <p className="mt-1.5 text-xs font-medium text-sbc-gray">
-                Used for admin PhilHealth (5% ÷ 2). Pag-IBIG is fixed ₱200.
+                Used for % of basic deductions (e.g. PhilHealth). Edit rates on{" "}
+                <a
+                  href="/admin/contributions"
+                  className="text-sbc-gold hover:underline"
+                >
+                  Deductions
+                </a>
+                .
               </p>
             </div>
           )}
@@ -527,8 +546,13 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
       {activeTab === "deductions" ? (
         <>
           <p className="mb-4 text-sm text-sbc-gray">
-            Admin statutory deductions — Pag-IBIG fixed ₱200, PhilHealth = 5% of
-            basic ÷ 2, SSS left empty for now.
+            {deductionRuleSummary}{" "}
+            <a
+              href="/admin/contributions"
+              className="font-medium text-sbc-gold hover:underline"
+            >
+              Open Deductions
+            </a>
           </p>
           <TableShell minWidth="780px" scrollable>
             <Table>
@@ -574,7 +598,9 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
                 ) : (
                   adminDeductionRows.map((emp) => {
                     const deductions = computeAdminStatutoryDeductions(
-                      emp.basicPay
+                      emp.basicPay,
+                      adjustments,
+                      emp.designation as EmployeeDesignation
                     );
                     return (
                       <TableRow key={emp.id}>
@@ -609,7 +635,12 @@ export function EmployeesClient({ employees: initialEmployees, sites }: Props) {
             </Table>
             <TableMeta>
               <span>{adminDeductionRows.length} admin</span>
-              <span className="text-sbc-gold">SSS pending setup</span>
+              <a
+                href="/admin/contributions"
+                className="text-sbc-gold hover:underline"
+              >
+                Edit % and amounts
+              </a>
             </TableMeta>
           </TableShell>
         </>

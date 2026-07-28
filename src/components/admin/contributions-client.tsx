@@ -117,7 +117,7 @@ function countRoleOverridesForCategory(
 
 export function ContributionsClient({ initialAdjustments }: Props) {
   const [adjustments, setAdjustments] = useState(initialAdjustments);
-  const [activeTab, setActiveTab] = useState<DeductionTab>("construction");
+  const [activeTab, setActiveTab] = useState<DeductionTab>("admin");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(defaultForm);
   const [message, setMessage] = useState<string | null>(null);

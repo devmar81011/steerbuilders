@@ -1,35 +1,40 @@
-/** Admin statutory deduction helpers (Pag-IBIG / PhilHealth / SSS). */
+/** Admin statutory deduction helpers — amounts come from Contributions rules. */
 
-export const ADMIN_PAGIBIG_FIXED = 200;
-
-/** PhilHealth employee share: 5% of basic ÷ 2. */
-export function computeAdminPhic(basicPay: number): number {
-  const basic = Number(basicPay) || 0;
-  if (basic <= 0) return 0;
-  return Math.round(((basic * 0.05) / 2) * 100) / 100;
-}
-
-export function computeAdminPagibig(basicPay?: number | null): number {
-  // Fixed ₱200 for admin employees once basic pay is in use / on roster.
-  void basicPay;
-  return ADMIN_PAGIBIG_FIXED;
-}
+import { calculateAdjustmentAmount } from "@/lib/compute-payroll-adjustments";
+import type { EmployeeDesignation } from "@/lib/employee-categories";
+import type { PayrollAdjustment } from "@/lib/payroll-adjustments";
 
 export type AdminStatutoryDeductions = {
-  pagibig: number;
-  phic: number;
-  /** null = not configured yet */
+  pagibig: number | null;
+  phic: number | null;
   sss: number | null;
 };
 
+function amountForCode(
+  rules: PayrollAdjustment[],
+  code: string,
+  basicPay: number | null | undefined,
+  designation: EmployeeDesignation
+): number | null {
+  const rule = rules.find((item) => item.code === code);
+  if (!rule || !rule.active) return null;
+
+  return calculateAdjustmentAmount(rule, 0, {
+    category: "admin",
+    designation,
+    basicPay,
+  });
+}
+
 export function computeAdminStatutoryDeductions(
-  basicPay: number | null | undefined
+  basicPay: number | null | undefined,
+  rules: PayrollAdjustment[] = [],
+  designation: EmployeeDesignation = "Operations"
 ): AdminStatutoryDeductions {
-  const basic = Number(basicPay) || 0;
   return {
-    pagibig: ADMIN_PAGIBIG_FIXED,
-    phic: computeAdminPhic(basic),
-    sss: null,
+    pagibig: amountForCode(rules, "pagibig", basicPay, designation),
+    phic: amountForCode(rules, "philhealth", basicPay, designation),
+    sss: amountForCode(rules, "sss", basicPay, designation),
   };
 }
 
@@ -39,4 +44,26 @@ export function formatDeductionAmount(amount: number | null | undefined): string
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+export function formatDeductionRuleSummary(rules: PayrollAdjustment[]): string {
+  const parts = ["pagibig", "philhealth", "sss"]
+    .map((code) => rules.find((rule) => rule.code === code))
+    .filter((rule): rule is PayrollAdjustment => Boolean(rule))
+    .map((rule) => {
+      const status = rule.active ? "" : " (off)";
+      if (
+        rule.calcType === "percent_of_basic" ||
+        rule.calcType === "percent_of_gross"
+      ) {
+        return `${rule.label} ${rule.value}%${status}`;
+      }
+      return `${rule.label} ₱${rule.value.toLocaleString("en-PH")}${status}`;
+    });
+
+  if (!parts.length) {
+    return "Set Pag-IBIG, PhilHealth, and SSS rates on the Deductions page.";
+  }
+
+  return `Current rules: ${parts.join(" · ")}. Edit % and amounts on Deductions.`;
 }
