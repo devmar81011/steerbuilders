@@ -255,16 +255,17 @@ const ConstructionAttendancePanel = memo(function ConstructionAttendancePanel({
   ) => void;
 }) {
   return (
-    <TableShell minWidth="0" scrollable>
-      <Table className="table-fixed">
+    <TableShell minWidth="1120px" scrollable>
+      <Table>
         <TableHeader>
           <tr>
             <SortableTableHead
               sortKey="name"
+              sticky
               activeKey={sort.key}
               direction={sort.direction}
               onSort={(key) => onToggleSort(key as ConstructionSortKey)}
-              className="!w-[11%] !px-2"
+              className="!min-w-[140px] !px-3"
             >
               Employee
             </SortableTableHead>
@@ -273,12 +274,12 @@ const ConstructionAttendancePanel = memo(function ConstructionAttendancePanel({
               activeKey={sort.key}
               direction={sort.direction}
               onSort={(key) => onToggleSort(key as ConstructionSortKey)}
-              className="!w-[7%] !px-1"
+              className="!min-w-[100px] !px-2"
             >
               Site
             </SortableTableHead>
             {ATTENDANCE_DAYS.map(({ key, label }) => (
-              <TableHead key={key} className="!w-[10%] !px-1 text-left">
+              <TableHead key={key} className="!min-w-[108px] !px-2 text-left">
                 {label}
               </TableHead>
             ))}
@@ -287,11 +288,11 @@ const ConstructionAttendancePanel = memo(function ConstructionAttendancePanel({
               activeKey={sort.key}
               direction={sort.direction}
               onSort={(key) => onToggleSort(key as ConstructionSortKey)}
-              className="!w-[6%] !px-1"
+              className="!min-w-[72px] !px-2"
             >
               Total Hrs
             </SortableTableHead>
-            <TableHead className="!w-[6%] !px-1">Total OT</TableHead>
+            <TableHead className="!min-w-[72px] !px-2">Total OT</TableHead>
           </tr>
         </TableHeader>
         <TableBody>
@@ -307,12 +308,14 @@ const ConstructionAttendancePanel = memo(function ConstructionAttendancePanel({
           ) : (
             rows.map((row) => (
               <TableRow key={row.employeeId}>
-                <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
-                <TableCell className="!px-1 !text-sbc-gray">
+                <TablePrimaryCell sticky className="!px-3">
+                  {row.employeeName}
+                </TablePrimaryCell>
+                <TableCell className="!px-2 !text-sbc-gray">
                   {employeeSites[row.employeeId] || "Unassigned"}
                 </TableCell>
                 {ATTENDANCE_DAYS.map(({ key }) => (
-                  <TableCell key={key} className="!px-1 text-left">
+                  <TableCell key={key} className="!px-2 text-left">
                     <ConstructionDayCell
                       entry={row[key]}
                       disabled={cellsBusy}
@@ -322,10 +325,10 @@ const ConstructionAttendancePanel = memo(function ConstructionAttendancePanel({
                     />
                   </TableCell>
                 ))}
-                <TableCell numeric className="!px-1 !text-sbc-black">
+                <TableCell numeric className="!px-2 !text-sbc-black">
                   {formatHours(countTotalHours(row))}
                 </TableCell>
-                <TableCell numeric className="!px-1 !text-sbc-black">
+                <TableCell numeric className="!px-2 !text-sbc-black">
                   {formatHours(countTotalOvertimeHours(row))}
                 </TableCell>
               </TableRow>
@@ -364,16 +367,17 @@ const HourlyAttendancePanel = memo(function HourlyAttendancePanel({
   ) => void;
 }) {
   return (
-    <TableShell minWidth="0" scrollable>
-      <Table className="table-fixed">
+    <TableShell minWidth="1180px" scrollable>
+      <Table>
         <TableHeader>
           <tr>
             <SortableTableHead
               sortKey="name"
+              sticky
               activeKey={sort.key}
               direction={sort.direction}
               onSort={(key) => onToggleSort(key as HourlySortKey)}
-              className="!w-[11%] !px-2"
+              className="!min-w-[140px] !px-3"
             >
               Employee
             </SortableTableHead>
@@ -382,12 +386,12 @@ const HourlyAttendancePanel = memo(function HourlyAttendancePanel({
               activeKey={sort.key}
               direction={sort.direction}
               onSort={(key) => onToggleSort(key as HourlySortKey)}
-              className="!w-[7%] !px-1"
+              className="!min-w-[100px] !px-2"
             >
               Site
             </SortableTableHead>
             {ATTENDANCE_DAYS.map(({ key, label }) => (
-              <TableHead key={key} className="!w-[11%] !px-1 text-left">
+              <TableHead key={key} className="!min-w-[120px] !px-2 text-left">
                 {label}
               </TableHead>
             ))}
@@ -396,7 +400,7 @@ const HourlyAttendancePanel = memo(function HourlyAttendancePanel({
               activeKey={sort.key}
               direction={sort.direction}
               onSort={(key) => onToggleSort(key as HourlySortKey)}
-              className="!w-[5%] !px-1"
+              className="!min-w-[80px] !px-2"
             >
               Total Hours
             </SortableTableHead>
@@ -413,12 +417,14 @@ const HourlyAttendancePanel = memo(function HourlyAttendancePanel({
           ) : (
             rows.map((row) => (
               <TableRow key={row.employeeId}>
-                <TablePrimaryCell>{row.employeeName}</TablePrimaryCell>
-                <TableCell className="!px-1 !text-sbc-gray">
+                <TablePrimaryCell sticky className="!px-3">
+                  {row.employeeName}
+                </TablePrimaryCell>
+                <TableCell className="!px-2 !text-sbc-gray">
                   {employeeSites[row.employeeId] || "Unassigned"}
                 </TableCell>
                 {ATTENDANCE_DAYS.map(({ key }) => (
-                  <TableCell key={key} className="!px-1 text-left">
+                  <TableCell key={key} className="!px-2 text-left">
                     <AdminDayCell
                       entry={row[key]}
                       disabled={cellsBusy}
@@ -428,7 +434,7 @@ const HourlyAttendancePanel = memo(function HourlyAttendancePanel({
                     />
                   </TableCell>
                 ))}
-                <TableCell numeric className="!px-1 !text-sbc-black">
+                <TableCell numeric className="!px-2 !text-sbc-black">
                   {formatHours(countAdminHours(row))}
                 </TableCell>
               </TableRow>

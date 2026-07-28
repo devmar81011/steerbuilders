@@ -1,6 +1,13 @@
 import { type ReactNode } from "react";
 import { radii } from "@/lib/design-tokens";
 
+/** Sticky first column — keeps Employee/Name visible while scrolling wide tables. */
+export const stickyFirstColumnClass =
+  "sticky left-0 z-20 bg-sbc-white shadow-[4px_0_10px_-6px_rgba(0,0,0,0.28)]";
+
+export const stickyFirstHeaderClass =
+  "sticky left-0 z-30 bg-sbc-white shadow-[4px_0_10px_-6px_rgba(0,0,0,0.28)]";
+
 type TableShellProps = {
   children: ReactNode;
   className?: string;
@@ -62,17 +69,21 @@ export function TableHead({
   children,
   className = "",
   align = "left",
+  sticky = false,
 }: {
   children: ReactNode;
   className?: string;
   align?: "left" | "right" | "center";
+  sticky?: boolean;
 }) {
   const alignClass =
     align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
 
   return (
     <th
-      className={`border-b border-sbc-gray-light px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sbc-gray ${alignClass} ${className}`}
+      className={`border-b border-sbc-gray-light px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sbc-gray ${alignClass} ${
+        sticky ? stickyFirstHeaderClass : ""
+      } ${className}`}
     >
       {children}
     </th>
@@ -99,12 +110,14 @@ export function TableCell({
   align = "left",
   emphasis = false,
   numeric = false,
+  sticky = false,
 }: {
   children: ReactNode;
   className?: string;
   align?: "left" | "right" | "center";
   emphasis?: boolean;
   numeric?: boolean;
+  sticky?: boolean;
 }) {
   const alignClass =
     align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
@@ -121,7 +134,7 @@ export function TableCell({
           : numeric
             ? "font-medium"
             : "font-medium text-sbc-gray"
-      } ${className}`}
+      } ${sticky ? stickyFirstColumnClass : ""} ${className}`}
     >
       {children}
     </td>
@@ -131,12 +144,20 @@ export function TableCell({
 export function TablePrimaryCell({
   children,
   subtitle,
+  sticky = false,
+  className = "",
 }: {
   children: ReactNode;
   subtitle?: ReactNode;
+  sticky?: boolean;
+  className?: string;
 }) {
   return (
-    <TableCell emphasis className="!text-sbc-black">
+    <TableCell
+      emphasis
+      sticky={sticky}
+      className={`!text-sbc-black ${className}`}
+    >
       <p className="font-semibold text-sbc-black">{children}</p>
       {subtitle && (
         <p className="mt-1 text-xs font-medium text-sbc-gray">{subtitle}</p>

@@ -558,12 +558,13 @@ export function EmployeesClient({
               Open Deductions
             </a>
           </p>
-          <TableShell minWidth="780px" scrollable>
+          <TableShell minWidth="860px" scrollable>
             <Table>
               <TableHeader>
                 <tr>
                   <SortableTableHead
                     sortKey="name"
+                    sticky
                     activeKey={sort.key}
                     direction={sort.direction}
                     onSort={(key) => toggleSort(key as EmployeeSortKey)}
@@ -608,7 +609,7 @@ export function EmployeesClient({
                     );
                     return (
                       <TableRow key={emp.id}>
-                        <TablePrimaryCell>{emp.name}</TablePrimaryCell>
+                        <TablePrimaryCell sticky>{emp.name}</TablePrimaryCell>
                         <TableCell className="!text-sbc-gray">
                           {emp.designation}
                         </TableCell>
@@ -649,12 +650,13 @@ export function EmployeesClient({
           </TableShell>
         </>
       ) : (
-        <TableShell minWidth="720px" scrollable>
+        <TableShell minWidth={activeTab === "admin" ? "920px" : "780px"} scrollable>
           <Table>
             <TableHeader>
               <tr>
                 <SortableTableHead
                   sortKey="name"
+                  sticky
                   activeKey={sort.key}
                   direction={sort.direction}
                   onSort={(key) => toggleSort(key as EmployeeSortKey)}
@@ -710,7 +712,7 @@ export function EmployeesClient({
               ) : (
                 sortedEmployees.map((emp) => (
                   <TableRow key={emp.id}>
-                    <TablePrimaryCell>{emp.name}</TablePrimaryCell>
+                    <TablePrimaryCell sticky>{emp.name}</TablePrimaryCell>
                     <TableCell className="!text-sbc-gray">
                       {emp.designation}
                     </TableCell>

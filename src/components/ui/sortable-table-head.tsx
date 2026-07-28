@@ -2,6 +2,7 @@
 
 import { type ReactNode } from "react";
 import type { SortDirection } from "@/lib/table-sort";
+import { stickyFirstHeaderClass } from "@/components/ui/table";
 
 type Props = {
   children: ReactNode;
@@ -12,6 +13,7 @@ type Props = {
   align?: "left" | "right" | "center";
   className?: string;
   sortable?: boolean;
+  sticky?: boolean;
 };
 
 function SortIndicator({
@@ -46,14 +48,16 @@ export function SortableTableHead({
   align = "left",
   className = "",
   sortable = true,
+  sticky = false,
 }: Props) {
   const alignClass =
     align === "right" ? "text-right" : align === "center" ? "text-center" : "text-left";
+  const stickyClass = sticky ? stickyFirstHeaderClass : "";
 
   if (!sortable) {
     return (
       <th
-        className={`border-b border-sbc-gray-light px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sbc-gray ${alignClass} ${className}`}
+        className={`border-b border-sbc-gray-light px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-sbc-gray ${alignClass} ${stickyClass} ${className}`}
       >
         {children}
       </th>
@@ -64,7 +68,7 @@ export function SortableTableHead({
 
   return (
     <th
-      className={`border-b border-sbc-gray-light px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${alignClass} ${className}`}
+      className={`border-b border-sbc-gray-light px-6 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${alignClass} ${stickyClass} ${className}`}
     >
       <button
         type="button"

@@ -469,12 +469,13 @@ function PayrollTable({
         on a row for rates, pay breakdown, disbursement, remarks, and charged to.
       </p>
 
-      <TableShell minWidth="980px" scrollable>
+      <TableShell minWidth="1080px" scrollable>
         <Table>
           <TableHeader>
             <tr>
               <SortableTableHead
                 sortKey="employeeName"
+                sticky
                 activeKey={sort.key}
                 direction={sort.direction}
                 onSort={(key) => onToggleSort(key as PayrollSortKey)}
@@ -543,6 +544,7 @@ function PayrollTable({
                   <Fragment key={entry.id}>
                     <TableRow>
                       <TablePrimaryCell
+                        sticky
                         subtitle={
                           [entry.siteAssignment, entry.designation]
                             .filter(Boolean)
