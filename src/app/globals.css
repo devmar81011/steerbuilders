@@ -44,9 +44,9 @@ body {
   --sbc-gray-light: #2c2c2c;
   --sbc-off-white: #101010;
   --sbc-white: #181818;
-  --sbc-gold: #c9a24d;
-  --sbc-gold-dark: #dbb45c;
-  --sbc-number: #e6c86a;
+  --sbc-gold: #b88f3f;
+  --sbc-gold-dark: #a67f35;
+  --sbc-number: #c4a052;
   --background: var(--sbc-off-white);
   --foreground: var(--sbc-black);
   background: var(--background);

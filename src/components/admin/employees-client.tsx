@@ -102,11 +102,11 @@ export function EmployeesClient({
     [form.category]
   );
 
-  const showBasicPay = form.category === "admin";
+  const showDeductionPreview = form.category === "admin";
   const formBasicPay = Number(form.basicPay) || 0;
   const formDesignation = form.designation as EmployeeDesignation;
   const formDeductions = computeAdminStatutoryDeductions(
-    showBasicPay ? formBasicPay : null,
+    showDeductionPreview ? formBasicPay : null,
     adjustments,
     formDesignation
   );
@@ -157,7 +157,6 @@ export function EmployeesClient({
       ...form,
       category,
       designation: designations[0],
-      basicPay: category === "admin" ? form.basicPay : "",
     });
   }
 
@@ -169,7 +168,6 @@ export function EmployeesClient({
         ...prev,
         category: tab,
         designation: designations[0],
-        basicPay: tab === "admin" ? prev.basicPay : "",
       }));
     }
   }
@@ -212,7 +210,6 @@ export function EmployeesClient({
   }
 
   function parseBasicPay(): number | null {
-    if (form.category !== "admin") return null;
     const trimmed = form.basicPay.trim();
     if (!trimmed) return null;
     const value = Number(trimmed);
@@ -229,7 +226,7 @@ export function EmployeesClient({
       return;
     }
 
-    if (form.category === "admin" && form.basicPay.trim()) {
+    if (form.basicPay.trim()) {
       const basic = Number(form.basicPay);
       if (!Number.isFinite(basic) || basic < 0) {
         setMessage("Enter a valid basic pay amount.");
@@ -343,10 +340,10 @@ export function EmployeesClient({
         <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
           Admin
         </p>
-        <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Employees</h1>
+        <h1 className="mt-2 text-2xl font-bold text-sbc-gold-dark">Employees</h1>
         <p className="mt-2 text-sm font-semibold text-sbc-gray">
-          Set each employee&apos;s hourly rate. Admin staff also use basic pay
-          for Pag-IBIG and PhilHealth deductions.
+          Set each employee&apos;s hourly rate and basic pay. Admin staff use
+          basic pay for Pag-IBIG and PhilHealth deductions.
         </p>
       </div>
 
@@ -357,7 +354,7 @@ export function EmployeesClient({
       )}
 
       <Card className="mb-8">
-        <p className="mb-4 text-xs font-medium uppercase tracking-widest text-sbc-gold">
+        <p className="mb-4 text-xs font-medium uppercase tracking-widest text-sbc-gray">
           {editingId ? "Edit Employee" : "Add Employee"}
         </p>
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
@@ -430,30 +427,29 @@ export function EmployeesClient({
             </p>
           </div>
 
-          {showBasicPay && (
-            <div>
-              <Input
-                label="Basic Pay (PHP)"
-                size="sm"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.basicPay}
-                onChange={(e) => setForm({ ...form, basicPay: e.target.value })}
-                placeholder="Monthly basic"
-              />
-              <p className="mt-1.5 text-xs font-medium text-sbc-gray">
-                Used for % of basic deductions (e.g. PhilHealth). Edit rates on{" "}
-                <a
-                  href="/admin/contributions"
-                  className="text-sbc-gold hover:underline"
-                >
-                  Deductions
-                </a>
-                .
-              </p>
-            </div>
-          )}
+          <div>
+            <Input
+              label="Basic Pay (PHP)"
+              size="sm"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.basicPay}
+              onChange={(e) => setForm({ ...form, basicPay: e.target.value })}
+              placeholder="Monthly basic"
+            />
+            <p className="mt-1.5 text-xs font-medium text-sbc-gray">
+              Used for Admin deductions (e.g. PhilHealth % of basic). Edit rates
+              on{" "}
+              <a
+                href="/admin/contributions"
+                className="text-sbc-gold-dark hover:underline"
+              >
+                Deductions
+              </a>
+              .
+            </p>
+          </div>
 
           {editingId && (
             <Select
@@ -472,7 +468,7 @@ export function EmployeesClient({
             </Select>
           )}
 
-          {showBasicPay && (
+          {showDeductionPreview && (
             <div className="md:col-span-2 rounded-lg border border-sbc-gray-light/80 bg-sbc-gray-light/20 px-4 py-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sbc-gray">
                 Admin deductions preview
