@@ -137,9 +137,24 @@ type PayrollSortKey =
   | "netPay"
   | "status";
 
-const tabs: { id: PayrollTab; label: string }[] = [
-  { id: "construction", label: "Construction" },
-  { id: "admin", label: "Admin" },
+const tabs: {
+  id: PayrollTab;
+  label: string;
+  hint: string;
+  uploadLabel: string;
+}[] = [
+  {
+    id: "construction",
+    label: "Construction",
+    hint: "Weekly · Operations Excel",
+    uploadLabel: "Upload Construction Excel",
+  },
+  {
+    id: "admin",
+    label: "Admin",
+    hint: "Semi-monthly · Admin Excel",
+    uploadLabel: "Upload Admin Excel",
+  },
 ];
 
 function displayRemarks(remarks: string): string {
@@ -1315,6 +1330,7 @@ export function PayrollClient({
   }
 
   const isBusy = pending || loadingPeriod || uploading;
+  const activeTabConfig = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
   const filteredHistory = useMemo(
     () =>
       uploadHistory.filter((item) =>
@@ -1335,9 +1351,7 @@ export function PayrollClient({
           </p>
           <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Payroll</h1>
           <p className="mt-1 text-sm text-sbc-gray">
-            {activeTab === "admin"
-              ? "Upload your completed Admin Excel payroll (semi-monthly), then print payslips or export"
-              : "Upload your completed Construction Excel payroll (weekly), then print slips or export"}
+            Upload completed Excel payroll, save it for history, then print or export.
           </p>
         </div>
 
@@ -1385,11 +1399,7 @@ export function PayrollClient({
             disabled={isBusy || uploading}
             onClick={() => fileInputRef.current?.click()}
           >
-            {uploading
-              ? "Uploading…"
-              : activeTab === "admin"
-                ? "Upload Admin Excel"
-                : "Upload Construction Excel"}
+            {uploading ? "Uploading…" : activeTabConfig.uploadLabel}
           </Button>
           <Button
             type="button"
@@ -1412,33 +1422,67 @@ export function PayrollClient({
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            disabled={isBusy}
-            onClick={() => {
-              setActiveTab(tab.id);
-              resetForm();
-              setMessage(null);
-            }}
-            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
-              activeTab === tab.id
-                ? "bg-sbc-gold text-sbc-black"
-                : "border border-sbc-gray-light bg-sbc-white text-sbc-gray hover:border-sbc-gold/40"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div
+        role="tablist"
+        aria-label="Payroll type"
+        className="mb-5 grid grid-cols-1 gap-1 rounded-lg border border-sbc-gray-light bg-sbc-off-white p-1 sm:grid-cols-2"
+      >
+        {tabs.map((tab) => {
+          const active = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              disabled={isBusy}
+              onClick={() => {
+                setActiveTab(tab.id);
+                resetForm();
+                setMessage(null);
+              }}
+              className={`group relative rounded-md px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/35 disabled:cursor-not-allowed disabled:opacity-60 ${
+                active
+                  ? "bg-sbc-white text-sbc-black shadow-[0_1px_2px_rgba(16,16,16,0.08)] ring-1 ring-sbc-gold/35"
+                  : "text-sbc-gray hover:bg-sbc-white/70 hover:text-sbc-black"
+              }`}
+            >
+              <span className="flex items-center justify-between gap-3">
+                <span>
+                  <span
+                    className={`block text-sm font-bold tracking-wide ${
+                      active ? "text-sbc-gold-dark" : "text-current"
+                    }`}
+                  >
+                    {tab.label}
+                  </span>
+                  <span
+                    className={`mt-0.5 block text-xs font-medium ${
+                      active ? "text-sbc-gray" : "text-sbc-gray/80"
+                    }`}
+                  >
+                    {tab.hint}
+                  </span>
+                </span>
+                <span
+                  aria-hidden
+                  className={`h-2 w-2 shrink-0 rounded-full transition-colors ${
+                    active ? "bg-sbc-gold" : "bg-sbc-gray-light"
+                  }`}
+                />
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <p className="mb-4 rounded-lg border border-sbc-gold/25 bg-sbc-gold/5 px-4 py-3 text-sm text-sbc-gray">
-        <span className="font-semibold text-sbc-black">Upload-first · </span>
+        <span className="font-semibold text-sbc-black">
+          {activeTab === "admin" ? "Admin workflow · " : "Construction workflow · "}
+        </span>
         {activeTab === "admin"
-          ? "Use your Admin workbook (Payroll Computation sheet). Payslips print like the Excel Payslip tab — Basic, OT, SSS, PhilHealth, HDMF, CA, and Net."
-          : "Fill payroll in Excel as usual, upload the file here, and we save that week for history. The table stays empty until you upload."}
+          ? "Upload the Admin workbook (Payroll Computation). Print Slips use the Excel Payslip layout — Basic, OT, SSS, PhilHealth, HDMF, CA, and Net."
+          : "Upload the Operations weekly Excel. The table stays empty until you upload, then you can print slips or export CSV."}
       </p>
 
       {filteredHistory.length > 0 && (
