@@ -463,10 +463,6 @@ export async function importConstructionPayrollExcel(
     return { error: "Upload an .xlsx Excel file." };
   }
 
-  const preferredPeriodKey = String(
-    formData.get("periodKey") || formData.get("preferredPeriodKey") || ""
-  );
-
   const buffer = await file.arrayBuffer();
   let parsed;
   try {
@@ -483,10 +479,11 @@ export async function importConstructionPayrollExcel(
   }
 
   // One Construction workbook — every date-named sheet tab is a week.
+  // Always open the chronologically latest tab (e.g. 7.10.26 over 7.3.26).
   const sheets = parsed.sheets;
-  const viewSheet =
-    sheets.find((sheet) => sheet.period.key === preferredPeriodKey) ??
-    sheets[sheets.length - 1]!;
+  const viewSheet = sheets.reduce((latest, sheet) =>
+    sheet.period.key > latest.period.key ? sheet : latest
+  );
 
   if (!isSupabaseConfigured()) {
     return {
