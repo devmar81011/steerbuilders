@@ -247,29 +247,22 @@ export function parseAdminPayrollWorkbook(buffer: ArrayBuffer): {
 }
 
 export function adminRowToPayslipAmounts(row: ImportedAdminPayrollRow) {
-  const statutory =
+  // Pass-through Payroll Computation values only — do not invent amounts.
+  const employeeShare =
     row.sss + row.sssLoan + row.phic + row.hdmf + row.hdmfLoan + row.tax;
-  const regularPay = Math.max(0, row.grossPay - row.overtimePay);
-  const hours =
-    row.payableDays > 0 ? row.payableDays * 8 : row.dailyRate > 0 ? regularPay / (row.dailyRate / 8 || 1) : 0;
 
   return {
-    hours: Number.isFinite(hours) ? Math.round(hours * 100) / 100 : 0,
+    hours: row.payableDays > 0 ? row.payableDays * 8 : 0,
     overtimeHours: 0,
-    regularPay,
+    regularPay: row.basicPay,
     overtimePay: row.overtimePay,
     grossPay: row.grossPay,
     cashAdvance: row.cashAdvance,
     additionalPay: row.leavePay,
-    deductions: statutory,
+    deductions: employeeShare,
     netPay: row.netPay,
-    dailyRate: row.dailyRate || (row.basicPay ? row.basicPay / 13 : 0),
-    hourlyRate:
-      row.dailyRate > 0
-        ? row.dailyRate / 8
-        : row.basicPay > 0
-          ? row.basicPay / 13 / 8
-          : 0,
+    dailyRate: row.dailyRate || 0,
+    hourlyRate: row.dailyRate > 0 ? row.dailyRate / 8 : 0,
     meta: {
       sss: row.sss,
       sssLoan: row.sssLoan,

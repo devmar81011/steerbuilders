@@ -148,11 +148,6 @@ const tabs: {
   },
 ];
 
-function displayRemarks(remarks: string): string {
-  if (parseAdminPayslipMeta(remarks)) return "—";
-  return remarks || "—";
-}
-
 function UploadIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
     <svg aria-hidden viewBox="0 0 24 24" fill="none" className={className}>
@@ -350,7 +345,7 @@ function PayrollPrintSheet({
           {pageEntries.map((entry) => {
             const meta = parseAdminPayslipMeta(entry.remarks);
             const basicPay = isAdmin
-              ? entry.regularPay || meta?.basicPay || 0
+              ? meta?.basicPay || 0
               : entry.regularPay;
             const leavePay = meta?.leavePay ?? entry.additionalPay;
             const sss = isAdmin ? meta?.sss ?? 0 : 0;
@@ -358,8 +353,10 @@ function PayrollPrintSheet({
             const phic = isAdmin ? meta?.phic ?? 0 : 0;
             const hdmf = isAdmin ? meta?.hdmf ?? 0 : 0;
             const hdmfLoan = isAdmin ? meta?.hdmfLoan ?? 0 : 0;
+            const tax = isAdmin ? meta?.tax ?? 0 : 0;
             const overtimePay = entry.overtimePay;
             const cashAdvance = entry.cashAdvance;
+            // Payslip deduction lines only — Net Pay always comes from Excel NET.
             const totalDeductions = isAdmin
               ? cashAdvance + sss + sssLoan + phic + hdmf + hdmfLoan
               : cashAdvance;
@@ -628,13 +625,9 @@ function PayrollTable({
     value: string
   ) => void;
 }) {
+  const isAdminTable = category === "admin";
   const showDisbursementColumns = category === "construction";
-  const showEmploymentStatus = category === "admin";
-  const showAdminShareColumns = category === "admin";
-  const columnCount =
-    (showDisbursementColumns ? 16 : 14) +
-    (showEmploymentStatus ? 1 : 0) +
-    (showAdminShareColumns ? 3 : 0);
+  const columnCount = isAdminTable ? 12 : 16;
 
   const payableEntries = useMemo(
     () => entries.filter((entry) => entry.netPay > 0),
@@ -681,71 +674,104 @@ function PayrollTable({
         </div>
       </div>
 
-      <TableShell minWidth="2400px" scrollable className="rounded-none border-0">
+      <TableShell
+        minWidth={isAdminTable ? "1400px" : "2400px"}
+        scrollable
+        className="rounded-none border-0"
+      >
         <Table>
           <TableHeader>
-            <tr>
-              <SortableTableHead
-                sortKey="employeeName"
-                sticky
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => onToggleSort(key as PayrollSortKey)}
-              >
-                Employee
-              </SortableTableHead>
-              {showEmploymentStatus ? <TableHead>Status</TableHead> : null}
-              <TableHead>Site Assignment</TableHead>
-              <TableHead align="right">Daily Rate</TableHead>
-              <TableHead>Designation</TableHead>
-              <TableHead align="right">Hourly Rate</TableHead>
-              <SortableTableHead
-                sortKey="hours"
-                align="center"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => onToggleSort(key as PayrollSortKey)}
-              >
-                Hours
-              </SortableTableHead>
-              <TableHead align="right">OT Hours</TableHead>
-              <TableHead align="right">Regular Pay</TableHead>
-              <TableHead align="right">OT Pay</TableHead>
-              <SortableTableHead
-                sortKey="grossPay"
-                align="right"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => onToggleSort(key as PayrollSortKey)}
-              >
-                Gross
-              </SortableTableHead>
-              <TableHead align="right">Cash Advance</TableHead>
-              {showAdminShareColumns ? (
-                <>
-                  <TableHead align="right">SSS Cont</TableHead>
-                  <TableHead align="right">PHIC</TableHead>
-                  <TableHead align="right">HDMF Cont</TableHead>
-                </>
-              ) : null}
-              <TableHead align="right">Additional Pay</TableHead>
-              <SortableTableHead
-                sortKey="netPay"
-                align="right"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => onToggleSort(key as PayrollSortKey)}
-              >
-                Net
-              </SortableTableHead>
-              {showDisbursementColumns ? (
+            {isAdminTable ? (
+              <tr>
+                <SortableTableHead
+                  sortKey="employeeName"
+                  sticky
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={(key) => onToggleSort(key as PayrollSortKey)}
+                >
+                  Employee
+                </SortableTableHead>
+                <TableHead>Status</TableHead>
+                <SortableTableHead
+                  sortKey="netPay"
+                  align="right"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={(key) => onToggleSort(key as PayrollSortKey)}
+                >
+                  Net
+                </SortableTableHead>
+                <SortableTableHead
+                  sortKey="grossPay"
+                  align="right"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={(key) => onToggleSort(key as PayrollSortKey)}
+                >
+                  Gross
+                </SortableTableHead>
+                <TableHead align="right">OT</TableHead>
+                <TableHead align="right">Leave</TableHead>
+                <TableHead align="right">Tax</TableHead>
+                <TableHead align="right">SSS Cont</TableHead>
+                <TableHead align="right">PHIC</TableHead>
+                <TableHead align="right">HDMF Cont</TableHead>
+                <TableHead align="right">CA</TableHead>
+                <TableHead align="right">Basic Pay</TableHead>
+              </tr>
+            ) : (
+              <tr>
+                <SortableTableHead
+                  sortKey="employeeName"
+                  sticky
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={(key) => onToggleSort(key as PayrollSortKey)}
+                >
+                  Employee
+                </SortableTableHead>
+                <TableHead>Site Assignment</TableHead>
+                <TableHead align="right">Daily Rate</TableHead>
+                <TableHead>Designation</TableHead>
+                <TableHead align="right">Hourly Rate</TableHead>
+                <SortableTableHead
+                  sortKey="hours"
+                  align="center"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={(key) => onToggleSort(key as PayrollSortKey)}
+                >
+                  Hours
+                </SortableTableHead>
+                <TableHead align="right">OT Hours</TableHead>
+                <TableHead align="right">Regular Pay</TableHead>
+                <TableHead align="right">OT Pay</TableHead>
+                <SortableTableHead
+                  sortKey="grossPay"
+                  align="right"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={(key) => onToggleSort(key as PayrollSortKey)}
+                >
+                  Gross
+                </SortableTableHead>
+                <TableHead align="right">Cash Advance</TableHead>
+                <TableHead align="right">Additional Pay</TableHead>
+                <SortableTableHead
+                  sortKey="netPay"
+                  align="right"
+                  activeKey={sort.key}
+                  direction={sort.direction}
+                  onSort={(key) => onToggleSort(key as PayrollSortKey)}
+                >
+                  Net
+                </SortableTableHead>
                 <TableHead>Disbursement</TableHead>
-              ) : null}
-              <TableHead>Remarks</TableHead>
-              {showDisbursementColumns ? (
+                <TableHead>Remarks</TableHead>
                 <TableHead>Charged To</TableHead>
-              ) : null}
-            </tr>
+              </tr>
+            )}
           </TableHeader>
           <TableBody>
             {sortedEntries.length === 0 ? (
@@ -761,21 +787,66 @@ function PayrollTable({
                     [...disbursementMethods, entry.disbursement].filter(Boolean)
                   )
                 );
-                const employmentStatus = showEmploymentStatus
-                  ? adminEmploymentStatusFromRemarks(entry.remarks)
-                  : "";
-                const adminMeta = showAdminShareColumns
-                  ? parseAdminPayslipMeta(entry.remarks)
-                  : null;
+                const adminMeta = parseAdminPayslipMeta(entry.remarks);
+                const employmentStatus =
+                  adminEmploymentStatusFromRemarks(entry.remarks);
+
+                if (isAdminTable) {
+                  return (
+                    <TableRow key={entry.id}>
+                      <TablePrimaryCell sticky>
+                        {entry.employeeName}
+                      </TablePrimaryCell>
+                      <TableCell>{employmentStatus || "—"}</TableCell>
+                      <TableCell
+                        align="right"
+                        numeric
+                        className="!font-bold !text-sbc-gold"
+                      >
+                        {formatCurrency(entry.netPay)}
+                      </TableCell>
+                      <TableCell
+                        align="right"
+                        numeric
+                        className="!font-semibold !text-sbc-black"
+                      >
+                        {formatCurrency(entry.grossPay)}
+                      </TableCell>
+                      <TableCell align="right" numeric>
+                        {formatCurrency(entry.overtimePay)}
+                      </TableCell>
+                      <TableCell align="right" numeric>
+                        {formatCurrency(
+                          adminMeta?.leavePay ?? entry.additionalPay
+                        )}
+                      </TableCell>
+                      <TableCell align="right" numeric>
+                        {formatCurrency(adminMeta?.tax ?? 0)}
+                      </TableCell>
+                      <TableCell align="right" numeric>
+                        {formatCurrency(adminMeta?.sss ?? 0)}
+                      </TableCell>
+                      <TableCell align="right" numeric>
+                        {formatCurrency(adminMeta?.phic ?? 0)}
+                      </TableCell>
+                      <TableCell align="right" numeric>
+                        {formatCurrency(adminMeta?.hdmf ?? 0)}
+                      </TableCell>
+                      <TableCell align="right" numeric>
+                        {formatCurrency(entry.cashAdvance)}
+                      </TableCell>
+                      <TableCell align="right" numeric>
+                        {formatCurrency(adminMeta?.basicPay ?? entry.regularPay)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                }
 
                 return (
                   <TableRow key={entry.id}>
                     <TablePrimaryCell sticky>
                       {entry.employeeName}
                     </TablePrimaryCell>
-                    {showEmploymentStatus ? (
-                      <TableCell>{employmentStatus || "—"}</TableCell>
-                    ) : null}
                     <TableCell>{entry.siteAssignment || "—"}</TableCell>
                     <TableCell align="right" numeric>
                       {formatCurrency(entry.dailyRate)}
@@ -814,19 +885,6 @@ function PayrollTable({
                         }
                       />
                     </TableCell>
-                    {showAdminShareColumns ? (
-                      <>
-                        <TableCell align="right" numeric>
-                          {formatCurrency(adminMeta?.sss ?? 0)}
-                        </TableCell>
-                        <TableCell align="right" numeric>
-                          {formatCurrency(adminMeta?.phic ?? 0)}
-                        </TableCell>
-                        <TableCell align="right" numeric>
-                          {formatCurrency(adminMeta?.hdmf ?? 0)}
-                        </TableCell>
-                      </>
-                    ) : null}
                     <TableCell align="right">
                       <InlineTextField
                         type="number"
@@ -869,18 +927,14 @@ function PayrollTable({
                       </TableCell>
                     ) : null}
                     <TableCell>
-                      {parseAdminPayslipMeta(entry.remarks) ? (
-                        displayRemarks(entry.remarks)
-                      ) : (
-                        <InlineTextField
-                          value={entry.remarks || ""}
-                          disabled={rowBusy}
-                          className="min-w-[120px]"
-                          onCommit={(value) =>
-                            onInlineUpdate(entry, "remarks", value)
-                          }
-                        />
-                      )}
+                      <InlineTextField
+                        value={entry.remarks || ""}
+                        disabled={rowBusy}
+                        className="min-w-[120px]"
+                        onCommit={(value) =>
+                          onInlineUpdate(entry, "remarks", value)
+                        }
+                      />
                     </TableCell>
                     {showDisbursementColumns ? (
                       <TableCell>
