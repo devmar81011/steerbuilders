@@ -4,9 +4,7 @@ import { memo, useCallback, useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import {
-  mergeAdminRowsWithPreview,
   mergeConstructionRowsWithPreview,
-  saveAdminAttendanceRow,
   saveConstructionAttendanceRow,
 } from "@/lib/attendance-preview-storage";
 import {
@@ -22,32 +20,22 @@ import {
 } from "@/components/ui/table";
 import {
   getAttendanceForWeek,
-  updateAdminAttendanceTime,
   updateAttendanceDay,
 } from "@/lib/actions/attendance";
 import {
   ATTENDANCE_DAYS,
-  calculateDayHours,
-  countAdminHours,
   countTotalHours,
   countTotalOvertimeHours,
   formatHours,
   formatWeekRange,
   getWeekStart,
-  isAdminDayPresent,
-  setAdminDayTime,
   setDayValue,
   shiftWeekStart,
-  type AdminAttendanceRow,
-  type AdminTimeField,
   type AttendanceDayKey,
   type AttendanceRow,
-  type AttendanceTab,
 } from "@/lib/attendance";
 import { sortRows, useTableSort } from "@/lib/table-sort";
-import { TimePicker12h } from "@/components/ui/time-picker-12h";
 import { Select } from "@/components/ui/select";
-import { formatTime12 } from "@/lib/time-format";
 
 type Props = {
   initialConstructionRows: AttendanceRow[];
@@ -57,13 +45,10 @@ type Props = {
 };
 
 type ConstructionSortKey = "name" | "site" | "present";
-type HourlySortKey = "name" | "site" | "hours";
 type TableSortState<K extends string> = {
   key: K | null;
   direction: "asc" | "desc";
 };
-
-// Removed tabs - Construction only now
 
 const ConstructionDayCell = memo(function ConstructionDayCell({
   entry,
@@ -130,86 +115,6 @@ const ConstructionDayCell = memo(function ConstructionDayCell({
       >
         Done
       </button>
-    </div>
-  );
-});
-
-const AdminDayCell = memo(function AdminDayCell({
-  entry,
-  disabled,
-  onTimeChange,
-}: {
-  entry: AdminAttendanceRow[AttendanceDayKey];
-  disabled?: boolean;
-  onTimeChange: (field: AdminTimeField, value: string) => void;
-}) {
-  const [editing, setEditing] = useState(false);
-  const present = isAdminDayPresent(entry);
-  const hours = calculateDayHours(entry);
-  const shellClass = `flex w-full max-w-[120px] flex-col items-start gap-0.5 rounded-md border px-0.5 py-1 ${
-    present
-      ? "border-sbc-gold/35 bg-sbc-gold/5"
-      : "border-sbc-gray-light bg-sbc-gray-light/40"
-  }`;
-
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => setEditing(true)}
-        className={`${shellClass} cursor-pointer text-left disabled:cursor-not-allowed disabled:opacity-60`}
-        title="Click to edit time in / out"
-      >
-        {present ? (
-          <>
-            <span className="text-[10px] font-medium text-sbc-black">
-              {formatTime12(entry.timeIn)}
-            </span>
-            <span className="text-[10px] font-medium text-sbc-black">
-              {formatTime12(entry.timeOut)}
-            </span>
-            <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-sbc-gold-dark">
-              {formatHours(hours)}
-            </span>
-          </>
-        ) : (
-          <span className="text-[10px] font-medium text-sbc-gray">Off · set</span>
-        )}
-      </button>
-    );
-  }
-
-  return (
-    <div className={shellClass}>
-      <TimePicker12h
-        label="In"
-        value={entry.timeIn}
-        disabled={disabled}
-        onChange={(value) => onTimeChange("timeIn", value)}
-      />
-      <TimePicker12h
-        label="Out"
-        value={entry.timeOut}
-        disabled={disabled}
-        onChange={(value) => onTimeChange("timeOut", value)}
-      />
-      <div className="flex w-full items-center justify-between gap-1">
-        <span
-          className={`text-[9px] font-semibold uppercase tracking-[0.08em] ${
-            present ? "text-sbc-gold-dark" : "text-sbc-gray"
-          }`}
-        >
-          {present ? formatHours(hours) : "Off"}
-        </span>
-        <button
-          type="button"
-          onClick={() => setEditing(false)}
-          className="cursor-pointer text-[9px] font-semibold uppercase tracking-[0.08em] text-sbc-gold-dark hover:underline"
-        >
-          Done
-        </button>
-      </div>
     </div>
   );
 });
@@ -322,130 +227,15 @@ const ConstructionAttendancePanel = memo(function ConstructionAttendancePanel({
   );
 });
 
-const HourlyAttendancePanel = memo(function HourlyAttendancePanel({
-  rows,
-  sort,
-  onToggleSort,
-  employeeSites,
-  siteFilter,
-  cellsBusy,
-  emptyAllMessage,
-  emptyFilteredMessage,
-  onTimeChange,
-}: {
-  rows: AdminAttendanceRow[];
-  sort: TableSortState<HourlySortKey>;
-  onToggleSort: (key: HourlySortKey) => void;
-  employeeSites: Record<string, string>;
-  siteFilter: string;
-  cellsBusy: boolean;
-  emptyAllMessage: string;
-  emptyFilteredMessage: string;
-  onTimeChange: (
-    row: AdminAttendanceRow,
-    dayKey: AttendanceDayKey,
-    field: AdminTimeField,
-    value: string
-  ) => void;
-}) {
-  return (
-    <TableShell minWidth="1180px" scrollable>
-      <Table>
-        <TableHeader>
-          <tr>
-            <SortableTableHead
-              sortKey="name"
-              sticky
-              activeKey={sort.key}
-              direction={sort.direction}
-              onSort={(key) => onToggleSort(key as HourlySortKey)}
-              className="!min-w-[140px] !px-3"
-            >
-              Employee
-            </SortableTableHead>
-            <SortableTableHead
-              sortKey="site"
-              activeKey={sort.key}
-              direction={sort.direction}
-              onSort={(key) => onToggleSort(key as HourlySortKey)}
-              className="!min-w-[100px] !px-2"
-            >
-              Site
-            </SortableTableHead>
-            {ATTENDANCE_DAYS.map(({ key, label }) => (
-              <TableHead key={key} className="!min-w-[120px] !px-2 text-left">
-                {label}
-              </TableHead>
-            ))}
-            <SortableTableHead
-              sortKey="hours"
-              activeKey={sort.key}
-              direction={sort.direction}
-              onSort={(key) => onToggleSort(key as HourlySortKey)}
-              className="!min-w-[80px] !px-2"
-            >
-              Total Hours
-            </SortableTableHead>
-          </tr>
-        </TableHeader>
-        <TableBody>
-          {rows.length === 0 ? (
-            <TableEmpty
-              colSpan={ATTENDANCE_DAYS.length + 3}
-              message={
-                siteFilter === "all" ? emptyAllMessage : emptyFilteredMessage
-              }
-            />
-          ) : (
-            rows.map((row) => (
-              <TableRow key={row.employeeId}>
-                <TablePrimaryCell sticky className="!px-3">
-                  {row.employeeName}
-                </TablePrimaryCell>
-                <TableCell className="!px-2 !text-sbc-gray">
-                  {employeeSites[row.employeeId] || "Unassigned"}
-                </TableCell>
-                {ATTENDANCE_DAYS.map(({ key }) => (
-                  <TableCell key={key} className="!px-2 text-left">
-                    <AdminDayCell
-                      entry={row[key]}
-                      disabled={cellsBusy}
-                      onTimeChange={(field, value) =>
-                        onTimeChange(row, key, field, value)
-                      }
-                    />
-                  </TableCell>
-                ))}
-                <TableCell numeric className="!px-2 !text-sbc-black">
-                  {formatHours(countAdminHours(row))}
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </TableShell>
-  );
-});
-
 export function AttendanceClient({
   initialConstructionRows,
-  initialAdminRows,
-  initialOjtRows,
   initialWeekStart,
   employeeSites,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<AttendanceTab>("construction");
   const [weekStart, setWeekStart] = useState(initialWeekStart);
   const [siteFilter, setSiteFilter] = useState<string>("all");
   const [constructionRows, setConstructionRows] = useState(() =>
     mergeConstructionRowsWithPreview(initialWeekStart, initialConstructionRows)
-  );
-  const [adminRows, setAdminRows] = useState(() =>
-    mergeAdminRowsWithPreview(initialWeekStart, initialAdminRows)
-  );
-  const [ojtRows, setOjtRows] = useState(() =>
-    mergeAdminRowsWithPreview(initialWeekStart, initialOjtRows)
   );
   const [message, setMessage] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -453,10 +243,6 @@ export function AttendanceClient({
   const [loadingWeek, setLoadingWeek] = useState(false);
   const { sort: constructionSort, toggleSort: toggleConstructionSort } =
     useTableSort<ConstructionSortKey>({ defaultKey: "name" });
-  const { sort: adminSort, toggleSort: toggleAdminSort } =
-    useTableSort<HourlySortKey>({ defaultKey: "name" });
-  const { sort: ojtSort, toggleSort: toggleOjtSort } =
-    useTableSort<HourlySortKey>({ defaultKey: "name" });
 
   const siteOptions = useMemo(() => {
     const names = new Set(Object.values(employeeSites));
@@ -482,40 +268,7 @@ export function AttendanceClient({
     [constructionRows, constructionSort, siteFilter, employeeSites]
   );
 
-  const sortedAdminRows = useMemo(
-    () =>
-      sortRows(
-        adminRows.filter((row) => matchesSiteFilter(row.employeeId)),
-        adminSort,
-        (row, key) => {
-          if (key === "hours") return countAdminHours(row);
-          if (key === "site") return employeeSites[row.employeeId] || "Unassigned";
-          return row.employeeName;
-        }
-      ),
-    [adminRows, adminSort, siteFilter, employeeSites]
-  );
-
-  const sortedOjtRows = useMemo(
-    () =>
-      sortRows(
-        ojtRows.filter((row) => matchesSiteFilter(row.employeeId)),
-        ojtSort,
-        (row, key) => {
-          if (key === "hours") return countAdminHours(row);
-          if (key === "site") return employeeSites[row.employeeId] || "Unassigned";
-          return row.employeeName;
-        }
-      ),
-    [ojtRows, ojtSort, siteFilter, employeeSites]
-  );
-
-  const activeTabMeta = tabs.find((tab) => tab.id === activeTab)!;
   const weekNavBusy = loadingWeek;
-
-  const selectTab = useCallback((tabId: AttendanceTab) => {
-    setActiveTab(tabId);
-  }, []);
 
   const beginSave = useCallback(() => {
     setPendingSaves((count) => count + 1);
@@ -529,14 +282,6 @@ export function AttendanceClient({
     (key: ConstructionSortKey) => toggleConstructionSort(key),
     [toggleConstructionSort]
   );
-  const onAdminToggleSort = useCallback(
-    (key: HourlySortKey) => toggleAdminSort(key),
-    [toggleAdminSort]
-  );
-  const onOjtToggleSort = useCallback(
-    (key: HourlySortKey) => toggleOjtSort(key),
-    [toggleOjtSort]
-  );
 
   function loadWeek(nextWeekStart: string) {
     setLoadingWeek(true);
@@ -548,8 +293,6 @@ export function AttendanceClient({
         setConstructionRows(
           mergeConstructionRowsWithPreview(nextWeekStart, result.constructionRows)
         );
-        setAdminRows(mergeAdminRowsWithPreview(nextWeekStart, result.adminRows));
-        setOjtRows(mergeAdminRowsWithPreview(nextWeekStart, result.ojtRows));
       } finally {
         setLoadingWeek(false);
       }
@@ -600,94 +343,6 @@ export function AttendanceClient({
     [weekStart, startTransition, beginSave, endSave]
   );
 
-  const handleAdminTimeChange = useCallback(
-    (
-      row: AdminAttendanceRow,
-      dayKey: AttendanceDayKey,
-      field: AdminTimeField,
-      value: string
-    ) => {
-      const nextRow = setAdminDayTime(row, dayKey, field, value);
-
-      setAdminRows((current) =>
-        current.map((item) =>
-          item.employeeId === row.employeeId ? nextRow : item
-        )
-      );
-      saveAdminAttendanceRow(nextRow);
-      setMessage(null);
-
-      beginSave();
-      startTransition(async () => {
-        try {
-          const result = await updateAdminAttendanceTime(
-            row.employeeId,
-            weekStart,
-            dayKey,
-            field,
-            value
-          );
-          if (result.error) {
-            setAdminRows((current) =>
-              current.map((item) =>
-                item.employeeId === row.employeeId ? row : item
-              )
-            );
-            saveAdminAttendanceRow(row);
-            setMessage(result.error);
-          }
-        } finally {
-          endSave();
-        }
-      });
-    },
-    [weekStart, startTransition, beginSave, endSave]
-  );
-
-  const handleOjtTimeChange = useCallback(
-    (
-      row: AdminAttendanceRow,
-      dayKey: AttendanceDayKey,
-      field: AdminTimeField,
-      value: string
-    ) => {
-      const nextRow = setAdminDayTime(row, dayKey, field, value);
-
-      setOjtRows((current) =>
-        current.map((item) =>
-          item.employeeId === row.employeeId ? nextRow : item
-        )
-      );
-      saveAdminAttendanceRow(nextRow);
-      setMessage(null);
-
-      beginSave();
-      startTransition(async () => {
-        try {
-          const result = await updateAdminAttendanceTime(
-            row.employeeId,
-            weekStart,
-            dayKey,
-            field,
-            value
-          );
-          if (result.error) {
-            setOjtRows((current) =>
-              current.map((item) =>
-                item.employeeId === row.employeeId ? row : item
-              )
-            );
-            saveAdminAttendanceRow(row);
-            setMessage(result.error);
-          }
-        } finally {
-          endSave();
-        }
-      });
-    },
-    [weekStart, startTransition, beginSave, endSave]
-  );
-
   const weekLabel = formatWeekRange(weekStart);
   const cellsBusy = pendingSaves > 0 || loadingWeek;
 
@@ -695,7 +350,9 @@ export function AttendanceClient({
     <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-sbc-black">Construction Attendance</h1>
+          <h1 className="text-2xl font-semibold text-sbc-black">
+            Construction Attendance
+          </h1>
           <p className="mt-1 text-sm text-sbc-gray">
             Daily hours and overtime input — regular hours + OT per day.
           </p>
