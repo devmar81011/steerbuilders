@@ -76,16 +76,17 @@ export function ProjectImageGrid({
 
   const gridClass =
     variant === "featured"
-      ? "grid min-h-[220px] grid-cols-2 grid-rows-2 gap-1"
+      ? "grid aspect-[16/10] min-h-[220px] grid-cols-2 grid-rows-2 gap-1"
       : "grid aspect-[4/3] min-h-[160px] grid-cols-2 grid-rows-2 gap-0.5";
 
-  const fillEmptyCells = previewLimit == null;
+  // Always complete the 2×2 mosaic so gaps/borders stay consistent with 2–3 photos.
+  const fillEmptyCells = urls.length < 4;
 
   return (
     <div className={`relative overflow-hidden bg-sbc-black ${gridClass}`}>
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1 bg-linear-to-r from-sbc-gold via-[#d4a647] to-sbc-gold-dark" />
       {urls.map((url, index) => (
-        <div key={`${url}-${index}`} className="relative overflow-hidden">
+        <div key={`${url}-${index}`} className="relative min-h-0 overflow-hidden">
           <Image
             src={url}
             alt={`${alt} — photo ${index + 1}`}
@@ -97,11 +98,10 @@ export function ProjectImageGrid({
         </div>
       ))}
       {fillEmptyCells &&
-        urls.length < 4 &&
         Array.from({ length: 4 - urls.length }).map((_, index) => (
           <div
             key={`empty-${index}`}
-            className="relative bg-sbc-black/80"
+            className="relative min-h-0 bg-sbc-black/80"
             aria-hidden
           >
             <div className="absolute inset-0 bg-linear-to-br from-sbc-black to-sbc-gold/10" />

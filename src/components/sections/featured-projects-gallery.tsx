@@ -93,7 +93,7 @@ export function FeaturedProjectsGallery({ projects }: Props) {
           <Reveal key={project.id} delay={(index % 2) * 160}>
           <button
             type="button"
-            className="group h-full w-full cursor-pointer overflow-hidden rounded-lg border border-sbc-gray-light bg-sbc-white text-left transition-colors hover:border-sbc-gold/50"
+            className="group h-full w-full cursor-pointer overflow-hidden rounded-lg bg-sbc-white text-left shadow-[inset_0_0_0_1px_rgba(212,212,212,1)] transition-[box-shadow] hover:shadow-[inset_0_0_0_1px_rgba(184,143,63,0.55)]"
             onClick={() => {
               setActiveIndex(index);
               setPhotoIndex(0);
