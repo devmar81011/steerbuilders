@@ -349,9 +349,6 @@ function PayrollPrintSheet({
         >
           {pageEntries.map((entry) => {
             const meta = parseAdminPayslipMeta(entry.remarks);
-            const employmentStatus = isAdmin
-              ? adminEmploymentStatusFromRemarks(entry.remarks)
-              : "";
             const basicPay = isAdmin
               ? meta?.basicPay || entry.regularPay
               : entry.regularPay;
@@ -364,12 +361,6 @@ function PayrollPrintSheet({
             const totalDeductions = isAdmin
               ? cashAdvance + sss + phic + hdmf
               : cashAdvance;
-            const position =
-              isAdmin
-                ? entry.designation || "—"
-                : [entry.designation, entry.siteAssignment]
-                    .filter(Boolean)
-                    .join(" · ") || "—";
 
             const earningRows = isAdmin
               ? [
@@ -493,14 +484,7 @@ function PayrollPrintSheet({
                 <dl className="payroll-print-admin-meta">
                   <div>
                     <dt>Employee Name</dt>
-                    <dd>
-                      {entry.employeeName}
-                      {employmentStatus ? ` · ${employmentStatus}` : ""}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Position</dt>
-                    <dd>{position}</dd>
+                    <dd>{entry.employeeName}</dd>
                   </div>
                   <div>
                     <dt>Pay Period</dt>
