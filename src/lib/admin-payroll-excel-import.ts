@@ -139,13 +139,6 @@ function colIndex(headers: string[], ...names: string[]): number {
   return -1;
 }
 
-function colIndexMatch(
-  headers: string[],
-  match: (header: string) => boolean
-): number {
-  return headers.findIndex(match);
-}
-
 /**
  * Parse Steer Builders Admin payroll workbook.
  * Primary source: "Payroll Computation" sheet (semi-monthly rows).
@@ -188,52 +181,23 @@ export function parseAdminPayrollWorkbook(buffer: ArrayBuffer): {
   const otIdx = colIndex(headers, "ot");
   const leaveIdx = colIndex(headers, "leave");
   const taxIdx = colIndex(headers, "tax");
-  const sssLoanIdx = colIndexMatch(
-    headers,
-    (header) => header.includes("sss") && header.includes("loan")
-  );
-  const sssIdx = colIndexMatch(
-    headers,
-    (header) =>
-      !header.includes("loan") &&
-      (header === "sss" ||
-        header.includes("sss cont") ||
-        header.includes("sss contribution") ||
-        header.startsWith("sss"))
-  );
-  const phicIdx = colIndexMatch(
-    headers,
-    (header) =>
-      header === "phic" ||
-      header.includes("phic") ||
-      header.includes("philhealth")
-  );
-  const hdmfLoanIdx = colIndexMatch(
-    headers,
-    (header) =>
-      header.includes("loan") &&
-      (header.includes("hdmf") ||
-        header.includes("pag-ibig") ||
-        header.includes("pagibig") ||
-        header.includes("pag ibig"))
-  );
-  const hdmfIdx = colIndexMatch(
-    headers,
-    (header) =>
-      !header.includes("loan") &&
-      (header === "hdmf" ||
-        header.includes("hdmf cont") ||
-        header.includes("pag-ibig") ||
-        header.includes("pagibig") ||
-        header.includes("pag ibig"))
-  );
+  // Verified against Admin.xlsx → Payroll Computation:
+  // employee share is the FIRST SSS / PHIC / HDMF (before "Taxable income");
+  // employer share repeats SSS / PHIC / HDMF later. Exact labels are "SSS","PHIC","HDMF","CA".
+  // Payslip "SSS Cont" / "HDMF Cont" map to those employee-share columns.
+  // SSS Loan / HDMF Loan are not present on Computation (stay 0 unless labeled columns exist).
+  // Cutoff pattern in the file: A-period usually PHIC+HDMF; B-period usually SSS.
+  const sssIdx = colIndex(headers, "sss cont", "sss");
+  const sssLoanIdx = colIndex(headers, "sss loan");
+  const phicIdx = colIndex(headers, "phic");
+  const hdmfIdx = colIndex(headers, "hdmf cont", "hdmf");
+  const hdmfLoanIdx = colIndex(headers, "hdmf loan");
   const basicIdx = colIndex(headers, "basic pay");
   const caIdx = colIndex(headers, "ca", "cash advance");
   const daysIdx = colIndex(headers, "payable days");
   const dailyIdx = colIndex(headers, "daily rate");
 
-  // Employee share SSS/PHIC/HDMF are the first occurrence columns.
-  // Employer share duplicates names later — findIndex already picks first.
+  // First matching SSS/PHIC/HDMF = employee share (employer duplicates come later).
 
   const rowsByPeriod = new Map<string, ImportedAdminPayrollRow[]>();
   const periodMap = new Map<string, PayrollPeriod>();

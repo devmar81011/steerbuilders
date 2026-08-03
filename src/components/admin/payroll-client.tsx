@@ -350,7 +350,7 @@ function PayrollPrintSheet({
           {pageEntries.map((entry) => {
             const meta = parseAdminPayslipMeta(entry.remarks);
             const basicPay = isAdmin
-              ? meta?.basicPay || entry.regularPay
+              ? entry.regularPay || meta?.basicPay || 0
               : entry.regularPay;
             const leavePay = meta?.leavePay ?? entry.additionalPay;
             const sss = isAdmin ? meta?.sss ?? 0 : 0;
