@@ -47,6 +47,7 @@ import type { EmployeeDeductionContext } from "@/lib/deduction-role-rates";
 import { savePayrollEntryPreview } from "@/lib/payroll-preview-storage";
 import {
   getCurrentPayrollPeriod,
+  parsePayrollPeriodKey,
   payrollTabMeta,
   shiftPayrollPeriod,
   type PayrollPeriod,
@@ -141,21 +142,128 @@ const tabs: {
   id: PayrollTab;
   label: string;
   hint: string;
-  uploadLabel: string;
 }[] = [
   {
     id: "construction",
     label: "Construction",
-    hint: "Weekly · Operations Excel",
-    uploadLabel: "Upload Construction Excel",
+    hint: "Weekly",
   },
   {
     id: "admin",
     label: "Admin",
-    hint: "Semi-monthly · Admin Excel",
-    uploadLabel: "Upload Admin Excel",
+    hint: "Semi-monthly",
   },
 ];
+
+function UploadIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M12 16V4M12 4L7 9M12 4L17 9"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 16.5V18.5C4 19.3284 4.67157 20 5.5 20H18.5C19.3284 20 20 19.3284 20 18.5V16.5"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function ExportIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M12 4V14M12 14L8 10M12 14L16 10"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 16.5V18.5C4 19.3284 4.67157 20 5.5 20H18.5C19.3284 20 20 19.3284 20 18.5V16.5"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function PrintIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M7 8V4H17V8"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 16H5.5C4.67157 16 4 15.3284 4 14.5V10.5C4 9.67157 4.67157 9 5.5 9H18.5C19.3284 9 20 9.67157 20 10.5V14.5C20 15.3284 19.3284 16 18.5 16H17"
+        stroke="currentColor"
+        strokeWidth="1.9"
+      />
+      <path
+        d="M7 13H17V20H7V13Z"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ChevronLeftIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M14.5 6L8.5 12L14.5 18"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ChevronRightIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="none" className={className}>
+      <path
+        d="M9.5 6L15.5 12L9.5 18"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" fill="none" className={className}>
+      <rect
+        x="4"
+        y="5"
+        width="16"
+        height="15"
+        rx="2"
+        stroke="currentColor"
+        strokeWidth="1.9"
+      />
+      <path d="M8 3V7M16 3V7M4 10H20" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 function displayRemarks(remarks: string): string {
   if (parseAdminPayslipMeta(remarks)) return "—";
@@ -571,7 +679,7 @@ function PayrollTable({
         </div>
       </div>
 
-      <TableShell minWidth="2700px" scrollable>
+      <TableShell minWidth="2700px" scrollable className="rounded-none border-0">
         <Table>
           <TableHeader>
             <tr>
@@ -1272,21 +1380,14 @@ export function PayrollClient({
         }
 
         if (result.entries && result.periodKey) {
+          const period = parsePayrollPeriodKey(uploadTab, result.periodKey);
           if (uploadTab === "admin") {
             setAdminEntries(result.entries);
-            const periodResult = await getPayrollForPeriod(
-              "admin",
-              result.periodKey
-            );
-            setAdminPeriod(periodResult.period);
+            setAdminPeriod(period);
             setActiveTab("admin");
           } else {
             setConstructionEntries(result.entries);
-            const periodResult = await getPayrollForPeriod(
-              "construction",
-              result.periodKey
-            );
-            setConstructionPeriod(periodResult.period);
+            setConstructionPeriod(period);
             setActiveTab("construction");
           }
         }
@@ -1330,7 +1431,6 @@ export function PayrollClient({
   }
 
   const isBusy = pending || loadingPeriod || uploading;
-  const activeTabConfig = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
   const filteredHistory = useMemo(
     () =>
       uploadHistory.filter((item) =>
@@ -1344,13 +1444,13 @@ export function PayrollClient({
   return (
     <>
       <div className="payroll-screen">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
             Admin
           </p>
           <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Payroll</h1>
-          <p className="mt-1 text-sm text-sbc-gray">
+          <p className="mt-1 max-w-xl text-sm text-sbc-gray">
             Upload completed Excel payroll, save it for history, then print or export.
           </p>
         </div>
@@ -1363,7 +1463,8 @@ export function PayrollClient({
             disabled={isBusy}
             onClick={() => loadPeriod(-1)}
           >
-            ← Prev
+            <ChevronLeftIcon />
+            Prev
           </Button>
           <span className="min-w-[140px] text-center text-sm font-medium text-sbc-black">
             {activePeriod.label}
@@ -1375,7 +1476,8 @@ export function PayrollClient({
             disabled={isBusy}
             onClick={() => loadPeriod(1)}
           >
-            Next →
+            Next
+            <ChevronRightIcon />
           </Button>
           <Button
             type="button"
@@ -1384,7 +1486,8 @@ export function PayrollClient({
             disabled={isBusy}
             onClick={jumpToCurrentPeriod}
           >
-            {usesWeeklyPayroll(activeTab) ? "This Week" : "Current Period"}
+            <CalendarIcon />
+            {usesWeeklyPayroll(activeTab) ? "This Week" : "Current"}
           </Button>
           <input
             ref={fileInputRef}
@@ -1399,7 +1502,8 @@ export function PayrollClient({
             disabled={isBusy || uploading}
             onClick={() => fileInputRef.current?.click()}
           >
-            {uploading ? "Uploading…" : activeTabConfig.uploadLabel}
+            <UploadIcon />
+            {uploading ? "Uploading…" : "Upload Excel"}
           </Button>
           <Button
             type="button"
@@ -1408,7 +1512,8 @@ export function PayrollClient({
             disabled={activeEntries.length === 0}
             onClick={handleExportPayroll}
           >
-            Export CSV
+            <ExportIcon />
+            Export
           </Button>
           <Button
             type="button"
@@ -1417,72 +1522,19 @@ export function PayrollClient({
             disabled={activeEntries.length === 0}
             onClick={() => window.print()}
           >
-            Print Slips
+            <PrintIcon />
+            Print
           </Button>
         </div>
       </div>
 
-      <div
-        role="tablist"
-        aria-label="Payroll type"
-        className="mb-5 grid grid-cols-1 gap-1 rounded-lg border border-sbc-gray-light bg-sbc-off-white p-1 sm:grid-cols-2"
-      >
-        {tabs.map((tab) => {
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              disabled={isBusy}
-              onClick={() => {
-                setActiveTab(tab.id);
-                resetForm();
-                setMessage(null);
-              }}
-              className={`group relative rounded-md px-4 py-3 text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/35 disabled:cursor-not-allowed disabled:opacity-60 ${
-                active
-                  ? "bg-sbc-white text-sbc-black shadow-[0_1px_2px_rgba(16,16,16,0.08)] ring-1 ring-sbc-gold/35"
-                  : "text-sbc-gray hover:bg-sbc-white/70 hover:text-sbc-black"
-              }`}
-            >
-              <span className="flex items-center justify-between gap-3">
-                <span>
-                  <span
-                    className={`block text-sm font-bold tracking-wide ${
-                      active ? "text-sbc-gold-dark" : "text-current"
-                    }`}
-                  >
-                    {tab.label}
-                  </span>
-                  <span
-                    className={`mt-0.5 block text-xs font-medium ${
-                      active ? "text-sbc-gray" : "text-sbc-gray/80"
-                    }`}
-                  >
-                    {tab.hint}
-                  </span>
-                </span>
-                <span
-                  aria-hidden
-                  className={`h-2 w-2 shrink-0 rounded-full transition-colors ${
-                    active ? "bg-sbc-gold" : "bg-sbc-gray-light"
-                  }`}
-                />
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
       <p className="mb-4 rounded-lg border border-sbc-gold/25 bg-sbc-gold/5 px-4 py-3 text-sm text-sbc-gray">
         <span className="font-semibold text-sbc-black">
-          {activeTab === "admin" ? "Admin workflow · " : "Construction workflow · "}
+          {activeTab === "admin" ? "Admin · " : "Construction · "}
         </span>
         {activeTab === "admin"
-          ? "Upload the Admin workbook (Payroll Computation). Print Slips use the Excel Payslip layout — Basic, OT, SSS, PhilHealth, HDMF, CA, and Net."
-          : "Upload the Operations weekly Excel. The table stays empty until you upload, then you can print slips or export CSV."}
+          ? "Upload the Admin workbook (Payroll Computation). Print uses the Excel Payslip layout."
+          : "Upload the Operations weekly Excel. The table stays empty until you upload."}
       </p>
 
       {filteredHistory.length > 0 && (
@@ -1524,7 +1576,7 @@ export function PayrollClient({
       )}
 
       {message && (
-        <p className="mb-6 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
+        <p className="mb-4 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
           {message}
         </p>
       )}
@@ -1532,7 +1584,7 @@ export function PayrollClient({
       {editingId && (
         <form
           onSubmit={handleSubmit}
-          className="mb-8 grid gap-4 rounded-lg border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
+          className="mb-6 grid gap-4 rounded-lg border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
         >
           <p className="md:col-span-2 text-xs font-medium uppercase tracking-widest text-sbc-gold">
             Edit Payroll Entry
@@ -1589,7 +1641,7 @@ export function PayrollClient({
           />
           <p className="md:col-span-2 -mt-2 text-xs text-sbc-gray">
             Deducted from this pay period&apos;s net (this week for construction,
-            this semi-monthly cutoff for admin/OJT).
+            this semi-monthly cutoff for admin).
           </p>
           <Input
             label="Additional Pay (PHP)"
@@ -1679,20 +1731,64 @@ export function PayrollClient({
         </form>
       )}
 
-      <PayrollTable
-        entries={activeEntries}
-        category={activeTab}
-        period={activePeriod}
-        editingId={editingId}
-        form={form}
-        pendingId={pendingId}
-        sort={sort}
-        disbursementMethods={disbursementMethods}
-        onToggleSort={toggleSort}
-        onStartEdit={startEdit}
-        onProcess={handleProcess}
-        onInlineUpdate={handleInlineUpdate}
-      />
+      <div className="mb-0">
+        <div
+          role="tablist"
+          aria-label="Payroll type"
+          className="flex items-end gap-1"
+        >
+          {tabs.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                disabled={isBusy}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  resetForm();
+                  setMessage(null);
+                }}
+                className={`-mb-px rounded-t-md border px-3 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/35 disabled:cursor-not-allowed disabled:opacity-60 ${
+                  active
+                    ? "border-sbc-gray-light border-b-sbc-white bg-sbc-white text-sbc-black"
+                    : "border-transparent bg-sbc-off-white text-sbc-gray hover:bg-sbc-white/80 hover:text-sbc-black"
+                }`}
+              >
+                <span
+                  className={`block text-[11px] font-bold uppercase tracking-[0.12em] ${
+                    active ? "text-sbc-gold-dark" : ""
+                  }`}
+                >
+                  {tab.label}
+                </span>
+                <span className="mt-0.5 block text-[10px] font-medium text-sbc-gray">
+                  {tab.hint}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="rounded-b-lg rounded-tr-lg border border-sbc-gray-light bg-sbc-white p-4 sm:p-5">
+          <PayrollTable
+            entries={activeEntries}
+            category={activeTab}
+            period={activePeriod}
+            editingId={editingId}
+            form={form}
+            pendingId={pendingId}
+            sort={sort}
+            disbursementMethods={disbursementMethods}
+            onToggleSort={toggleSort}
+            onStartEdit={startEdit}
+            onProcess={handleProcess}
+            onInlineUpdate={handleInlineUpdate}
+          />
+        </div>
+      </div>
       </div>
 
       <PayrollPrintSheet
