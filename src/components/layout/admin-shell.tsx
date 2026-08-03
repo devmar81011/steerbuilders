@@ -14,9 +14,6 @@ import {
 const navItems = [
   { href: "/admin", label: "Dashboard", exact: true },
   { href: "/admin/projects", label: "Projects" },
-  { href: "/admin/employees", label: "Employees" },
-  { href: "/admin/settings", label: "Settings" },
-  { href: "/admin/attendance", label: "Attendance" },
   { href: "/admin/payroll", label: "Payroll" },
   { href: "/admin/account", label: "Account" },
 ];

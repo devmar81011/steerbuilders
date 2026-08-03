@@ -234,18 +234,19 @@ export async function importConstructionPayrollExcel(formData: FormData): Promis
     };
   }
 
-  // Import the first period sheet (typical weekly file has one active period tab).
-  const sheet = parsed.sheets[0];
+  // Import every period sheet in the workbook (e.g. multiple weekly tabs).
+  const sheets = parsed.sheets;
+  const primarySheet = sheets[sheets.length - 1] ?? sheets[0];
 
   if (!isSupabaseConfigured()) {
     return {
       success: true,
       preview: true,
-      periodKey: sheet.period.key,
-      periodLabel: sheet.period.label,
-      importedCount: sheet.rows.length,
-      sheetName: sheet.sheetName,
-      entries: previewEntriesFromRows(sheet.rows, sheet.period),
+      periodKey: primarySheet.period.key,
+      periodLabel: primarySheet.period.label,
+      importedCount: sheets.reduce((sum, sheet) => sum + sheet.rows.length, 0),
+      sheetName: sheets.map((sheet) => sheet.sheetName).join(", "),
+      entries: previewEntriesFromRows(primarySheet.rows, primarySheet.period),
     };
   }
 
@@ -270,7 +271,7 @@ export async function importConstructionPayrollExcel(formData: FormData): Promis
     const masterSource: ParsedMasterEmployee[] =
       parsed.masterEmployees.length > 0
         ? parsed.masterEmployees
-        : sheet.rows.map((row) => ({
+        : primarySheet.rows.map((row) => ({
             employeeName: row.employeeName,
             siteAssignment: row.siteAssignment,
             designation: row.designation,
@@ -283,55 +284,65 @@ export async function importConstructionPayrollExcel(formData: FormData): Promis
       if (result.error) return { error: result.error };
     }
 
-    let runId: string | undefined;
-    let importedCount = 0;
+    let totalImported = 0;
+    const sheetNames: string[] = [];
 
-    for (const row of sheet.rows) {
-      const employee = await ensureConstructionEmployee(supabase, row, existingByName);
-      if (employee.error || !employee.id) {
-        return { error: employee.error || `Could not save ${row.employeeName}.` };
+    for (const sheet of sheets) {
+      let sheetImported = 0;
+      let runId: string | undefined;
+
+      for (const row of sheet.rows) {
+        const employee = await ensureConstructionEmployee(supabase, row, existingByName);
+        if (employee.error || !employee.id) {
+          return { error: employee.error || `Could not save ${row.employeeName}.` };
+        }
+
+        const saved = await upsertRunAndPayslip(
+          supabase,
+          employee.id,
+          sheet.period,
+          row
+        );
+        if (saved.error) return { error: saved.error };
+        runId = saved.runId ?? runId;
+        sheetImported += 1;
       }
 
-      const saved = await upsertRunAndPayslip(
-        supabase,
-        employee.id,
-        sheet.period,
-        row
-      );
-      if (saved.error) return { error: saved.error };
-      runId = saved.runId ?? runId;
-      importedCount += 1;
-    }
+      totalImported += sheetImported;
+      sheetNames.push(sheet.sheetName);
 
-    // Optional history table — ignore if migration not applied yet.
-    const { error: uploadInsertError } = await supabase
-      .from("payroll_uploads")
-      .insert({
-        filename,
-        sheet_name: sheet.sheetName,
-        period_key: sheet.period.key,
-        period_start: sheet.period.periodStart,
-        period_end: sheet.period.periodEnd,
-        period_label: sheet.period.label,
-        row_count: importedCount,
-        payroll_run_id: runId ?? null,
-      });
-    if (uploadInsertError) {
-      console.warn("payroll_uploads insert skipped:", uploadInsertError.message);
+      const { error: uploadInsertError } = await supabase
+        .from("payroll_uploads")
+        .insert({
+          filename,
+          sheet_name: sheet.sheetName,
+          period_key: sheet.period.key,
+          period_start: sheet.period.periodStart,
+          period_end: sheet.period.periodEnd,
+          period_label: sheet.period.label,
+          row_count: sheetImported,
+          payroll_run_id: runId ?? null,
+        });
+      if (uploadInsertError) {
+        console.warn("payroll_uploads insert skipped:", uploadInsertError.message);
+      }
     }
 
     revalidatePath("/admin/payroll");
     revalidatePath("/admin/employees");
     revalidatePath("/admin");
 
-    const refreshed = await getPayrollForPeriod("construction", sheet.period.key);
+    const refreshed = await getPayrollForPeriod("construction", primarySheet.period.key);
 
     return {
       success: true,
-      periodKey: sheet.period.key,
-      periodLabel: sheet.period.label,
-      importedCount,
-      sheetName: sheet.sheetName,
+      periodKey: primarySheet.period.key,
+      periodLabel:
+        sheets.length > 1
+          ? `${sheets.length} weeks imported · showing ${primarySheet.period.label}`
+          : primarySheet.period.label,
+      importedCount: totalImported,
+      sheetName: sheetNames.join(", "),
       entries: refreshed.entries.filter((entry) => entry.status === "processed"),
     };
   } catch {
@@ -346,7 +357,7 @@ async function historyFromPayrollRuns(
     .from("payroll_runs")
     .select("id, period_start, period_end, status, created_at, payslips(id)")
     .order("period_start", { ascending: false })
-    .limit(40);
+    .limit(12);
 
   if (error || !data) return [];
 
@@ -393,7 +404,7 @@ export async function getPayrollUploadHistory(): Promise<PayrollUploadHistoryIte
       .from("payroll_uploads")
       .select("*")
       .order("uploaded_at", { ascending: false })
-      .limit(40);
+      .limit(12);
 
     if (!error && data) {
       return data.map((row) => ({
