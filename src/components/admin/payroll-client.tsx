@@ -356,10 +356,19 @@ function PayrollPrintSheet({
             const tax = isAdmin ? meta?.tax ?? 0 : 0;
             const overtimePay = entry.overtimePay;
             const cashAdvance = entry.cashAdvance;
-            // Payslip deduction lines only — Net Pay always comes from Excel NET.
-            const totalDeductions = isAdmin
-              ? cashAdvance + sss + sssLoan + phic + hdmf + hdmfLoan
+            // Admin: Net/Gross are Excel Computation pass-through. Total
+            // deductions must be Gross − Net so the slip always reconciles
+            // (Excel NET formulas often include extra adjustments beyond the
+            // labeled SSS/PHIC/HDMF/CA columns).
+            const labeledDeductions = isAdmin
+              ? cashAdvance + sss + sssLoan + phic + hdmf + hdmfLoan + tax
               : cashAdvance;
+            const totalDeductions = isAdmin
+              ? Math.round((entry.grossPay - entry.netPay) * 100) / 100
+              : cashAdvance;
+            const otherDeductions = isAdmin
+              ? Math.round((totalDeductions - labeledDeductions) * 100) / 100
+              : 0;
 
             const earningRows = isAdmin
               ? [
@@ -439,6 +448,14 @@ function PayrollPrintSheet({
                     label: "HDMF Loan",
                     amount: printAmount(hdmfLoan),
                   },
+                  ...(Math.abs(otherDeductions) >= 0.005
+                    ? [
+                        {
+                          label: "Other adjustments",
+                          amount: printAmount(otherDeductions),
+                        },
+                      ]
+                    : []),
                   {
                     label: "Total Deductions",
                     amount: printAmount(totalDeductions),
@@ -627,12 +644,19 @@ function PayrollTable({
 }) {
   const isAdminTable = category === "admin";
   const showDisbursementColumns = category === "construction";
-  const columnCount = isAdminTable ? 12 : 16;
+  const columnCount = isAdminTable ? 13 : 16;
 
   const payableEntries = useMemo(
     () => entries.filter((entry) => entry.netPay > 0),
     [entries]
   );
+
+  const excelPeriodCode = useMemo(() => {
+    if (!isAdminTable || payableEntries.length === 0) return "";
+    return (
+      parseAdminPayslipMeta(payableEntries[0]?.remarks)?.periodCode ?? ""
+    );
+  }, [isAdminTable, payableEntries]);
 
   const sortedEntries = useMemo(
     () => sortRows(payableEntries, sort, (row, key) => row[key]),
@@ -657,6 +681,11 @@ function PayrollTable({
           </p>
           <p className="mt-1 font-semibold text-sbc-black">{period.label}</p>
           <p className="mt-0.5 text-xs text-sbc-gold-dark">{period.processLabel}</p>
+          {excelPeriodCode ? (
+            <p className="mt-0.5 text-xs text-sbc-gray">
+              Excel · {excelPeriodCode}
+            </p>
+          ) : null}
         </div>
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
@@ -693,6 +722,7 @@ function PayrollTable({
                   Employee
                 </SortableTableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Class</TableHead>
                 <SortableTableHead
                   sortKey="netPay"
                   align="right"
@@ -798,6 +828,11 @@ function PayrollTable({
                         {entry.employeeName}
                       </TablePrimaryCell>
                       <TableCell>{employmentStatus || "—"}</TableCell>
+                      <TableCell>
+                        {adminMeta?.employeeClass?.trim() ||
+                          entry.designation ||
+                          "—"}
+                      </TableCell>
                       <TableCell
                         align="right"
                         numeric

@@ -54,6 +54,8 @@ export type AdminPayslipMeta = {
   periodCode: string;
   /** Excel Status column — typically FTE or Intern */
   employmentStatus?: string;
+  /** Excel Class column — e.g. MA */
+  employeeClass?: string;
 };
 
 const META_PREFIX = "__ADMIN_META__:";
@@ -274,6 +276,7 @@ export function adminRowToPayslipAmounts(row: ImportedAdminPayrollRow) {
       basicPay: row.basicPay,
       periodCode: row.periodCode,
       employmentStatus: normalizeAdminEmploymentStatus(row.status),
+      employeeClass: row.employeeClass.trim(),
     } satisfies AdminPayslipMeta,
   };
 }

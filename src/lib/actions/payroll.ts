@@ -104,6 +104,14 @@ function mapPayrollRow(
       ]
     : undefined;
 
+  // Admin Excel uploads are pass-through — never fall back to hours×rate math.
+  const regularPay = adminMeta
+    ? Number(row.regular_pay) || 0
+    : Number(row.regular_pay) || calculated.regularPay;
+  const overtimePay = adminMeta
+    ? Number(row.overtime_pay) || 0
+    : Number(row.overtime_pay) || calculated.overtimePay;
+
   return {
     id: row.id as string,
     employeeId: row.employee_id as string,
@@ -120,14 +128,14 @@ function mapPayrollRow(
     hourlyRate,
     hours,
     overtimeHours,
-    regularPay: Number(row.regular_pay) || calculated.regularPay,
-    overtimePay: Number(row.overtime_pay) || calculated.overtimePay,
-    grossPay: Number(row.gross_pay),
+    regularPay,
+    overtimePay,
+    grossPay: Number(row.gross_pay) || 0,
     cashAdvance: Number(row.cash_advance) || 0,
     additionalPay: Number(row.additional_pay) || 0,
     deductions: Number(row.deductions) || 0,
     deductionBreakdown,
-    netPay: Number(row.net_pay),
+    netPay: Number(row.net_pay) || 0,
     disbursement: (row.disbursement as string) ?? "",
     remarks,
     chargedTo: (row.charged_to as string) ?? "",
