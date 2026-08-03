@@ -317,6 +317,11 @@ type InlinePayrollField =
   | "remarks"
   | "chargedTo";
 
+function printAmount(value: number, opts?: { blankIfZero?: boolean }) {
+  if (opts?.blankIfZero && value === 0) return "";
+  return formatCurrency(value);
+}
+
 function PayrollPrintSheet({
   entries,
   category,
@@ -330,10 +335,10 @@ function PayrollPrintSheet({
 }) {
   const printable = entries.filter((entry) => entry.netPay > 0);
   const pages = chunkEntries(printable, 2);
-  const heading =
-    category === "admin"
-      ? "Admin · Semi-monthly payroll"
-      : "Construction · Weekly payroll";
+  const isAdmin = category === "admin";
+  const heading = isAdmin
+    ? "Admin · Semi-monthly payroll"
+    : "Construction · Weekly payroll";
 
   return (
     <div className="payroll-print-area">
@@ -344,25 +349,143 @@ function PayrollPrintSheet({
         >
           {pageEntries.map((entry) => {
             const meta = parseAdminPayslipMeta(entry.remarks);
-            const employmentStatus =
-              category === "admin"
-                ? adminEmploymentStatusFromRemarks(entry.remarks)
-                : "";
-            const basicPay = meta?.basicPay || entry.regularPay;
+            const employmentStatus = isAdmin
+              ? adminEmploymentStatusFromRemarks(entry.remarks)
+              : "";
+            const basicPay = isAdmin
+              ? meta?.basicPay || entry.regularPay
+              : entry.regularPay;
             const leavePay = meta?.leavePay ?? entry.additionalPay;
-            const sss = meta?.sss ?? 0;
-            const phic = meta?.phic ?? 0;
-            const hdmf = meta?.hdmf ?? 0;
-            const tax = meta?.tax ?? 0;
-            const statutory = sss + phic + hdmf + tax;
-            const totalDeductions =
-              entry.cashAdvance +
-              (statutory > 0 ? statutory : Math.max(0, entry.deductions));
+            const sss = isAdmin ? meta?.sss ?? 0 : 0;
+            const phic = isAdmin ? meta?.phic ?? 0 : 0;
+            const hdmf = isAdmin ? meta?.hdmf ?? 0 : 0;
+            const overtimePay = entry.overtimePay;
+            const cashAdvance = entry.cashAdvance;
+            const totalDeductions = isAdmin
+              ? cashAdvance + sss + phic + hdmf
+              : cashAdvance;
+            const position =
+              isAdmin
+                ? entry.designation || "—"
+                : [entry.designation, entry.siteAssignment]
+                    .filter(Boolean)
+                    .join(" · ") || "—";
+
+            const earningRows = isAdmin
+              ? [
+                  {
+                    label: "Basic Salary",
+                    amount: printAmount(basicPay),
+                  },
+                  {
+                    label: "Overtime Pay",
+                    amount: printAmount(overtimePay, { blankIfZero: true }),
+                  },
+                  { label: "", amount: "" },
+                  { label: "", amount: "" },
+                  {
+                    label: "Gross Earnings",
+                    amount: printAmount(entry.grossPay),
+                    strong: true,
+                  },
+                  {
+                    label: "Leave Credits",
+                    amount: printAmount(leavePay, { blankIfZero: true }),
+                  },
+                ]
+              : [
+                  {
+                    label: "Regular Pay",
+                    amount: printAmount(basicPay),
+                  },
+                  {
+                    label: "Overtime Pay",
+                    amount:
+                      overtimePay > 0
+                        ? `${entry.overtimeHours}h · ${printAmount(overtimePay)}`
+                        : printAmount(overtimePay, { blankIfZero: true }),
+                  },
+                  {
+                    label: "Regular Hours",
+                    amount: `${entry.hours}h`,
+                  },
+                  {
+                    label: "Additional Pay",
+                    amount: printAmount(entry.additionalPay, {
+                      blankIfZero: true,
+                    }),
+                  },
+                  {
+                    label: "Gross Earnings",
+                    amount: printAmount(entry.grossPay),
+                    strong: true,
+                  },
+                  { label: "", amount: "" },
+                ];
+
+            const deductionRows = isAdmin
+              ? [
+                  {
+                    label: "Cash Advance",
+                    amount: printAmount(cashAdvance),
+                  },
+                  {
+                    label: "SSS Cont",
+                    amount: printAmount(sss, { blankIfZero: true }),
+                  },
+                  { label: "SSS Loan", amount: "" },
+                  {
+                    label: "PHIC",
+                    amount: printAmount(phic, { blankIfZero: true }),
+                  },
+                  {
+                    label: "HDMF Cont",
+                    amount: printAmount(hdmf, { blankIfZero: true }),
+                  },
+                  { label: "HDMF Loan", amount: "" },
+                  {
+                    label: "Total Deductions",
+                    amount: printAmount(totalDeductions),
+                    strong: true,
+                  },
+                  {
+                    label: "Net Pay",
+                    amount: printAmount(entry.netPay),
+                    strong: true,
+                    net: true,
+                  },
+                ]
+              : [
+                  {
+                    label: "Cash Advance",
+                    amount: printAmount(cashAdvance),
+                  },
+                  { label: "", amount: "" },
+                  { label: "", amount: "" },
+                  { label: "", amount: "" },
+                  { label: "", amount: "" },
+                  { label: "", amount: "" },
+                  {
+                    label: "Total Deductions",
+                    amount: printAmount(totalDeductions),
+                    strong: true,
+                  },
+                  {
+                    label: "Net Pay",
+                    amount: printAmount(entry.netPay),
+                    strong: true,
+                    net: true,
+                  },
+                ];
+
+            const rowCount = Math.max(earningRows.length, deductionRows.length);
 
             return (
               <article className="payroll-print-admin-slip" key={entry.id}>
                 <header className="payroll-print-admin-header">
-                  <p className="payroll-print-eyebrow">Steer Builders Corporation</p>
+                  <p className="payroll-print-eyebrow">
+                    Steer Builders Corporation
+                  </p>
                   <h2>Payslip</h2>
                   <p>{heading}</p>
                 </header>
@@ -375,12 +498,10 @@ function PayrollPrintSheet({
                       {employmentStatus ? ` · ${employmentStatus}` : ""}
                     </dd>
                   </div>
-                  {employmentStatus ? (
-                    <div>
-                      <dt>Status</dt>
-                      <dd>{employmentStatus}</dd>
-                    </div>
-                  ) : null}
+                  <div>
+                    <dt>Position</dt>
+                    <dd>{position}</dd>
+                  </div>
                   <div>
                     <dt>Pay Period</dt>
                     <dd>{period.label}</dd>
@@ -391,107 +512,77 @@ function PayrollPrintSheet({
                       {period.periodStart} – {period.periodEnd}
                     </dd>
                   </div>
-                  <div>
-                    <dt>
-                      {category === "construction" ? "Site / Designation" : "Designation"}
-                    </dt>
-                    <dd>
-                      {category === "construction"
-                        ? [entry.siteAssignment, entry.designation]
-                            .filter(Boolean)
-                            .join(" · ") || "—"
-                        : entry.designation || "—"}
-                    </dd>
-                  </div>
                 </dl>
 
-                <div className="payroll-print-admin-columns">
-                  <div>
-                    <h3>Earnings</h3>
-                    <dl className="payroll-print-lines">
-                      <div>
-                        <dt>
-                          {category === "construction" ? "Regular Pay" : "Basic Salary"}
-                        </dt>
-                        <dd>{formatCurrency(basicPay)}</dd>
-                      </div>
-                      {category === "construction" && (
-                        <div>
-                          <dt>Regular Hours</dt>
-                          <dd>{entry.hours}h</dd>
-                        </div>
-                      )}
-                      <div>
-                        <dt>Overtime</dt>
-                        <dd>
-                          {category === "construction" && entry.overtimeHours > 0
-                            ? `${entry.overtimeHours}h · ${formatCurrency(entry.overtimePay)}`
-                            : formatCurrency(entry.overtimePay)}
-                        </dd>
-                      </div>
-                      {leavePay > 0 && (
-                        <div>
-                          <dt>
-                            {category === "construction" ? "Additional Pay" : "Leave Pay"}
-                          </dt>
-                          <dd>{formatCurrency(leavePay)}</dd>
-                        </div>
-                      )}
-                      <div>
-                        <dt>Gross Pay</dt>
-                        <dd>{formatCurrency(entry.grossPay)}</dd>
-                      </div>
-                    </dl>
-                  </div>
-                  <div>
-                    <h3>Deductions</h3>
-                    <dl className="payroll-print-lines">
-                      <div>
-                        <dt>Cash Advance</dt>
-                        <dd>{formatCurrency(entry.cashAdvance)}</dd>
-                      </div>
-                      {sss > 0 && (
-                        <div>
-                          <dt>SSS</dt>
-                          <dd>{formatCurrency(sss)}</dd>
-                        </div>
-                      )}
-                      {phic > 0 && (
-                        <div>
-                          <dt>PhilHealth</dt>
-                          <dd>{formatCurrency(phic)}</dd>
-                        </div>
-                      )}
-                      {hdmf > 0 && (
-                        <div>
-                          <dt>HDMF</dt>
-                          <dd>{formatCurrency(hdmf)}</dd>
-                        </div>
-                      )}
-                      {tax > 0 && (
-                        <div>
-                          <dt>Tax</dt>
-                          <dd>{formatCurrency(tax)}</dd>
-                        </div>
-                      )}
-                      {statutory <= 0 && entry.deductions > 0 && (
-                        <div>
-                          <dt>Other Deductions</dt>
-                          <dd>{formatCurrency(entry.deductions)}</dd>
-                        </div>
-                      )}
-                      <div>
-                        <dt>Total Deductions</dt>
-                        <dd>{formatCurrency(totalDeductions)}</dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-
-                <div className="payroll-print-net payroll-print-admin-net">
-                  <span>Net Pay</span>
-                  <strong>{formatCurrency(entry.netPay)}</strong>
-                </div>
+                <table className="payroll-print-sheet-table">
+                  <thead>
+                    <tr>
+                      <th>Earnings</th>
+                      <th>Amount</th>
+                      <th>Deduction</th>
+                      <th>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: rowCount }).map((_, index) => {
+                      const earning = earningRows[index] ?? {
+                        label: "",
+                        amount: "",
+                      };
+                      const deduction = deductionRows[index] ?? {
+                        label: "",
+                        amount: "",
+                      };
+                      return (
+                        <tr
+                          key={`${entry.id}-row-${index}`}
+                          className={
+                            deduction.net
+                              ? "payroll-print-sheet-net-row"
+                              : undefined
+                          }
+                        >
+                          <td
+                            className={
+                              earning.strong
+                                ? "payroll-print-sheet-strong"
+                                : undefined
+                            }
+                          >
+                            {earning.label}
+                          </td>
+                          <td
+                            className={`payroll-print-sheet-amount${
+                              earning.strong
+                                ? " payroll-print-sheet-strong"
+                                : ""
+                            }`}
+                          >
+                            {earning.amount}
+                          </td>
+                          <td
+                            className={
+                              deduction.strong || deduction.net
+                                ? "payroll-print-sheet-strong"
+                                : undefined
+                            }
+                          >
+                            {deduction.label}
+                          </td>
+                          <td
+                            className={`payroll-print-sheet-amount${
+                              deduction.strong || deduction.net
+                                ? " payroll-print-sheet-strong"
+                                : ""
+                            }`}
+                          >
+                            {deduction.amount}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
 
                 {category === "construction" && entry.disbursement ? (
                   <p className="payroll-print-disbursement">
@@ -517,6 +608,10 @@ function PayrollPrintSheet({
             );
           })}
         </section>
+      ))}
+    </div>
+  );
+}
       ))}
     </div>
   );

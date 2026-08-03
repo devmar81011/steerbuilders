@@ -435,6 +435,47 @@ body {
     padding-bottom: 1.5mm;
   }
 
+  .payroll-print-sheet-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 5mm;
+    font-size: 10px;
+  }
+
+  .payroll-print-sheet-table th,
+  .payroll-print-sheet-table td {
+    border: 1px solid #101010;
+    padding: 1.6mm 2mm;
+    vertical-align: middle;
+  }
+
+  .payroll-print-sheet-table th {
+    text-align: center;
+    font-size: 10px;
+    font-weight: 700;
+    background: #f7f7f7;
+  }
+
+  .payroll-print-sheet-table td:nth-child(1),
+  .payroll-print-sheet-table td:nth-child(3) {
+    width: 28%;
+  }
+
+  .payroll-print-sheet-amount {
+    width: 22%;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .payroll-print-sheet-strong {
+    font-weight: 700;
+  }
+
+  .payroll-print-sheet-net-row td {
+    border-top: 2px solid #101010;
+  }
+
   .payroll-print-admin-net {
     display: flex;
     justify-content: space-between;
