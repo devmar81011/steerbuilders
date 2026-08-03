@@ -8,6 +8,7 @@ import {
 } from "@/lib/preview-mode";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { parseAdminPayslipMeta } from "@/lib/admin-payroll-excel-import";
 import { mockEmployees, mockPayroll, type Employee, type PayrollEntry } from "@/lib/mvp-data";
 import type { EmployeeCategory } from "@/lib/employee-categories";
 import { normalizeRateType, type RateType } from "@/lib/rate-types";
@@ -83,6 +84,17 @@ function mapPayrollRow(
     statutoryDeductions: Number(row.deductions) || 0,
   });
 
+  const remarks = (row.remarks as string) ?? "";
+  const adminMeta = parseAdminPayslipMeta(remarks);
+  const deductionBreakdown = adminMeta
+    ? [
+        { code: "sss", label: "SSS", amount: adminMeta.sss },
+        { code: "phic", label: "PhilHealth", amount: adminMeta.phic },
+        { code: "hdmf", label: "HDMF", amount: adminMeta.hdmf },
+        { code: "tax", label: "Tax", amount: adminMeta.tax },
+      ]
+    : undefined;
+
   return {
     id: row.id as string,
     employeeId: row.employee_id as string,
@@ -93,7 +105,9 @@ function mapPayrollRow(
     category: employee?.category ?? category,
     periodKey: period.key,
     period: period.label,
-    dailyRate,
+    dailyRate: adminMeta?.basicPay
+      ? adminMeta.basicPay / 13
+      : dailyRate,
     hourlyRate,
     hours,
     overtimeHours,
@@ -103,9 +117,10 @@ function mapPayrollRow(
     cashAdvance: Number(row.cash_advance) || 0,
     additionalPay: Number(row.additional_pay) || 0,
     deductions: Number(row.deductions) || 0,
+    deductionBreakdown,
     netPay: Number(row.net_pay),
     disbursement: (row.disbursement as string) ?? "",
-    remarks: (row.remarks as string) ?? "",
+    remarks,
     chargedTo: (row.charged_to as string) ?? "",
     status: (row.status as "draft" | "processed") ?? "draft",
   };
@@ -203,32 +218,23 @@ async function getPayrollFromDatabase(
 
     if (error) return null;
 
-    const [employees, otPayPercent] = await Promise.all([
-      getEmployees(),
-      getOtPayPercent(),
-    ]);
-    const categoryEmployees = employees.filter(
-      (e) => e.status === "active" && e.category === category
-    );
+    const otPayPercent = await getOtPayPercent();
 
     const rows = (data ?? []).filter((row: Record<string, unknown>) => {
       const employee = row.employees as { category?: EmployeeCategory } | null;
       return employee?.category === category;
     });
 
-    const mappedRows = rows.map((row: Record<string, unknown>) =>
-      mapPayrollRow(row, period, category, otPayPercent)
+    const mappedRows = rows
+      .map((row: Record<string, unknown>) =>
+        mapPayrollRow(row, period, category, otPayPercent)
+      )
+      // Upload-first: only show saved Excel / processed payslips.
+      .filter((entry) => entry.status === "processed");
+
+    return mappedRows.sort((a, b) =>
+      a.employeeName.localeCompare(b.employeeName)
     );
-
-    // When a period already has saved payslips (e.g. Excel upload history),
-    // return those rows only so history matches the uploaded file.
-    if (mappedRows.length > 0) {
-      return mappedRows.sort((a, b) =>
-        a.employeeName.localeCompare(b.employeeName)
-      );
-    }
-
-    return categoryEmployees.map((employee) => buildMockEntry(employee, period));
   } catch {
     return null;
   }
@@ -306,14 +312,9 @@ export async function getPayrollForPeriod(
 
   const dbRows = await getPayrollFromDatabase(category, period);
   if (dbRows) {
+    // Upload-first: never invent rows from attendance/employees before Excel upload.
     return {
-      entries: await enrichPayrollFromAttendance(
-        dbRows,
-        category,
-        period,
-        constructionRows,
-        hourlyRows
-      ),
+      entries: dbRows,
       period,
       usingDatabase: true,
       constructionAttendance: constructionRows,
@@ -321,30 +322,9 @@ export async function getPayrollForPeriod(
     };
   }
 
-  const employees = (await getEmployees()).filter(
-    (e) => e.status === "active" && e.category === category
-  );
-
-  const mockRows = mockPayroll.filter(
-    (entry) => entry.category === category && entry.periodKey === period.key
-  );
-
-  const byEmployee = new Map(mockRows.map((entry) => [entry.employeeId, entry]));
-
-  const entries = employees.map((employee) => {
-    const existing = byEmployee.get(employee.id);
-    if (existing) return { ...existing, period: period.label };
-    return buildMockEntry(employee, period);
-  });
-
+  // Upload-first: empty until an Excel file is imported for this period.
   return {
-    entries: await enrichPayrollFromAttendance(
-      entries,
-      category,
-      period,
-      constructionRows,
-      hourlyRows
-    ),
+    entries: [],
     period,
     usingDatabase: false,
     constructionAttendance: constructionRows,

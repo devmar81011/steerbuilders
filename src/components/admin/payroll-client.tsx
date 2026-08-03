@@ -26,9 +26,13 @@ import {
 import { getPayrollForPeriod, updatePayrollEntry } from "@/lib/actions/payroll";
 import {
   getPayrollUploadHistory,
+  importAdminPayrollExcel,
   importConstructionPayrollExcel,
   type PayrollUploadHistoryItem,
 } from "@/lib/actions/payroll-import";
+import {
+  parseAdminPayslipMeta,
+} from "@/lib/admin-payroll-excel-import";
 import { formatCurrency, type Employee, type PayrollEntry } from "@/lib/mvp-data";
 import type { AdminAttendanceRow, AttendanceRow } from "@/lib/attendance";
 import type { PayrollAdjustment } from "@/lib/payroll-adjustments";
@@ -40,18 +44,7 @@ import {
   type DeductionLine,
 } from "@/lib/deduction-lines";
 import type { EmployeeDeductionContext } from "@/lib/deduction-role-rates";
-import {
-  mergeAdminRowsWithPreview,
-  mergeConstructionRowsWithPreview,
-} from "@/lib/attendance-preview-storage";
-import {
-  mergePayrollEntriesWithPreview,
-  savePayrollEntryPreview,
-} from "@/lib/payroll-preview-storage";
-import {
-  applyAttendanceToPayrollEntries,
-  getWeekStartsForPayrollPeriod,
-} from "@/lib/payroll-from-attendance";
+import { savePayrollEntryPreview } from "@/lib/payroll-preview-storage";
 import {
   getCurrentPayrollPeriod,
   payrollTabMeta,
@@ -147,8 +140,12 @@ type PayrollSortKey =
 const tabs: { id: PayrollTab; label: string }[] = [
   { id: "construction", label: "Construction" },
   { id: "admin", label: "Admin" },
-  { id: "ojt", label: "OJT" },
 ];
+
+function displayRemarks(remarks: string): string {
+  if (parseAdminPayslipMeta(remarks)) return "—";
+  return remarks || "—";
+}
 
 function chunkEntries(entries: PayrollEntry[], size: number): PayrollEntry[][] {
   const chunks: PayrollEntry[][] = [];
@@ -204,53 +201,6 @@ type InlinePayrollField =
   | "remarks"
   | "chargedTo";
 
-function applyPreviewAttendanceToPayroll(
-  entries: PayrollEntry[],
-  employees: Employee[],
-  constructionAttendance: AttendanceRow[],
-  hourlyAttendance: AdminAttendanceRow[],
-  category: PayrollTab,
-  period: PayrollPeriod,
-  payrollAdjustments: PayrollAdjustment[],
-  otPayPercent: number
-): PayrollEntry[] {
-  let computed: PayrollEntry[];
-
-  if (category === "construction") {
-    const merged = mergeConstructionRowsWithPreview(
-      period.periodStart,
-      constructionAttendance
-    );
-    computed = applyAttendanceToPayrollEntries(
-      entries,
-      employees,
-      merged,
-      [],
-      category,
-      payrollAdjustments,
-      otPayPercent
-    );
-  } else {
-    const weekStarts = getWeekStartsForPayrollPeriod(category, period);
-    const mergedHourly = weekStarts.flatMap((weekStart) => {
-      const weekRows = hourlyAttendance.filter((row) => row.weekStart === weekStart);
-      return mergeAdminRowsWithPreview(weekStart, weekRows);
-    });
-
-    computed = applyAttendanceToPayrollEntries(
-      entries,
-      employees,
-      [],
-      mergedHourly,
-      category,
-      payrollAdjustments,
-      otPayPercent
-    );
-  }
-
-  return mergePayrollEntriesWithPreview(computed);
-}
-
 function PayrollPrintSheet({
   entries,
   category,
@@ -264,6 +214,151 @@ function PayrollPrintSheet({
   payrollAdjustments: PayrollAdjustment[];
   employees: Employee[];
 }) {
+  if (category === "admin") {
+    const pages = chunkEntries(entries, 2);
+    return (
+      <div className="payroll-print-area">
+        {pages.map((pageEntries, pageIndex) => (
+          <section
+            className="payroll-print-page payroll-print-page-admin"
+            key={`${period.key}-admin-${pageIndex}`}
+          >
+            {pageEntries.map((entry) => {
+              const meta = parseAdminPayslipMeta(entry.remarks);
+              const basicPay = meta?.basicPay || entry.regularPay;
+              const sss = meta?.sss ?? getDeductionAmount(
+                resolveEntryDeductionBreakdown(
+                  entry,
+                  payrollAdjustments,
+                  employeeContextFromEntry(entry, employees)
+                ),
+                "sss"
+              );
+              const phic = meta?.phic ?? getDeductionAmount(
+                resolveEntryDeductionBreakdown(
+                  entry,
+                  payrollAdjustments,
+                  employeeContextFromEntry(entry, employees)
+                ),
+                "phic"
+              );
+              const hdmf = meta?.hdmf ?? getDeductionAmount(
+                resolveEntryDeductionBreakdown(
+                  entry,
+                  payrollAdjustments,
+                  employeeContextFromEntry(entry, employees)
+                ),
+                "hdmf"
+              );
+              const tax = meta?.tax ?? 0;
+              const leavePay = meta?.leavePay ?? entry.additionalPay;
+              const totalDeductions =
+                entry.cashAdvance + sss + phic + hdmf + tax;
+
+              return (
+                <article className="payroll-print-admin-slip" key={entry.id}>
+                  <header className="payroll-print-admin-header">
+                    <p className="payroll-print-eyebrow">Steer Builders Corporation</p>
+                    <h2>Payslip</h2>
+                    <p>Admin · Semi-monthly payroll</p>
+                  </header>
+
+                  <dl className="payroll-print-admin-meta">
+                    <div>
+                      <dt>Employee Name</dt>
+                      <dd>{entry.employeeName}</dd>
+                    </div>
+                    <div>
+                      <dt>Pay Period</dt>
+                      <dd>{period.label}</dd>
+                    </div>
+                    <div>
+                      <dt>Cut-off</dt>
+                      <dd>
+                        {period.periodStart} – {period.periodEnd}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Designation</dt>
+                      <dd>{entry.designation || "—"}</dd>
+                    </div>
+                  </dl>
+
+                  <div className="payroll-print-admin-columns">
+                    <div>
+                      <h3>Earnings</h3>
+                      <dl className="payroll-print-lines">
+                        <div>
+                          <dt>Basic Salary</dt>
+                          <dd>{formatCurrency(basicPay)}</dd>
+                        </div>
+                        <div>
+                          <dt>Overtime</dt>
+                          <dd>{formatCurrency(entry.overtimePay)}</dd>
+                        </div>
+                        {leavePay > 0 && (
+                          <div>
+                            <dt>Leave Pay</dt>
+                            <dd>{formatCurrency(leavePay)}</dd>
+                          </div>
+                        )}
+                        <div>
+                          <dt>Gross Pay</dt>
+                          <dd>{formatCurrency(entry.grossPay)}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                    <div>
+                      <h3>Deductions</h3>
+                      <dl className="payroll-print-lines">
+                        <div>
+                          <dt>Cash Advance</dt>
+                          <dd>{formatCurrency(entry.cashAdvance)}</dd>
+                        </div>
+                        <div>
+                          <dt>SSS</dt>
+                          <dd>{formatCurrency(sss)}</dd>
+                        </div>
+                        <div>
+                          <dt>PhilHealth</dt>
+                          <dd>{formatCurrency(phic)}</dd>
+                        </div>
+                        <div>
+                          <dt>HDMF</dt>
+                          <dd>{formatCurrency(hdmf)}</dd>
+                        </div>
+                        {tax > 0 && (
+                          <div>
+                            <dt>Tax</dt>
+                            <dd>{formatCurrency(tax)}</dd>
+                          </div>
+                        )}
+                        <div>
+                          <dt>Total Deductions</dt>
+                          <dd>{formatCurrency(totalDeductions || entry.deductions + entry.cashAdvance)}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+
+                  <div className="payroll-print-net payroll-print-admin-net">
+                    <span>Net Pay</span>
+                    <strong>{formatCurrency(entry.netPay)}</strong>
+                  </div>
+
+                  <div className="payroll-print-signatures">
+                    <span>Approved by</span>
+                    <span>Received by</span>
+                  </div>
+                </article>
+              );
+            })}
+          </section>
+        ))}
+      </div>
+    );
+  }
+
   const pages = chunkEntries(entries, 6);
   const activeModules = payrollAdjustments
     .filter((rule) => rule.active)
@@ -360,7 +455,7 @@ function PayrollPrintSheet({
                       <dd>{entry.disbursement}</dd>
                     </div>
                   )}
-                  {entry.remarks && (
+                  {entry.remarks && !parseAdminPayslipMeta(entry.remarks) && (
                     <div>
                       <dt>Remarks</dt>
                       <dd>{entry.remarks}</dd>
@@ -529,7 +624,7 @@ function PayrollTable({
             {sortedEntries.length === 0 ? (
               <TableEmpty
                 colSpan={columnCount}
-                message={`No active ${category} employees for this period.`}
+                message={`No uploaded ${category} payroll for this period yet. Upload an Excel file to load payslips.`}
               />
             ) : (
               sortedEntries.map((entry) => {
@@ -623,14 +718,18 @@ function PayrollTable({
                       </select>
                     </TableCell>
                     <TableCell>
-                      <InlineTextField
-                        value={entry.remarks || ""}
-                        disabled={rowBusy}
-                        className="min-w-[120px]"
-                        onCommit={(value) =>
-                          onInlineUpdate(entry, "remarks", value)
-                        }
-                      />
+                      {parseAdminPayslipMeta(entry.remarks) ? (
+                        displayRemarks(entry.remarks)
+                      ) : (
+                        <InlineTextField
+                          value={entry.remarks || ""}
+                          disabled={rowBusy}
+                          className="min-w-[120px]"
+                          onCommit={(value) =>
+                            onInlineUpdate(entry, "remarks", value)
+                          }
+                        />
+                      )}
                     </TableCell>
                     <TableCell>
                       <InlineTextField
@@ -702,42 +801,12 @@ export function PayrollClient({
   initialUploadHistory,
 }: Props) {
   const [activeTab, setActiveTab] = useState<PayrollTab>("construction");
-  const [constructionEntries, setConstructionEntries] = useState(() =>
-    applyPreviewAttendanceToPayroll(
-      initialConstructionEntries,
-      employees,
-      constructionAttendance,
-      adminAttendance,
-      "construction",
-      initialConstructionPeriod,
-      payrollAdjustments,
-      otPayPercent
-    )
+  // Upload-first: show only saved Excel payslips — do not invent rows from attendance.
+  const [constructionEntries, setConstructionEntries] = useState(
+    initialConstructionEntries
   );
-  const [adminEntries, setAdminEntries] = useState(() =>
-    applyPreviewAttendanceToPayroll(
-      initialAdminEntries,
-      employees,
-      constructionAttendance,
-      adminAttendance,
-      "admin",
-      initialAdminPeriod,
-      payrollAdjustments,
-      otPayPercent
-    )
-  );
-  const [ojtEntries, setOjtEntries] = useState(() =>
-    applyPreviewAttendanceToPayroll(
-      initialOjtEntries,
-      employees,
-      constructionAttendance,
-      ojtAttendance,
-      "ojt",
-      initialOjtPeriod,
-      payrollAdjustments,
-      otPayPercent
-    )
-  );
+  const [adminEntries, setAdminEntries] = useState(initialAdminEntries);
+  const [ojtEntries, setOjtEntries] = useState(initialOjtEntries);
   const [constructionPeriod, setConstructionPeriod] = useState(
     initialConstructionPeriod
   );
@@ -804,53 +873,20 @@ export function PayrollClient({
     result: Awaited<ReturnType<typeof getPayrollForPeriod>>
   ) {
     if (tab === "construction") {
-      setConstructionEntries(
-        applyPreviewAttendanceToPayroll(
-          result.entries,
-          employees,
-          result.constructionAttendance,
-          [],
-          tab,
-          result.period,
-          payrollAdjustments,
-          otPayPercent
-        )
-      );
+      setConstructionEntries(result.entries);
       setConstructionPeriod(result.period);
       setServerConstructionAttendance(result.constructionAttendance);
       return;
     }
 
     if (tab === "admin") {
-      setAdminEntries(
-        applyPreviewAttendanceToPayroll(
-          result.entries,
-          employees,
-          result.constructionAttendance,
-          result.hourlyAttendance,
-          tab,
-          result.period,
-          payrollAdjustments,
-          otPayPercent
-        )
-      );
+      setAdminEntries(result.entries);
       setAdminPeriod(result.period);
       setServerAdminAttendance(result.hourlyAttendance);
       return;
     }
 
-    setOjtEntries(
-      applyPreviewAttendanceToPayroll(
-        result.entries,
-        employees,
-        result.constructionAttendance,
-        result.hourlyAttendance,
-        tab,
-        result.period,
-        payrollAdjustments,
-        otPayPercent
-      )
-    );
+    setOjtEntries(result.entries);
     setOjtPeriod(result.period);
     setServerOjtAttendance(result.hourlyAttendance);
   }
@@ -917,7 +953,7 @@ export function PayrollClient({
       additionalPay: String(entry.additionalPay),
       siteAssignment: entry.siteAssignment,
       disbursement: entry.disbursement,
-      remarks: entry.remarks,
+      remarks: parseAdminPayslipMeta(entry.remarks) ? "" : entry.remarks,
       chargedTo: entry.chargedTo,
       deductionLines: Object.fromEntries(
         breakdown.map((line) => [line.code, String(line.amount)])
@@ -998,6 +1034,10 @@ export function PayrollClient({
     startTransition(async () => {
       const deductionBreakdown = breakdownFromForm(form, payrollAdjustments);
       const deductions = sumDeductionLines(deductionBreakdown);
+      const existingAdminMeta = parseAdminPayslipMeta(currentEntry.remarks);
+      const remarksValue =
+        form.remarks.trim() ||
+        (existingAdminMeta ? currentEntry.remarks : "");
       const payload = {
         hours: Number(form.hours),
         overtime_hours: Number(form.overtimeHours),
@@ -1010,7 +1050,7 @@ export function PayrollClient({
         net_pay: amountPreview.netPay,
         site_assignment: form.siteAssignment.trim(),
         disbursement: form.disbursement.trim(),
-        remarks: form.remarks.trim(),
+        remarks: remarksValue,
         charged_to: form.chargedTo.trim(),
         status: form.status,
       };
@@ -1180,16 +1220,16 @@ export function PayrollClient({
     });
   }
 
-  function loadPeriodByKey(periodKey: string) {
+  function loadPeriodByKey(periodKey: string, tab: PayrollTab = activeTab) {
     setLoadingPeriod(true);
     setMessage(null);
     resetForm();
 
     startTransition(async () => {
       try {
-        const result = await getPayrollForPeriod("construction", periodKey);
-        applyPeriodResult("construction", result);
-        setActiveTab("construction");
+        const result = await getPayrollForPeriod(tab, periodKey);
+        applyPeriodResult(tab, result);
+        setActiveTab(tab);
       } finally {
         setLoadingPeriod(false);
       }
@@ -1200,12 +1240,16 @@ export function PayrollClient({
     if (!file) return;
     setUploading(true);
     setMessage(null);
+    const uploadTab = activeTab === "admin" ? "admin" : "construction";
 
     startTransition(async () => {
       try {
         const formData = new FormData();
         formData.append("file", file);
-        const result = await importConstructionPayrollExcel(formData);
+        const result =
+          uploadTab === "admin"
+            ? await importAdminPayrollExcel(formData)
+            : await importConstructionPayrollExcel(formData);
 
         if (result.error) {
           setMessage(result.error);
@@ -1213,13 +1257,23 @@ export function PayrollClient({
         }
 
         if (result.entries && result.periodKey) {
-          setConstructionEntries(result.entries);
-          const periodResult = await getPayrollForPeriod(
-            "construction",
-            result.periodKey
-          );
-          setConstructionPeriod(periodResult.period);
-          setActiveTab("construction");
+          if (uploadTab === "admin") {
+            setAdminEntries(result.entries);
+            const periodResult = await getPayrollForPeriod(
+              "admin",
+              result.periodKey
+            );
+            setAdminPeriod(periodResult.period);
+            setActiveTab("admin");
+          } else {
+            setConstructionEntries(result.entries);
+            const periodResult = await getPayrollForPeriod(
+              "construction",
+              result.periodKey
+            );
+            setConstructionPeriod(periodResult.period);
+            setActiveTab("construction");
+          }
         }
 
         const history = await getPayrollUploadHistory();
@@ -1261,6 +1315,15 @@ export function PayrollClient({
   }
 
   const isBusy = pending || loadingPeriod || uploading;
+  const filteredHistory = useMemo(
+    () =>
+      uploadHistory.filter((item) =>
+        activeTab === "admin"
+          ? item.category === "admin"
+          : item.category === "construction"
+      ),
+    [uploadHistory, activeTab]
+  );
 
   return (
     <>
@@ -1270,9 +1333,11 @@ export function PayrollClient({
           <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
             Admin
           </p>
-          <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Construction Payroll</h1>
+          <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Payroll</h1>
           <p className="mt-1 text-sm text-sbc-gray">
-            Upload your completed weekly Excel payroll, save it for history, then print or export
+            {activeTab === "admin"
+              ? "Upload your completed Admin Excel payroll (semi-monthly), then print payslips or export"
+              : "Upload your completed Construction Excel payroll (weekly), then print slips or export"}
           </p>
         </div>
 
@@ -1320,7 +1385,11 @@ export function PayrollClient({
             disabled={isBusy || uploading}
             onClick={() => fileInputRef.current?.click()}
           >
-            {uploading ? "Uploading…" : "Upload Excel"}
+            {uploading
+              ? "Uploading…"
+              : activeTab === "admin"
+                ? "Upload Admin Excel"
+                : "Upload Construction Excel"}
           </Button>
           <Button
             type="button"
@@ -1343,13 +1412,36 @@ export function PayrollClient({
         </div>
       </div>
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            disabled={isBusy}
+            onClick={() => {
+              setActiveTab(tab.id);
+              resetForm();
+              setMessage(null);
+            }}
+            className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+              activeTab === tab.id
+                ? "bg-sbc-gold text-sbc-black"
+                : "border border-sbc-gray-light bg-sbc-white text-sbc-gray hover:border-sbc-gold/40"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       <p className="mb-4 rounded-lg border border-sbc-gold/25 bg-sbc-gold/5 px-4 py-3 text-sm text-sbc-gray">
-        <span className="font-semibold text-sbc-black">Fastest workflow · </span>
-        Fill payroll in Excel as usual, upload the file here, and we save that week for
-        history. Print slips or export CSV anytime from the saved period.
+        <span className="font-semibold text-sbc-black">Upload-first · </span>
+        {activeTab === "admin"
+          ? "Use your Admin workbook (Payroll Computation sheet). Payslips print like the Excel Payslip tab — Basic, OT, SSS, PhilHealth, HDMF, CA, and Net."
+          : "Fill payroll in Excel as usual, upload the file here, and we save that week for history. The table stays empty until you upload."}
       </p>
 
-      {uploadHistory.length > 0 && (
+      {filteredHistory.length > 0 && (
         <div className="mb-4 rounded-lg border border-sbc-gray-light bg-sbc-white p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -1357,7 +1449,8 @@ export function PayrollClient({
                 Upload history
               </p>
               <p className="mt-1 text-sm text-sbc-gray">
-                Open a previously uploaded payroll week
+                Open a previously uploaded{" "}
+                {activeTab === "admin" ? "admin cutoff" : "construction week"}
               </p>
             </div>
             <div className="min-w-[260px]">
@@ -1367,11 +1460,15 @@ export function PayrollClient({
                 value=""
                 onChange={(e) => {
                   const periodKey = e.target.value;
-                  if (periodKey) loadPeriodByKey(periodKey);
+                  if (periodKey) loadPeriodByKey(periodKey, activeTab);
                 }}
               >
-                <option value="">Select a saved week…</option>
-                {uploadHistory.map((item) => (
+                <option value="">
+                  {activeTab === "admin"
+                    ? "Select a saved cutoff…"
+                    : "Select a saved week…"}
+                </option>
+                {filteredHistory.map((item) => (
                   <option key={item.id} value={item.periodKey}>
                     {item.periodLabel} · {item.rowCount} rows · {item.filename}
                   </option>
