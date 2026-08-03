@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { sortRows, useTableSort } from "@/lib/table-sort";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,11 @@ import {
   TableMeta,
 } from "@/components/ui/table";
 import { getPayrollForPeriod, updatePayrollEntry } from "@/lib/actions/payroll";
+import {
+  getPayrollUploadHistory,
+  importConstructionPayrollExcel,
+  type PayrollUploadHistoryItem,
+} from "@/lib/actions/payroll-import";
 import { formatCurrency, type Employee, type PayrollEntry } from "@/lib/mvp-data";
 import type { AdminAttendanceRow, AttendanceRow } from "@/lib/attendance";
 import type { PayrollAdjustment } from "@/lib/payroll-adjustments";
@@ -77,6 +82,7 @@ type Props = {
   payrollAdjustments: PayrollAdjustment[];
   disbursementMethods: string[];
   otPayPercent: number;
+  initialUploadHistory: PayrollUploadHistoryItem[];
 };
 
 type PayrollForm = {
@@ -693,6 +699,7 @@ export function PayrollClient({
   payrollAdjustments,
   disbursementMethods,
   otPayPercent,
+  initialUploadHistory,
 }: Props) {
   const [activeTab, setActiveTab] = useState<PayrollTab>("construction");
   const [constructionEntries, setConstructionEntries] = useState(() =>
@@ -757,6 +764,9 @@ export function PayrollClient({
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loadingPeriod, setLoadingPeriod] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadHistory, setUploadHistory] = useState(initialUploadHistory);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const { sort, toggleSort } = useTableSort<PayrollSortKey>({
     defaultKey: "employeeName",
@@ -1170,6 +1180,63 @@ export function PayrollClient({
     });
   }
 
+  function loadPeriodByKey(periodKey: string) {
+    setLoadingPeriod(true);
+    setMessage(null);
+    resetForm();
+
+    startTransition(async () => {
+      try {
+        const result = await getPayrollForPeriod("construction", periodKey);
+        applyPeriodResult("construction", result);
+        setActiveTab("construction");
+      } finally {
+        setLoadingPeriod(false);
+      }
+    });
+  }
+
+  function handleExcelUpload(file: File | null) {
+    if (!file) return;
+    setUploading(true);
+    setMessage(null);
+
+    startTransition(async () => {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const result = await importConstructionPayrollExcel(formData);
+
+        if (result.error) {
+          setMessage(result.error);
+          return;
+        }
+
+        if (result.entries && result.periodKey) {
+          setConstructionEntries(result.entries);
+          const periodResult = await getPayrollForPeriod(
+            "construction",
+            result.periodKey
+          );
+          setConstructionPeriod(periodResult.period);
+          setActiveTab("construction");
+        }
+
+        const history = await getPayrollUploadHistory();
+        setUploadHistory(history);
+
+        setMessage(
+          result.preview
+            ? `Preview import: saved ${result.importedCount ?? 0} rows from "${result.sheetName}" for ${result.periodLabel}. (Database not connected — local preview only.)`
+            : `Imported ${result.importedCount ?? 0} rows from "${result.sheetName}" for ${result.periodLabel}. Saved for history — you can print or export anytime.`
+        );
+      } finally {
+        setUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+      }
+    });
+  }
+
   function handleExportPayroll() {
     const csv = buildPayrollCsv({
       entries: activeEntries,
@@ -1193,7 +1260,7 @@ export function PayrollClient({
     );
   }
 
-  const isBusy = pending || loadingPeriod;
+  const isBusy = pending || loadingPeriod || uploading;
 
   return (
     <>
@@ -1204,7 +1271,9 @@ export function PayrollClient({
             Admin
           </p>
           <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Construction Payroll</h1>
-          <p className="mt-1 text-sm text-sbc-gray">Weekly payroll for construction workers</p>
+          <p className="mt-1 text-sm text-sbc-gray">
+            Upload your completed weekly Excel payroll, save it for history, then print or export
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -1238,6 +1307,21 @@ export function PayrollClient({
           >
             {usesWeeklyPayroll(activeTab) ? "This Week" : "Current Period"}
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={(e) => handleExcelUpload(e.target.files?.[0] ?? null)}
+          />
+          <Button
+            type="button"
+            size="sm"
+            disabled={isBusy || uploading}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {uploading ? "Uploading…" : "Upload Excel"}
+          </Button>
           <Button
             type="button"
             variant="ghost"
@@ -1249,6 +1333,7 @@ export function PayrollClient({
           </Button>
           <Button
             type="button"
+            variant="ghost"
             size="sm"
             disabled={activeEntries.length === 0}
             onClick={() => window.print()}
@@ -1259,20 +1344,43 @@ export function PayrollClient({
       </div>
 
       <p className="mb-4 rounded-lg border border-sbc-gold/25 bg-sbc-gold/5 px-4 py-3 text-sm text-sbc-gray">
-        <span className="font-semibold text-sbc-black">Pay schedule · </span>
-        Weekly payroll for construction workers (Monday-Sunday)
+        <span className="font-semibold text-sbc-black">Fastest workflow · </span>
+        Fill payroll in Excel as usual, upload the file here, and we save that week for
+        history. Print slips or export CSV anytime from the saved period.
       </p>
 
-      <p className="mb-4 text-sm text-sbc-gray">
-        Rates are employee-specific. Monthly pay is converted using 26 workdays and
-        8 hours per day. Draft rows calculate from attendance. Overtime uses the OT
-        pay % from{" "}
-        <a href="/admin/settings" className="font-medium text-sbc-gold hover:underline">
-          Settings
-        </a>{" "}
-        (currently {otPayPercent}% / {(otPayPercent / 100).toFixed(2)}× hourly). Process
-        to lock an entry.
-      </p>
+      {uploadHistory.length > 0 && (
+        <div className="mb-4 rounded-lg border border-sbc-gray-light bg-sbc-white p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
+                Upload history
+              </p>
+              <p className="mt-1 text-sm text-sbc-gray">
+                Open a previously uploaded payroll week
+              </p>
+            </div>
+            <div className="min-w-[260px]">
+              <Select
+                label="Saved uploads"
+                size="sm"
+                value=""
+                onChange={(e) => {
+                  const periodKey = e.target.value;
+                  if (periodKey) loadPeriodByKey(periodKey);
+                }}
+              >
+                <option value="">Select a saved week…</option>
+                {uploadHistory.map((item) => (
+                  <option key={item.id} value={item.periodKey}>
+                    {item.periodLabel} · {item.rowCount} rows · {item.filename}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        </div>
+      )}
 
       {message && (
         <p className="mb-6 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">

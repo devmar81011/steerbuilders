@@ -216,18 +216,19 @@ async function getPayrollFromDatabase(
       return employee?.category === category;
     });
 
-    const byEmployee = new Map(
-      rows.map((row: Record<string, unknown>) => [
-        row.employee_id as string,
-        mapPayrollRow(row, period, category, otPayPercent),
-      ])
+    const mappedRows = rows.map((row: Record<string, unknown>) =>
+      mapPayrollRow(row, period, category, otPayPercent)
     );
 
-    return categoryEmployees.map((employee) => {
-      const existing = byEmployee.get(employee.id);
-      if (existing) return existing;
-      return buildMockEntry(employee, period);
-    });
+    // When a period already has saved payslips (e.g. Excel upload history),
+    // return those rows only so history matches the uploaded file.
+    if (mappedRows.length > 0) {
+      return mappedRows.sort((a, b) =>
+        a.employeeName.localeCompare(b.employeeName)
+      );
+    }
+
+    return categoryEmployees.map((employee) => buildMockEntry(employee, period));
   } catch {
     return null;
   }

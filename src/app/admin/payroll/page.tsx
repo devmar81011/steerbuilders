@@ -5,17 +5,25 @@ import {
 } from "@/lib/actions/attendance";
 import { getPayrollAdjustments } from "@/lib/actions/adjustments";
 import { getEmployees, getPayrollEntries } from "@/lib/actions/payroll";
+import { getPayrollUploadHistory } from "@/lib/actions/payroll-import";
 import { getDisbursementMethods, getOtPayPercent } from "@/lib/actions/site-settings";
 import { getWeekStartsForPayrollPeriod } from "@/lib/payroll-from-attendance";
 
 export default async function PayrollPage() {
-  const [payroll, employees, payrollAdjustments, disbursementMethods, otPayPercent] =
-    await Promise.all([
+  const [
+    payroll,
+    employees,
+    payrollAdjustments,
+    disbursementMethods,
+    otPayPercent,
+    uploadHistory,
+  ] = await Promise.all([
       getPayrollEntries(),
       getEmployees(),
       getPayrollAdjustments(),
       getDisbursementMethods(),
       getOtPayPercent(),
+      getPayrollUploadHistory(),
     ]);
 
   const { constructionPeriod, adminPeriod, ojtPeriod } = payroll;
@@ -56,6 +64,7 @@ export default async function PayrollPage() {
         payrollAdjustments={payrollAdjustments}
         disbursementMethods={disbursementMethods}
         otPayPercent={otPayPercent}
+        initialUploadHistory={uploadHistory}
     />
   );
 }
