@@ -1413,15 +1413,14 @@ export function PayrollClient({
     const chargedTo =
       field === "chargedTo" ? rawValue.trim() : entry.chargedTo;
 
-    const amounts = calculatePayrollAmounts({
-      hourlyRate: entry.hourlyRate,
-      regularHours: entry.hours,
-      overtimeHours: entry.overtimeHours,
-      otPayPercent,
-      cashAdvance,
-      additionalPay,
-      statutoryDeductions: entry.deductions,
-    });
+    // Keep Excel Regular/OT/Gross intact. Only adjust Net when CA /
+    // Additional Pay change: Net = Gross + Additional − CA − deductions.
+    const netPay = Math.round(
+      Math.max(
+        entry.grossPay + additionalPay - cashAdvance - entry.deductions,
+        0
+      ) * 100
+    ) / 100;
 
     const updatedEntry: PayrollEntry = {
       ...entry,
@@ -1430,10 +1429,7 @@ export function PayrollClient({
       disbursement,
       remarks,
       chargedTo,
-      regularPay: amounts.regularPay,
-      overtimePay: amounts.overtimePay,
-      grossPay: amounts.grossPay,
-      netPay: amounts.netPay,
+      netPay,
     };
 
     setPendingId(entry.id);

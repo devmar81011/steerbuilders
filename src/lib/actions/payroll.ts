@@ -104,13 +104,16 @@ function mapPayrollRow(
       ]
     : undefined;
 
-  // Admin Excel uploads are pass-through — never fall back to hours×rate math.
-  const regularPay = adminMeta
-    ? Number(row.regular_pay) || 0
-    : Number(row.regular_pay) || calculated.regularPay;
-  const overtimePay = adminMeta
-    ? Number(row.overtime_pay) || 0
-    : Number(row.overtime_pay) || calculated.overtimePay;
+  // Prefer stored payslip amounts. Only invent from hours×rate when the
+  // column is missing/null (not when Excel intentionally stored 0).
+  const storedRegular = Number(row.regular_pay);
+  const storedOvertime = Number(row.overtime_pay);
+  const regularPay = Number.isFinite(storedRegular)
+    ? storedRegular
+    : calculated.regularPay;
+  const overtimePay = Number.isFinite(storedOvertime)
+    ? storedOvertime
+    : calculated.overtimePay;
 
   return {
     id: row.id as string,
@@ -128,8 +131,8 @@ function mapPayrollRow(
     hourlyRate,
     hours,
     overtimeHours,
-    regularPay,
-    overtimePay,
+    regularPay: adminMeta ? storedRegular || 0 : regularPay,
+    overtimePay: adminMeta ? storedOvertime || 0 : overtimePay,
     grossPay: Number(row.gross_pay) || 0,
     cashAdvance: Number(row.cash_advance) || 0,
     additionalPay: Number(row.additional_pay) || 0,

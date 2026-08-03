@@ -145,18 +145,22 @@ function parsePayrollRows(
 
     const hours = toNumber(raw[headerMap.get("hours") ?? -1]);
     const overtimeHours = toNumber(raw[headerMap.get("overtimeHours") ?? -1]);
-    const regularPay =
-      toNumber(raw[headerMap.get("regularPay") ?? -1]) || hourlyRate * hours;
-    const overtimePay =
-      toNumber(raw[headerMap.get("overtimePay") ?? -1]) ||
-      hourlyRate * overtimeHours;
-    const grossPay =
-      toNumber(raw[headerMap.get("grossPay") ?? -1]) || regularPay + overtimePay;
+    // Pass-through Excel money columns when present. Only derive from
+    // hours×rate if that column header is missing from the sheet.
+    const regularPay = headerMap.has("regularPay")
+      ? toNumber(raw[headerMap.get("regularPay") ?? -1])
+      : hourlyRate * hours;
+    const overtimePay = headerMap.has("overtimePay")
+      ? toNumber(raw[headerMap.get("overtimePay") ?? -1])
+      : hourlyRate * overtimeHours;
+    const grossPay = headerMap.has("grossPay")
+      ? toNumber(raw[headerMap.get("grossPay") ?? -1])
+      : regularPay + overtimePay;
     const cashAdvance = toNumber(raw[headerMap.get("cashAdvance") ?? -1]);
     const additionalPay = toNumber(raw[headerMap.get("additionalPay") ?? -1]);
-    const netPay =
-      toNumber(raw[headerMap.get("netPay") ?? -1]) ||
-      grossPay - cashAdvance + additionalPay;
+    const netPay = headerMap.has("netPay")
+      ? toNumber(raw[headerMap.get("netPay") ?? -1])
+      : grossPay - cashAdvance + additionalPay;
 
     rows.push({
       employeeName,
