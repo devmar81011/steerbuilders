@@ -612,10 +612,6 @@ function PayrollPrintSheet({
     </div>
   );
 }
-      ))}
-    </div>
-  );
-}
 
 function PayrollTable({
   entries,
