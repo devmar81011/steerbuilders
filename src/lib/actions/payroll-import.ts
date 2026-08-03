@@ -303,16 +303,22 @@ export async function importConstructionPayrollExcel(formData: FormData): Promis
       importedCount += 1;
     }
 
-    await supabase.from("payroll_uploads").insert({
-      filename,
-      sheet_name: sheet.sheetName,
-      period_key: sheet.period.key,
-      period_start: sheet.period.periodStart,
-      period_end: sheet.period.periodEnd,
-      period_label: sheet.period.label,
-      row_count: importedCount,
-      payroll_run_id: runId ?? null,
-    });
+    // Optional history table — ignore if migration not applied yet.
+    const { error: uploadInsertError } = await supabase
+      .from("payroll_uploads")
+      .insert({
+        filename,
+        sheet_name: sheet.sheetName,
+        period_key: sheet.period.key,
+        period_start: sheet.period.periodStart,
+        period_end: sheet.period.periodEnd,
+        period_label: sheet.period.label,
+        row_count: importedCount,
+        payroll_run_id: runId ?? null,
+      });
+    if (uploadInsertError) {
+      console.warn("payroll_uploads insert skipped:", uploadInsertError.message);
+    }
 
     revalidatePath("/admin/payroll");
     revalidatePath("/admin/employees");
@@ -333,30 +339,78 @@ export async function importConstructionPayrollExcel(formData: FormData): Promis
   }
 }
 
+async function historyFromPayrollRuns(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<PayrollUploadHistoryItem[]> {
+  const { data, error } = await supabase
+    .from("payroll_runs")
+    .select("id, period_start, period_end, status, created_at, payslips(id)")
+    .order("period_start", { ascending: false })
+    .limit(40);
+
+  if (error || !data) return [];
+
+  return data
+    .map((row) => {
+      const periodStart = String(row.period_start);
+      const periodEnd = String(row.period_end);
+      const payslips = (row.payslips as { id: string }[] | null) ?? [];
+      if (!payslips.length) return null;
+
+      const periodKey = `w-${periodStart}`;
+      const labelDate = new Date(`${periodStart}T00:00:00`);
+      const periodLabel = Number.isNaN(labelDate.getTime())
+        ? `${periodStart} – ${periodEnd}`
+        : `Week of ${labelDate.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}`;
+
+      return {
+        id: String(row.id),
+        filename: "Saved payroll",
+        sheetName: "",
+        periodKey,
+        periodStart,
+        periodEnd,
+        periodLabel,
+        rowCount: payslips.length,
+        uploadedAt: String(row.created_at ?? periodStart),
+      } satisfies PayrollUploadHistoryItem;
+    })
+    .filter((item): item is PayrollUploadHistoryItem => item !== null);
+}
+
 export async function getPayrollUploadHistory(): Promise<PayrollUploadHistoryItem[]> {
   if (!isSupabaseConfigured()) return [];
 
   try {
     const supabase = await createClient();
+
+    // Prefer dedicated upload log when migration 028 is applied.
     const { data, error } = await supabase
       .from("payroll_uploads")
       .select("*")
       .order("uploaded_at", { ascending: false })
       .limit(40);
 
-    if (error) return [];
+    if (!error && data) {
+      return data.map((row) => ({
+        id: row.id as string,
+        filename: row.filename as string,
+        sheetName: (row.sheet_name as string) ?? "",
+        periodKey: row.period_key as string,
+        periodStart: row.period_start as string,
+        periodEnd: row.period_end as string,
+        periodLabel: row.period_label as string,
+        rowCount: Number(row.row_count) || 0,
+        uploadedAt: row.uploaded_at as string,
+      }));
+    }
 
-    return (data ?? []).map((row) => ({
-      id: row.id as string,
-      filename: row.filename as string,
-      sheetName: (row.sheet_name as string) ?? "",
-      periodKey: row.period_key as string,
-      periodStart: row.period_start as string,
-      periodEnd: row.period_end as string,
-      periodLabel: row.period_label as string,
-      rowCount: Number(row.row_count) || 0,
-      uploadedAt: row.uploaded_at as string,
-    }));
+    // Fallback: list weeks that already have saved payslips.
+    return historyFromPayrollRuns(supabase);
   } catch {
     return [];
   }
