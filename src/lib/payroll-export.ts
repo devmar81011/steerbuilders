@@ -40,6 +40,8 @@ export function buildPayrollCsv(input: {
     .filter((rule) => rule.active)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
+  const includeDisbursementColumns = category === "construction";
+
   const rows: string[] = [
     csvRow(["Company", "Steer Builders Corporation"]),
     csvRow(["Payroll Category", payrollTabMeta[category].label]),
@@ -65,9 +67,9 @@ export function buildPayrollCsv(input: {
       ...deductionModules.map((rule) => rule.label),
       "Total Statutory Deductions",
       "Net Pay",
-      "Disbursement",
+      ...(includeDisbursementColumns ? ["Disbursement"] : []),
       "Remarks",
-      "Charged To",
+      ...(includeDisbursementColumns ? ["Charged To"] : []),
       "Status",
     ]),
   ];
@@ -101,9 +103,9 @@ export function buildPayrollCsv(input: {
         ),
         entry.deductions,
         entry.netPay,
-        entry.disbursement,
+        ...(includeDisbursementColumns ? [entry.disbursement] : []),
         entry.remarks,
-        entry.chargedTo,
+        ...(includeDisbursementColumns ? [entry.chargedTo] : []),
         entry.status,
       ])
     );
@@ -142,9 +144,9 @@ export function buildPayrollCsv(input: {
       ),
       numericTotal((entry) => entry.deductions),
       numericTotal((entry) => entry.netPay),
+      ...(includeDisbursementColumns ? [""] : []),
       "",
-      "",
-      "",
+      ...(includeDisbursementColumns ? [""] : []),
       "",
     ])
   );

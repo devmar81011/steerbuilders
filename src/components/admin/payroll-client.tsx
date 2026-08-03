@@ -479,7 +479,7 @@ function PayrollPrintSheet({
                   <strong>{formatCurrency(entry.netPay)}</strong>
                 </div>
 
-                {entry.disbursement ? (
+                {category === "construction" && entry.disbursement ? (
                   <p className="payroll-print-disbursement">
                     Disbursement: {entry.disbursement}
                   </p>
@@ -531,7 +531,8 @@ function PayrollTable({
     value: string
   ) => void;
 }) {
-  const columnCount = 16;
+  const showDisbursementColumns = category === "construction";
+  const columnCount = showDisbursementColumns ? 16 : 14;
 
   const payableEntries = useMemo(
     () => entries.filter((entry) => entry.netPay > 0),
@@ -627,9 +628,13 @@ function PayrollTable({
               >
                 Net
               </SortableTableHead>
-              <TableHead>Disbursement</TableHead>
+              {showDisbursementColumns ? (
+                <TableHead>Disbursement</TableHead>
+              ) : null}
               <TableHead>Remarks</TableHead>
-              <TableHead>Charged To</TableHead>
+              {showDisbursementColumns ? (
+                <TableHead>Charged To</TableHead>
+              ) : null}
             </tr>
           </TableHeader>
           <TableBody>
@@ -708,27 +713,29 @@ function PayrollTable({
                     >
                       {formatCurrency(entry.netPay)}
                     </TableCell>
-                    <TableCell>
-                      <select
-                        disabled={rowBusy}
-                        value={entry.disbursement || ""}
-                        onChange={(e) =>
-                          onInlineUpdate(
-                            entry,
-                            "disbursement",
-                            e.target.value
-                          )
-                        }
-                        className={`${tableFieldClass} min-w-[120px] appearance-none bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22none%22%3E%3Cpath d=%22M5 7.5L10 12.5L15 7.5%22 stroke=%22%23b88f3f%22 stroke-width=%221.75%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat pr-8`}
-                      >
-                        <option value="">Select</option>
-                        {disbursementOptions.map((method) => (
-                          <option key={method} value={method}>
-                            {method}
-                          </option>
-                        ))}
-                      </select>
-                    </TableCell>
+                    {showDisbursementColumns ? (
+                      <TableCell>
+                        <select
+                          disabled={rowBusy}
+                          value={entry.disbursement || ""}
+                          onChange={(e) =>
+                            onInlineUpdate(
+                              entry,
+                              "disbursement",
+                              e.target.value
+                            )
+                          }
+                          className={`${tableFieldClass} min-w-[120px] appearance-none bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22none%22%3E%3Cpath d=%22M5 7.5L10 12.5L15 7.5%22 stroke=%22%23b88f3f%22 stroke-width=%221.75%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat pr-8`}
+                        >
+                          <option value="">Select</option>
+                          {disbursementOptions.map((method) => (
+                            <option key={method} value={method}>
+                              {method}
+                            </option>
+                          ))}
+                        </select>
+                      </TableCell>
+                    ) : null}
                     <TableCell>
                       {parseAdminPayslipMeta(entry.remarks) ? (
                         displayRemarks(entry.remarks)
@@ -743,16 +750,18 @@ function PayrollTable({
                         />
                       )}
                     </TableCell>
-                    <TableCell>
-                      <InlineTextField
-                        value={entry.chargedTo || ""}
-                        disabled={rowBusy}
-                        className="min-w-[120px]"
-                        onCommit={(value) =>
-                          onInlineUpdate(entry, "chargedTo", value)
-                        }
-                      />
-                    </TableCell>
+                    {showDisbursementColumns ? (
+                      <TableCell>
+                        <InlineTextField
+                          value={entry.chargedTo || ""}
+                          disabled={rowBusy}
+                          className="min-w-[120px]"
+                          onCommit={(value) =>
+                            onInlineUpdate(entry, "chargedTo", value)
+                          }
+                        />
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 );
               })
