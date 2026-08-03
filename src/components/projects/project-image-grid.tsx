@@ -15,8 +15,8 @@ type Props = {
 function Placeholder({ alt, variant }: { alt: string; variant: "compact" | "featured" }) {
   return (
     <div
-      className={`relative flex items-end overflow-hidden bg-sbc-black ${
-        variant === "featured" ? "aspect-[16/10] min-h-[220px]" : "aspect-[4/3] min-h-[160px]"
+      className={`relative flex w-full items-end overflow-hidden bg-sbc-black ${
+        variant === "featured" ? "aspect-[16/10]" : "aspect-[4/3] min-h-[160px]"
       }`}
     >
       <div className="absolute inset-0 bg-linear-to-br from-sbc-black via-[#1a1a1a] to-sbc-gold/30" />
@@ -52,8 +52,8 @@ export function ProjectImageGrid({
   if (urls.length === 1) {
     return (
       <div
-        className={`relative overflow-hidden bg-sbc-black ${
-          variant === "featured" ? "aspect-[16/10] min-h-[220px]" : "aspect-[4/3] min-h-[160px]"
+        className={`relative w-full overflow-hidden bg-sbc-black ${
+          variant === "featured" ? "aspect-[16/10]" : "aspect-[4/3] min-h-[160px]"
         }`}
       >
         <Image
@@ -76,8 +76,8 @@ export function ProjectImageGrid({
 
   const gridClass =
     variant === "featured"
-      ? "grid aspect-[16/10] min-h-[220px] grid-cols-2 grid-rows-2 gap-1"
-      : "grid aspect-[4/3] min-h-[160px] grid-cols-2 grid-rows-2 gap-0.5";
+      ? "grid aspect-[16/10] w-full grid-cols-2 grid-rows-2 gap-px"
+      : "grid aspect-[4/3] min-h-[160px] w-full grid-cols-2 grid-rows-2 gap-0.5";
 
   // Always complete the 2×2 mosaic so gaps/borders stay consistent with 2–3 photos.
   const fillEmptyCells = urls.length < 4;

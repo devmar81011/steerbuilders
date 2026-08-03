@@ -90,44 +90,48 @@ export function FeaturedProjectsGallery({ projects }: Props) {
       </Reveal>
       <div className="grid gap-8 md:grid-cols-2">
         {projects.map((project, index) => (
-          <Reveal key={project.id} delay={(index % 2) * 160}>
-          <button
-            type="button"
-            className="group h-full w-full cursor-pointer overflow-hidden rounded-lg bg-sbc-white text-left shadow-[inset_0_0_0_1px_rgba(212,212,212,1)] transition-[box-shadow] hover:shadow-[inset_0_0_0_1px_rgba(184,143,63,0.55)]"
-            onClick={() => {
-              setActiveIndex(index);
-              setPhotoIndex(0);
-            }}
-          >
-            <div className="relative">
-              <ProjectImageGrid
-                images={project.images}
-                alt={project.name}
-                variant="featured"
-                previewLimit={HOMEPAGE_PREVIEW_IMAGE_COUNT}
-              />
-              <div className="pointer-events-none absolute inset-0 bg-sbc-black/0 transition-colors group-hover:bg-sbc-black/25" />
-              <div className="pointer-events-none absolute bottom-4 left-4 opacity-0 transition-opacity group-hover:opacity-100">
-                <span className="bg-sbc-black/80 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-white">
-                  View Project
-                </span>
+          <Reveal key={project.id} className="h-full" delay={(index % 2) * 160}>
+            <button
+              type="button"
+              className="group flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-lg border border-sbc-gray-light bg-sbc-white p-0 text-left leading-none transition-colors hover:border-sbc-gold/50"
+              onClick={() => {
+                setActiveIndex(index);
+                setPhotoIndex(0);
+              }}
+            >
+              <div className="relative w-full shrink-0 overflow-hidden bg-sbc-black">
+                <ProjectImageGrid
+                  images={project.images}
+                  alt={project.name}
+                  variant="featured"
+                  previewLimit={HOMEPAGE_PREVIEW_IMAGE_COUNT}
+                />
+                <div className="pointer-events-none absolute inset-0 bg-sbc-black/0 transition-colors group-hover:bg-sbc-black/25" />
+                <div className="pointer-events-none absolute bottom-4 left-4 opacity-0 transition-opacity group-hover:opacity-100">
+                  <span className="bg-sbc-black/80 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-white">
+                    View Project
+                  </span>
+                </div>
               </div>
-            </div>
-            <div className="border-t border-sbc-gray-light p-6">
-              <div className="mb-3">
-                <span
-                  className={`text-[10px] uppercase tracking-widest ${getStatusLabelClass(project.status)}`}
-                >
-                  {project.status}
-                </span>
+              <div className="flex-1 border-t border-sbc-gray-light p-6 leading-normal">
+                <div className="mb-3">
+                  <span
+                    className={`text-[10px] uppercase tracking-widest ${getStatusLabelClass(project.status)}`}
+                  >
+                    {project.status}
+                  </span>
+                </div>
+                <h3 className="text-lg font-bold text-sbc-black group-hover:text-sbc-gold">
+                  {project.name}
+                </h3>
+                <p className="mt-2 text-sm font-semibold text-sbc-gold">
+                  {project.scope}
+                </p>
+                <p className="mt-2 text-sm font-medium text-sbc-gray">
+                  {project.location}
+                </p>
               </div>
-              <h3 className="text-lg font-bold text-sbc-black group-hover:text-sbc-gold">
-                {project.name}
-              </h3>
-              <p className="mt-2 text-sm font-semibold text-sbc-gold">{project.scope}</p>
-              <p className="mt-2 text-sm font-medium text-sbc-gray">{project.location}</p>
-            </div>
-          </button>
+            </button>
           </Reveal>
         ))}
       </div>
