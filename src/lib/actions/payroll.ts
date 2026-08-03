@@ -13,17 +13,11 @@ import { mockEmployees, mockPayroll, type Employee, type PayrollEntry } from "@/
 import type { EmployeeCategory } from "@/lib/employee-categories";
 import { normalizeRateType, type RateType } from "@/lib/rate-types";
 import {
-  applyAttendanceToPayrollEntries,
-  getWeekStartsForPayrollPeriod,
-} from "@/lib/payroll-from-attendance";
-import {
   getCurrentPayrollPeriod,
   parsePayrollPeriodKey,
   type PayrollPeriod,
   type PayrollTab,
 } from "@/lib/payroll-periods";
-import { getPayrollAdjustments } from "@/lib/actions/adjustments";
-import { getOtPayPercent } from "@/lib/actions/site-settings";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import {
   calculatePayrollAmounts,
@@ -231,26 +225,18 @@ async function getPayrollFromDatabase(
     const { data, error } = await supabase
       .from("payslips")
       .select(
-        "*, employees(employee_number, name, category, designation, rate, rate_type), payroll_runs!inner(period_start, period_end)"
+        "*, employees!inner(employee_number, name, category, designation, rate, rate_type), payroll_runs!inner(period_start, period_end)"
       )
       .eq("payroll_runs.period_start", period.periodStart)
-      .eq("payroll_runs.period_end", period.periodEnd);
+      .eq("payroll_runs.period_end", period.periodEnd)
+      .eq("employees.category", category)
+      .eq("status", "processed");
 
     if (error) return null;
 
-    const otPayPercent = await getOtPayPercent();
-
-    const rows = (data ?? []).filter((row: Record<string, unknown>) => {
-      const employee = row.employees as { category?: EmployeeCategory } | null;
-      return employee?.category === category;
-    });
-
-    const mappedRows = rows
-      .map((row: Record<string, unknown>) =>
-        mapPayrollRow(row, period, category, otPayPercent)
-      )
-      // Upload-first: only show saved Excel / processed payslips.
-      .filter((entry) => entry.status === "processed");
+    const mappedRows = (data ?? []).map((row: Record<string, unknown>) =>
+      mapPayrollRow(row, period, category)
+    );
 
     return mappedRows.sort((a, b) =>
       a.employeeName.localeCompare(b.employeeName)
@@ -258,57 +244,6 @@ async function getPayrollFromDatabase(
   } catch {
     return null;
   }
-}
-
-async function loadAttendanceForPeriod(category: PayrollTab, period: PayrollPeriod) {
-  const {
-    getConstructionAttendanceForWeek,
-    getHourlyAttendanceForWeek,
-  } = await import("@/lib/actions/attendance");
-
-  const weekStarts = getWeekStartsForPayrollPeriod(category, period);
-  const constructionRows: import("@/lib/attendance").AttendanceRow[] = [];
-  const hourlyRows: import("@/lib/attendance").AdminAttendanceRow[] = [];
-
-  if (category === "construction") {
-    for (const weekStart of weekStarts) {
-      const construction = await getConstructionAttendanceForWeek(weekStart);
-      constructionRows.push(...construction.rows);
-    }
-    return { constructionRows, hourlyRows };
-  }
-
-  const hourlyCategory = category === "admin" ? "admin" : "ojt";
-  for (const weekStart of weekStarts) {
-    const hourly = await getHourlyAttendanceForWeek(weekStart, hourlyCategory);
-    hourlyRows.push(...hourly.rows);
-  }
-
-  return { constructionRows, hourlyRows };
-}
-
-async function enrichPayrollFromAttendance(
-  entries: PayrollEntry[],
-  category: PayrollTab,
-  period: PayrollPeriod,
-  constructionRows: import("@/lib/attendance").AttendanceRow[],
-  hourlyRows: import("@/lib/attendance").AdminAttendanceRow[]
-): Promise<PayrollEntry[]> {
-  const employees = (await getEmployees()).filter(
-    (employee) => employee.status === "active" && employee.category === category
-  );
-  const adjustments = await getPayrollAdjustments();
-  const otPayPercent = await getOtPayPercent();
-
-  return applyAttendanceToPayrollEntries(
-    entries,
-    employees,
-    constructionRows,
-    hourlyRows,
-    category,
-    adjustments,
-    otPayPercent
-  );
 }
 
 export async function getPayrollForPeriod(
@@ -325,30 +260,16 @@ export async function getPayrollForPeriod(
     ? parsePayrollPeriodKey(category, periodKey)
     : getCurrentPayrollPeriod(category);
 
-  const { constructionRows, hourlyRows } = await loadAttendanceForPeriod(
-    category,
-    period
-  );
-
+  // Upload-first: only fetch payslips. Skipping attendance on period switches
+  // (was sequential week queries + getEmployees) is what made Prev/Next slow.
   const dbRows = await getPayrollFromDatabase(category, period);
-  if (dbRows) {
-    // Upload-first: never invent rows from attendance/employees before Excel upload.
-    return {
-      entries: dbRows,
-      period,
-      usingDatabase: true,
-      constructionAttendance: constructionRows,
-      hourlyAttendance: hourlyRows,
-    };
-  }
 
-  // Upload-first: empty until an Excel file is imported for this period.
   return {
-    entries: [],
+    entries: dbRows ?? [],
     period,
-    usingDatabase: false,
-    constructionAttendance: constructionRows,
-    hourlyAttendance: hourlyRows,
+    usingDatabase: Boolean(dbRows),
+    constructionAttendance: [],
+    hourlyAttendance: [],
   };
 }
 

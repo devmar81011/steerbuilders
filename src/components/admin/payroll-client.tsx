@@ -1238,7 +1238,6 @@ export function PayrollClient({
   }
 
   function loadPeriod(direction: -1 | 1) {
-    setLoadingPeriod(true);
     setMessage(null);
     resetForm();
 
@@ -1247,10 +1246,15 @@ export function PayrollClient({
     // Before an upload this visit, only move the period label — keep the table empty.
     if (!sessionReady) {
       applyEmptyPeriod(dataTab, nextPeriod);
-      setLoadingPeriod(false);
       return;
     }
 
+    // Update period chrome immediately so Prev/Next feels instant.
+    if (dataTab === "construction") setConstructionPeriod(nextPeriod);
+    else if (dataTab === "admin") setAdminPeriod(nextPeriod);
+    else setOjtPeriod(nextPeriod);
+
+    setLoadingPeriod(true);
     startTransition(async () => {
       try {
         const result = await getPayrollForPeriod(dataTab, nextPeriod.key);
@@ -1262,7 +1266,6 @@ export function PayrollClient({
   }
 
   function jumpToCurrentPeriod() {
-    setLoadingPeriod(true);
     setMessage(null);
     resetForm();
 
@@ -1270,10 +1273,14 @@ export function PayrollClient({
 
     if (!sessionReady) {
       applyEmptyPeriod(dataTab, current);
-      setLoadingPeriod(false);
       return;
     }
 
+    if (dataTab === "construction") setConstructionPeriod(current);
+    else if (dataTab === "admin") setAdminPeriod(current);
+    else setOjtPeriod(current);
+
+    setLoadingPeriod(true);
     startTransition(async () => {
       try {
         const result = await getPayrollForPeriod(dataTab, current.key);

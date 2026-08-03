@@ -1,12 +1,10 @@
 import { PayrollClient } from "@/components/admin/payroll-client";
-import {
-  getConstructionAttendanceForWeek,
-  getHourlyAttendanceForWeek,
-} from "@/lib/actions/attendance";
 import { getPayrollAdjustments } from "@/lib/actions/adjustments";
 import { getEmployees } from "@/lib/actions/payroll";
-import { getDisbursementMethods, getOtPayPercent } from "@/lib/actions/site-settings";
-import { getWeekStartsForPayrollPeriod } from "@/lib/payroll-from-attendance";
+import {
+  getDisbursementMethods,
+  getOtPayPercent,
+} from "@/lib/actions/site-settings";
 import { getCurrentPayrollPeriod } from "@/lib/payroll-periods";
 
 export default async function PayrollPage() {
@@ -22,27 +20,6 @@ export default async function PayrollPage() {
       getOtPayPercent(),
     ]);
 
-  const { rows: constructionAttendance } =
-    await getConstructionAttendanceForWeek(constructionPeriod.periodStart);
-
-  const adminWeekStarts = getWeekStartsForPayrollPeriod("admin", adminPeriod);
-  const adminAttendance = (
-    await Promise.all(
-      adminWeekStarts.map((weekStart) =>
-        getHourlyAttendanceForWeek(weekStart, "admin")
-      )
-    )
-  ).flatMap((result) => result.rows);
-
-  const ojtWeekStarts = getWeekStartsForPayrollPeriod("ojt", ojtPeriod);
-  const ojtAttendance = (
-    await Promise.all(
-      ojtWeekStarts.map((weekStart) =>
-        getHourlyAttendanceForWeek(weekStart, "ojt")
-      )
-    )
-  ).flatMap((result) => result.rows);
-
   return (
     <PayrollClient
       initialConstructionEntries={[]}
@@ -53,9 +30,9 @@ export default async function PayrollPage() {
       initialOjtPeriod={ojtPeriod}
       usingDatabase={false}
       employees={employees}
-      constructionAttendance={constructionAttendance}
-      adminAttendance={adminAttendance}
-      ojtAttendance={ojtAttendance}
+      constructionAttendance={[]}
+      adminAttendance={[]}
+      ojtAttendance={[]}
       payrollAdjustments={payrollAdjustments}
       disbursementMethods={disbursementMethods}
       otPayPercent={otPayPercent}
