@@ -95,10 +95,12 @@ export function parseDateISO(value: string): Date {
   return new Date(year, month - 1, day);
 }
 
-/** Returns the Sunday that starts the week containing `date`. */
+/** Returns the Monday that starts the week containing `date` (Mon–Sun). */
 export function getWeekStart(date: Date = new Date()): string {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  d.setDate(d.getDate() - d.getDay());
+  const day = d.getDay(); // 0 = Sunday … 6 = Saturday
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
   return formatDateISO(d);
 }
 
@@ -110,13 +112,19 @@ export function shiftWeekStart(weekStart: string, weeks: number): string {
 
 export function formatWeekRange(weekStart: string): string {
   const start = parseDateISO(weekStart);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
   const startFmt = start.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+  const endFmt = end.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
 
-  return `Week of ${startFmt}`;
+  return `${startFmt} – ${endFmt}`;
 }
 
 export function createDefaultAttendanceRow(
