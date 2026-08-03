@@ -51,8 +51,6 @@ import { formatTime12 } from "@/lib/time-format";
 
 type Props = {
   initialConstructionRows: AttendanceRow[];
-  initialAdminRows: AdminAttendanceRow[];
-  initialOjtRows: AdminAttendanceRow[];
   initialWeekStart: string;
   usingDatabase: boolean;
   employeeSites: Record<string, string>;
@@ -65,23 +63,7 @@ type TableSortState<K extends string> = {
   direction: "asc" | "desc";
 };
 
-const tabs: { id: AttendanceTab; label: string; description: string }[] = [
-  {
-    id: "construction",
-    label: "Construction",
-    description: "Daily hours and overtime input — regular hours + OT per day.",
-  },
-  {
-    id: "admin",
-    label: "Admin",
-    description: "Hourly time in / time out — all days start at 00:00 AM until set.",
-  },
-  {
-    id: "ojt",
-    label: "OJT",
-    description: "Hourly trainees — time in / time out, all days start at 00:00 AM until set.",
-  },
-];
+// Removed tabs - Construction only now
 
 const ConstructionDayCell = memo(function ConstructionDayCell({
   entry,
@@ -713,8 +695,10 @@ export function AttendanceClient({
     <>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-sbc-black">Attendance</h1>
-          <p className="mt-1 text-sm text-sbc-gray">{activeTabMeta.description}</p>
+          <h1 className="text-2xl font-semibold text-sbc-black">Construction Attendance</h1>
+          <p className="mt-1 text-sm text-sbc-gray">
+            Daily hours and overtime input — regular hours + OT per day.
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -766,98 +750,21 @@ export function AttendanceClient({
         </div>
       </div>
 
-      <div
-        className="mb-6 flex gap-1 border-b border-sbc-gray-light"
-        role="tablist"
-        aria-label="Attendance category"
-      >
-        {tabs.map((tab) => {
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => selectTab(tab.id)}
-              className={`cursor-pointer border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] ${
-                active
-                  ? "border-sbc-gold text-sbc-gold-dark"
-                  : "border-transparent text-sbc-gray hover:border-sbc-gold/40 hover:text-sbc-gold-dark"
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
       {message && (
         <p className="mb-4 text-sm text-red-600" role="alert">
           {message}
         </p>
       )}
 
-      {/* Keep all panels mounted — only toggle visibility so switches stay instant. */}
-      <div
-        role="tabpanel"
-        hidden={activeTab !== "construction"}
-        className={activeTab === "construction" ? undefined : "hidden"}
-      >
-        <ConstructionAttendancePanel
-          rows={sortedConstructionRows}
-          sort={constructionSort}
-          onToggleSort={onConstructionToggleSort}
-          employeeSites={employeeSites}
-          siteFilter={siteFilter}
-          cellsBusy={cellsBusy}
-          onHoursChange={handleConstructionToggle}
-        />
-      </div>
-
-      <div
-        role="tabpanel"
-        hidden={activeTab !== "admin"}
-        className={activeTab === "admin" ? undefined : "hidden"}
-      >
-        <HourlyAttendancePanel
-          rows={sortedAdminRows}
-          sort={adminSort}
-          onToggleSort={onAdminToggleSort}
-          employeeSites={employeeSites}
-          siteFilter={siteFilter}
-          cellsBusy={cellsBusy}
-          emptyAllMessage="No active admin employees."
-          emptyFilteredMessage={
-            siteFilter === "all"
-              ? "No admin employees for this site."
-              : `No admin employees for ${siteFilter}.`
-          }
-          onTimeChange={handleAdminTimeChange}
-        />
-      </div>
-
-      <div
-        role="tabpanel"
-        hidden={activeTab !== "ojt"}
-        className={activeTab === "ojt" ? undefined : "hidden"}
-      >
-        <HourlyAttendancePanel
-          rows={sortedOjtRows}
-          sort={ojtSort}
-          onToggleSort={onOjtToggleSort}
-          employeeSites={employeeSites}
-          siteFilter={siteFilter}
-          cellsBusy={cellsBusy}
-          emptyAllMessage="No active OJT trainees."
-          emptyFilteredMessage={
-            siteFilter === "all"
-              ? "No ojt employees for this site."
-              : `No ojt employees for ${siteFilter}.`
-          }
-          onTimeChange={handleOjtTimeChange}
-        />
-      </div>
+      <ConstructionAttendancePanel
+        rows={sortedConstructionRows}
+        sort={constructionSort}
+        onToggleSort={onConstructionToggleSort}
+        employeeSites={employeeSites}
+        siteFilter={siteFilter}
+        cellsBusy={cellsBusy}
+        onHoursChange={handleConstructionToggle}
+      />
     </>
   );
 }

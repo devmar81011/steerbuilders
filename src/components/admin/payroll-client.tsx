@@ -1203,8 +1203,8 @@ export function PayrollClient({
           <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
             Admin
           </p>
-          <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Payroll</h1>
-          <p className="mt-1 text-sm text-sbc-gray">{activeMeta.description}</p>
+          <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Construction Payroll</h1>
+          <p className="mt-1 text-sm text-sbc-gray">Weekly payroll for construction workers</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -1258,32 +1258,9 @@ export function PayrollClient({
         </div>
       </div>
 
-      <div className="mb-6 flex gap-1 border-b border-sbc-gray-light">
-        {tabs.map((tab) => {
-          const active = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => {
-                setActiveTab(tab.id);
-                resetForm();
-              }}
-              className={`cursor-pointer border-b-2 px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${
-                active
-                  ? "border-sbc-gold text-sbc-gold-dark"
-                  : "border-transparent text-sbc-gray hover:border-sbc-gold/40 hover:text-sbc-gold-dark"
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
       <p className="mb-4 rounded-lg border border-sbc-gold/25 bg-sbc-gold/5 px-4 py-3 text-sm text-sbc-gray">
         <span className="font-semibold text-sbc-black">Pay schedule · </span>
-        {activeMeta.scheduleNote}
+        Weekly payroll for construction workers (Monday-Sunday)
       </p>
 
       <p className="mb-4 text-sm text-sbc-gray">
