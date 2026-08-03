@@ -28,7 +28,7 @@ function formatShortDate(date: Date): string {
 
 function formatProcessDate(date: Date): string {
   return date.toLocaleDateString("en-US", {
-    month: "short",
+    month: "long",
     day: "numeric",
     year: "numeric",
   });
@@ -42,22 +42,26 @@ function buildSemiMonthlyKey(year: number, month: number, half: PayrollPeriodHal
   return `s-${year}-${String(month).padStart(2, "0")}-${half}`;
 }
 
-/** Construction weekly period — Sun to Sat, pay the following Monday. */
-export function getWeeklyPayrollPeriod(weekStart: string): PayrollPeriod {
+/** Construction weekly period — Monday to Sunday, labeled by an anchor date (sheet tab). */
+export function getWeeklyPayrollPeriod(anchorDateISO: string): PayrollPeriod {
+  const anchor = parseDateISO(anchorDateISO);
+  const weekStart = getWeekStart(anchor);
   const start = parseDateISO(weekStart);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
 
+  // Pay the Monday after the Sunday week end.
   const processDate = new Date(end);
   processDate.setDate(processDate.getDate() + 1);
 
   return {
-    key: buildWeeklyKey(weekStart),
+    // Key uses the sheet/anchor date so 7.3.26 stays "July 3, 2026".
+    key: buildWeeklyKey(anchorDateISO),
     cadence: "weekly",
     periodStart: weekStart,
     periodEnd: formatDateISO(end),
     processDate: formatDateISO(processDate),
-    label: `Week of ${formatProcessDate(start)}`,
+    label: formatProcessDate(anchor),
     processLabel: `Pay on ${formatProcessDate(processDate)}`,
   };
 }
@@ -116,7 +120,7 @@ export function getCurrentPayrollPeriod(
   date: Date = new Date()
 ): PayrollPeriod {
   if (usesWeeklyPayroll(category)) {
-    return getWeeklyPayrollPeriod(getWeekStart(date));
+    return getWeeklyPayrollPeriod(formatDateISO(date));
   }
 
   const year = date.getFullYear();
@@ -130,10 +134,10 @@ export function parsePayrollPeriodKey(
   periodKey: string
 ): PayrollPeriod {
   if (usesWeeklyPayroll(category)) {
-    const weekStart = periodKey.startsWith("w-")
+    const anchorDate = periodKey.startsWith("w-")
       ? periodKey.slice(2)
       : periodKey;
-    return getWeeklyPayrollPeriod(weekStart);
+    return getWeeklyPayrollPeriod(anchorDate);
   }
 
   const parts = periodKey.startsWith("s-")
@@ -154,7 +158,10 @@ export function shiftPayrollPeriod(
   direction: -1 | 1
 ): PayrollPeriod {
   if (usesWeeklyPayroll(category)) {
-    const start = parseDateISO(period.periodStart);
+    const anchor = period.key.startsWith("w-")
+      ? period.key.slice(2)
+      : period.periodStart;
+    const start = parseDateISO(anchor);
     start.setDate(start.getDate() + direction * 7);
     return getWeeklyPayrollPeriod(formatDateISO(start));
   }
@@ -200,7 +207,7 @@ export const payrollTabMeta: Record<
     label: "Construction",
     description: "Weekly daily-rate payroll from attendance days worked.",
     scheduleNote:
-      "Weekly cutoffs (Sun–Sat), paid the following Monday after attendance is confirmed.",
+      "Weekly cutoffs (Mon–Sun), paid the following Monday after attendance is confirmed.",
   },
   admin: {
     label: "Admin",

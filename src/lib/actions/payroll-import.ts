@@ -389,69 +389,7 @@ function previewEntriesFromAdminRows(
   });
 }
 
-async function findExistingUpload(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  category: EmployeeCategory,
-  periodKey: string
-): Promise<{ id: string; filename: string } | null> {
-  const { data, error } = await supabase
-    .from("payroll_uploads")
-    .select("id, filename, category, period_key")
-    .eq("period_key", periodKey)
-    .order("uploaded_at", { ascending: false })
-    .limit(8);
-
-  if (!error && data?.length) {
-    const match = data.find((row) => {
-      const rowCategory =
-        (row.category as EmployeeCategory | undefined) ??
-        categoryFromPeriodKey(String(row.period_key));
-      return rowCategory === category;
-    });
-    if (match) {
-      return { id: String(match.id), filename: String(match.filename) };
-    }
-  }
-
-  // Fallback: any processed payslips for this period + category count as existing.
-  const period =
-    category === "construction"
-      ? getWeeklyPayrollPeriod(
-          periodKey.startsWith("w-") ? periodKey.slice(2) : periodKey
-        )
-      : (() => {
-          const parts = periodKey.startsWith("s-")
-            ? periodKey.slice(2).split("-")
-            : periodKey.split("-");
-          return getSemiMonthlyPayrollPeriod(
-            Number(parts[0]),
-            Number(parts[1]),
-            Number(parts[2]) as 1 | 2
-          );
-        })();
-
-  const { data: slips } = await supabase
-    .from("payslips")
-    .select("id, employees(category), payroll_runs!inner(period_start, period_end)")
-    .eq("payroll_runs.period_start", period.periodStart)
-    .eq("payroll_runs.period_end", period.periodEnd)
-    .eq("status", "processed")
-    .limit(1);
-
-  const hasCategory = (slips ?? []).some((slip) => {
-    const employee = Array.isArray(slip.employees)
-      ? slip.employees[0]
-      : slip.employees;
-    return (employee as { category?: string } | null)?.category === category;
-  });
-
-  if (hasCategory) {
-    return { id: "", filename: "Saved payroll" };
-  }
-
-  return null;
-}
-
+/** Clear category payslips + upload rows for a period so a re-upload fully overwrites. */
 async function clearPeriodPayslips(
   supabase: Awaited<ReturnType<typeof createClient>>,
   category: EmployeeCategory,
@@ -464,79 +402,51 @@ async function clearPeriodPayslips(
     .eq("period_end", period.periodEnd);
 
   const runIds = (runRows ?? []).map((row) => String(row.id));
-  if (!runIds.length) return;
+  if (runIds.length) {
+    const { data: payslips } = await supabase
+      .from("payslips")
+      .select("id, employees(category)")
+      .in("payroll_run_id", runIds);
 
-  const { data: payslips } = await supabase
-    .from("payslips")
-    .select("id, employees(category)")
-    .in("payroll_run_id", runIds);
+    const ids = (payslips ?? [])
+      .filter((slip) => {
+        const employee = Array.isArray(slip.employees)
+          ? slip.employees[0]
+          : slip.employees;
+        return (employee as { category?: string } | null)?.category === category;
+      })
+      .map((slip) => String(slip.id));
 
-  const ids = (payslips ?? [])
-    .filter((slip) => {
-      const employee = Array.isArray(slip.employees)
-        ? slip.employees[0]
-        : slip.employees;
-      return (employee as { category?: string } | null)?.category === category;
-    })
-    .map((slip) => String(slip.id));
-
-  if (ids.length) {
-    await supabase.from("payslips").delete().in("id", ids);
+    if (ids.length) {
+      await supabase.from("payslips").delete().in("id", ids);
+    }
   }
+
+  // Drop upload history for this period key and any prior rows sharing the same dates.
+  await supabase
+    .from("payroll_uploads")
+    .delete()
+    .eq("category", category)
+    .eq("period_key", period.key);
 
   await supabase
     .from("payroll_uploads")
     .delete()
-    .eq("period_key", period.key)
-    .eq("category", category);
+    .eq("category", category)
+    .eq("period_start", period.periodStart)
+    .eq("period_end", period.periodEnd);
 }
 
 type ImportResult = {
   error?: string;
   success?: boolean;
   preview?: boolean;
-  conflict?: boolean;
-  existingFilename?: string;
-  conflictPeriods?: string[];
   periodKey?: string;
   periodLabel?: string;
   importedCount?: number;
   sheetName?: string;
   entries?: PayrollEntry[];
 };
-
-async function findExistingUploadsForPeriods(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  category: EmployeeCategory,
-  periodKeys: string[]
-): Promise<{ filename: string; periodKeys: string[]; periodLabels: string[] }> {
-  const foundKeys: string[] = [];
-  let filename = "Saved payroll";
-
-  for (const periodKey of periodKeys) {
-    const existing = await findExistingUpload(supabase, category, periodKey);
-    if (existing) {
-      foundKeys.push(periodKey);
-      if (existing.filename) filename = existing.filename;
-    }
-  }
-
-  const periodLabels = foundKeys.map((key) => {
-    if (category === "construction") {
-      return getWeeklyPayrollPeriod(
-        key.startsWith("w-") ? key.slice(2) : key
-      ).label;
-    }
-    const parts = key.startsWith("s-") ? key.slice(2).split("-") : key.split("-");
-    return getSemiMonthlyPayrollPeriod(
-      Number(parts[0]),
-      Number(parts[1]),
-      Number(parts[2]) as 1 | 2
-    ).label;
-  });
-
-  return { filename, periodKeys: foundKeys, periodLabels };
-}
 
 export async function importConstructionPayrollExcel(
   formData: FormData
@@ -553,7 +463,6 @@ export async function importConstructionPayrollExcel(
     return { error: "Upload an .xlsx Excel file." };
   }
 
-  const replace = String(formData.get("replace") ?? "") === "true";
   const preferredPeriodKey = String(
     formData.get("periodKey") || formData.get("preferredPeriodKey") || ""
   );
@@ -596,30 +505,10 @@ export async function importConstructionPayrollExcel(
 
   try {
     const supabase = await createClient();
-    const periodKeys = sheets.map((sheet) => sheet.period.key);
-    const existing = await findExistingUploadsForPeriods(
-      supabase,
-      "construction",
-      periodKeys
-    );
 
-    if (existing.periodKeys.length > 0 && !replace) {
-      return {
-        conflict: true,
-        periodKey: viewSheet.period.key,
-        periodLabel: viewSheet.period.label,
-        existingFilename: existing.filename,
-        conflictPeriods: existing.periodLabels,
-        sheetName: sheets.map((sheet) => sheet.sheetName).join(", "),
-      };
-    }
-
-    if (replace) {
-      for (const sheet of sheets) {
-        if (existing.periodKeys.includes(sheet.period.key)) {
-          await clearPeriodPayslips(supabase, "construction", sheet.period);
-        }
-      }
+    // One workbook owns the year/season — always overwrite periods present in the file.
+    for (const sheet of sheets) {
+      await clearPeriodPayslips(supabase, "construction", sheet.period);
     }
 
     const { data: existingEmployees, error: employeeError } = await supabase
@@ -741,7 +630,6 @@ export async function importAdminPayrollExcel(
     return { error: "Upload an .xlsx Excel file." };
   }
 
-  const replace = String(formData.get("replace") ?? "") === "true";
   const preferredPeriodKey = String(
     formData.get("periodKey") || formData.get("preferredPeriodKey") || ""
   );
@@ -789,30 +677,10 @@ export async function importAdminPayrollExcel(
 
   try {
     const supabase = await createClient();
-    const periodKeys = periods.map((period) => period.key);
-    const existing = await findExistingUploadsForPeriods(
-      supabase,
-      "admin",
-      periodKeys
-    );
 
-    if (existing.periodKeys.length > 0 && !replace) {
-      return {
-        conflict: true,
-        periodKey: viewPeriod.key,
-        periodLabel: viewPeriod.label,
-        existingFilename: existing.filename,
-        conflictPeriods: existing.periodLabels,
-        sheetName: "Payroll Computation",
-      };
-    }
-
-    if (replace) {
-      for (const period of periods) {
-        if (existing.periodKeys.includes(period.key)) {
-          await clearPeriodPayslips(supabase, "admin", period);
-        }
-      }
+    // One workbook owns the year — always overwrite cutoffs present in the file.
+    for (const period of periods) {
+      await clearPeriodPayslips(supabase, "admin", period);
     }
 
     const { data: existingEmployees, error: employeeError } = await supabase

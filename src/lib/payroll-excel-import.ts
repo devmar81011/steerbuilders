@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { getWeekStart } from "@/lib/attendance";
+import { formatDateISO } from "@/lib/attendance";
 import { getWeeklyPayrollPeriod, type PayrollPeriod } from "@/lib/payroll-periods";
 
 export type ImportedPayrollRow = {
@@ -79,7 +79,7 @@ function toText(value: unknown): string {
 
 /**
  * Parse sheet names like "7.3.26" (M.D.YY) into a weekly payroll period.
- * Falls back to the current week when the name is not a date.
+ * Label = sheet tab date (July 3, 2026). Range = Mon–Sun week containing that date.
  */
 export function periodFromSheetName(
   sheetName: string,
@@ -87,7 +87,7 @@ export function periodFromSheetName(
 ): PayrollPeriod {
   const match = sheetName.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
   if (!match) {
-    return getWeeklyPayrollPeriod(getWeekStart(fallbackDate));
+    return getWeeklyPayrollPeriod(formatDateISO(fallbackDate));
   }
 
   const month = Number(match[1]);
@@ -95,12 +95,12 @@ export function periodFromSheetName(
   let year = Number(match[3]);
   if (year < 100) year += 2000;
 
-  const date = new Date(year, month - 1, day);
-  if (Number.isNaN(date.getTime())) {
-    return getWeeklyPayrollPeriod(getWeekStart(fallbackDate));
+  const sheetDate = new Date(year, month - 1, day);
+  if (Number.isNaN(sheetDate.getTime())) {
+    return getWeeklyPayrollPeriod(formatDateISO(fallbackDate));
   }
 
-  return getWeeklyPayrollPeriod(getWeekStart(date));
+  return getWeeklyPayrollPeriod(formatDateISO(sheetDate));
 }
 
 function buildHeaderMap(headerRow: unknown[]): Map<keyof ImportedPayrollRow, number> {

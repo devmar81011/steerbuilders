@@ -1420,45 +1420,14 @@ export function PayrollClient({
 
     startTransition(async () => {
       try {
-        async function runImport(replace: boolean) {
-          const formData = new FormData();
-          formData.append("file", file!);
-          formData.append("preferredPeriodKey", preferredPeriodKey);
-          if (replace) {
-            formData.append("replace", "true");
-            formData.append("periodKey", preferredPeriodKey);
-          }
-          return uploadTab === "admin"
-            ? importAdminPayrollExcel(formData)
-            : importConstructionPayrollExcel(formData);
-        }
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("preferredPeriodKey", preferredPeriodKey);
 
-        let result = await runImport(false);
-
-        if (result.conflict) {
-          const periodsText =
-            result.conflictPeriods && result.conflictPeriods.length > 0
-              ? `\n\nAlready saved: ${result.conflictPeriods.slice(0, 8).join(", ")}${result.conflictPeriods.length > 8 ? "…" : ""}`
-              : "";
-          const confirmed = window.confirm(
-            `This ${uploadTab === "admin" ? "Admin" : "Construction"} workbook overlaps existing payroll${result.existingFilename ? ` ("${result.existingFilename}")` : ""}.${periodsText}\n\nReplace those periods with this upload?`
-          );
-          if (!confirmed) {
-            setMessage("Upload cancelled. Existing payroll was kept.");
-            return;
-          }
-          const retry = new FormData();
-          retry.append("file", file);
-          retry.append("replace", "true");
-          if (result.periodKey) {
-            retry.append("periodKey", result.periodKey);
-            retry.append("preferredPeriodKey", result.periodKey);
-          }
-          result =
-            uploadTab === "admin"
-              ? await importAdminPayrollExcel(retry)
-              : await importConstructionPayrollExcel(retry);
-        }
+        const result =
+          uploadTab === "admin"
+            ? await importAdminPayrollExcel(formData)
+            : await importConstructionPayrollExcel(formData);
 
         if (result.error) {
           setMessage(result.error);
@@ -1641,10 +1610,10 @@ export function PayrollClient({
               : "Construction · "}
         </span>
         {isUploadsTab
-          ? "Open or delete saved weeks/cutoffs. To update data, re-upload the Construction or Admin workbook."
+          ? "Open or delete saved weeks/cutoffs. Re-upload the Construction or Admin workbook to refresh all periods in that file."
           : activeTab === "admin"
-            ? "Upload one Admin Excel workbook. All cutoffs in Payroll Computation are imported."
-            : "Upload one Construction Excel workbook. Each sheet tab (e.g. 7.3.26) is one week."}
+            ? "Upload one Admin Excel workbook. All cutoffs in Payroll Computation are imported (overwrites matching cutoffs)."
+            : "Upload one Construction Excel workbook. Each sheet tab (e.g. 7.3.26 → July 3, 2026) is one Mon–Sun week."}
       </p>
 
       {message && (
