@@ -805,7 +805,6 @@ function UploadsPanel({
   onFilterChange,
   onOpen,
   onDelete,
-  onReplace,
 }: {
   uploads: PayrollUploadHistoryItem[];
   busy: boolean;
@@ -813,7 +812,6 @@ function UploadsPanel({
   onFilterChange: (filter: "all" | PayrollTab) => void;
   onOpen: (item: PayrollUploadHistoryItem) => void;
   onDelete: (item: PayrollUploadHistoryItem) => void;
-  onReplace: (item: PayrollUploadHistoryItem) => void;
 }) {
   const filtered =
     filter === "all"
@@ -825,10 +823,11 @@ function UploadsPanel({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
-            Saved uploads
+            Saved periods
           </p>
           <p className="mt-1 text-sm text-sbc-gray">
-            Open a period, replace a wrong file, or delete an upload.
+            Open a week/cutoff from your uploaded workbook, or delete a wrong period.
+            Re-upload the Excel from Construction / Admin to update.
           </p>
         </div>
         <div className="flex flex-wrap gap-1">
@@ -862,7 +861,7 @@ function UploadsPanel({
             <tr>
               <TableHead>Type</TableHead>
               <TableHead>Period</TableHead>
-              <TableHead>File</TableHead>
+              <TableHead>Sheet / Source</TableHead>
               <TableHead align="right">Rows</TableHead>
               <TableHead>Uploaded</TableHead>
               <TableHead align="right">Actions</TableHead>
@@ -872,7 +871,7 @@ function UploadsPanel({
             {filtered.length === 0 ? (
               <TableEmpty
                 colSpan={6}
-                message="No uploads yet. Use Upload Excel on Construction or Admin first."
+                message="No uploads yet. Upload one Construction or Admin Excel workbook first."
               />
             ) : (
               filtered.map((item) => (
@@ -884,12 +883,12 @@ function UploadsPanel({
                   </TableCell>
                   <TablePrimaryCell>{item.periodLabel}</TablePrimaryCell>
                   <TableCell>
-                    <span className="block max-w-[220px] truncate" title={item.filename}>
-                      {item.filename}
+                    <span className="block max-w-[220px] truncate" title={item.sheetName || item.filename}>
+                      {item.sheetName || item.filename}
                     </span>
                     {item.sheetName ? (
                       <span className="mt-0.5 block text-[11px] text-sbc-gray">
-                        {item.sheetName}
+                        {item.filename}
                       </span>
                     ) : null}
                   </TableCell>
@@ -907,16 +906,6 @@ function UploadsPanel({
                         onClick={() => onOpen(item)}
                       >
                         Open
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => onReplace(item)}
-                      >
-                        <UploadIcon />
-                        Replace
                       </Button>
                       <IconButton
                         label={`Delete ${item.periodLabel}`}
@@ -936,7 +925,7 @@ function UploadsPanel({
         </Table>
         <TableMeta>
           <span>
-            {filtered.length} saved upload{filtered.length === 1 ? "" : "s"}
+            {filtered.length} saved period{filtered.length === 1 ? "" : "s"}
           </span>
         </TableMeta>
       </TableShell>
@@ -999,8 +988,6 @@ export function PayrollClient({
   const [uploading, setUploading] = useState(false);
   const [uploadHistory, setUploadHistory] = useState(initialUploadHistory);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const replaceCategoryRef = useRef<PayrollTab | null>(null);
-  const replacePeriodKeyRef = useRef<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { sort, toggleSort } = useTableSort<PayrollSortKey>({
     defaultKey: "employeeName",
@@ -1419,8 +1406,7 @@ export function PayrollClient({
     setUploading(true);
     setMessage(null);
     const uploadTab =
-      replaceCategoryRef.current ??
-      (activeTab === "admin"
+      activeTab === "admin"
         ? "admin"
         : activeTab === "uploads"
           ? lastPayrollTab === "admin"
@@ -1428,12 +1414,9 @@ export function PayrollClient({
             : "construction"
           : dataTab === "admin"
             ? "admin"
-            : "construction");
+            : "construction";
     const preferredPeriodKey =
-      replacePeriodKeyRef.current ??
-      (uploadTab === "admin" ? adminPeriod.key : constructionPeriod.key);
-    replaceCategoryRef.current = null;
-    replacePeriodKeyRef.current = null;
+      uploadTab === "admin" ? adminPeriod.key : constructionPeriod.key;
 
     startTransition(async () => {
       try {
@@ -1452,21 +1435,25 @@ export function PayrollClient({
 
         let result = await runImport(false);
 
-        if (result.conflict && result.periodKey) {
+        if (result.conflict) {
+          const periodsText =
+            result.conflictPeriods && result.conflictPeriods.length > 0
+              ? `\n\nAlready saved: ${result.conflictPeriods.slice(0, 8).join(", ")}${result.conflictPeriods.length > 8 ? "…" : ""}`
+              : "";
           const confirmed = window.confirm(
-            `${uploadTab === "admin" ? "Admin" : "Construction"} payroll for ${result.periodLabel} already has "${result.existingFilename ?? "a saved file"}".\n\nOnly one file is kept per ${uploadTab === "admin" ? "pay period" : "week"}.\n\nReplace it with this upload?`
+            `This ${uploadTab === "admin" ? "Admin" : "Construction"} workbook overlaps existing payroll${result.existingFilename ? ` ("${result.existingFilename}")` : ""}.${periodsText}\n\nReplace those periods with this upload?`
           );
           if (!confirmed) {
-            setMessage(
-              `Upload cancelled. Existing file for ${result.periodLabel} was kept.`
-            );
+            setMessage("Upload cancelled. Existing payroll was kept.");
             return;
           }
           const retry = new FormData();
           retry.append("file", file);
           retry.append("replace", "true");
-          retry.append("periodKey", result.periodKey);
-          retry.append("preferredPeriodKey", result.periodKey);
+          if (result.periodKey) {
+            retry.append("periodKey", result.periodKey);
+            retry.append("preferredPeriodKey", result.periodKey);
+          }
           result =
             uploadTab === "admin"
               ? await importAdminPayrollExcel(retry)
@@ -1510,7 +1497,7 @@ export function PayrollClient({
 
   function handleDeleteUpload(item: PayrollUploadHistoryItem) {
     const confirmed = window.confirm(
-      `Delete ${item.category} payroll for ${item.periodLabel}?\n\nThis removes the saved payslips so you can upload the correct Excel file.`
+      `Delete ${item.category} payroll for ${item.periodLabel}?\n\nThis removes the saved payslips for that period. Re-upload the Excel workbook to restore or update it.`
     );
     if (!confirmed) return;
 
@@ -1537,23 +1524,12 @@ export function PayrollClient({
         }
 
         setMessage(
-          `Deleted ${item.category} payroll for ${item.periodLabel}. Upload the correct Excel anytime.`
+          `Deleted ${item.category} payroll for ${item.periodLabel}. Upload the workbook again anytime.`
         );
       } finally {
         setLoadingPeriod(false);
       }
     });
-  }
-
-  function handleReplaceUpload(item: PayrollUploadHistoryItem) {
-    const category = item.category === "admin" ? "admin" : "construction";
-    replaceCategoryRef.current = category;
-    replacePeriodKeyRef.current = item.periodKey;
-    setLastPayrollTab(category);
-    setMessage(
-      `Choose a replacement ${category} Excel for ${item.periodLabel}. Existing rows for that period will be overwritten.`
-    );
-    fileInputRef.current?.click();
   }
 
   function handleExportPayroll() {
@@ -1638,8 +1614,6 @@ export function PayrollClient({
                 size="sm"
                 disabled={isBusy || uploading}
                 onClick={() => {
-                  replaceCategoryRef.current = null;
-                  replacePeriodKeyRef.current = null;
                   fileInputRef.current?.click();
                 }}
               >
@@ -1667,10 +1641,10 @@ export function PayrollClient({
               : "Construction · "}
         </span>
         {isUploadsTab
-          ? "Review saved Excel imports. Open a period, replace a wrong file, or delete it and upload again."
+          ? "Open or delete saved weeks/cutoffs. To update data, re-upload the Construction or Admin workbook."
           : activeTab === "admin"
-            ? "Upload the Admin workbook (Payroll Computation). Print uses the Excel Payslip layout."
-            : "Upload the Operations weekly Excel. The table stays empty until you upload."}
+            ? "Upload one Admin Excel workbook. All cutoffs in Payroll Computation are imported."
+            : "Upload one Construction Excel workbook. Each sheet tab (e.g. 7.3.26) is one week."}
       </p>
 
       {message && (
@@ -1735,7 +1709,6 @@ export function PayrollClient({
                 loadPeriodByKey(item.periodKey, tab);
               }}
               onDelete={handleDeleteUpload}
-              onReplace={handleReplaceUpload}
             />
           ) : (
             <>
