@@ -331,8 +331,6 @@ function PayrollPrintSheet({
   entries,
   category,
   period,
-  payrollAdjustments,
-  employees,
 }: {
   entries: PayrollEntry[];
   category: PayrollTab;
@@ -340,269 +338,181 @@ function PayrollPrintSheet({
   payrollAdjustments: PayrollAdjustment[];
   employees: Employee[];
 }) {
-  if (category === "admin") {
-    const pages = chunkEntries(entries, 2);
-    return (
-      <div className="payroll-print-area">
-        {pages.map((pageEntries, pageIndex) => (
-          <section
-            className="payroll-print-page payroll-print-page-admin"
-            key={`${period.key}-admin-${pageIndex}`}
-          >
-            {pageEntries.map((entry) => {
-              const meta = parseAdminPayslipMeta(entry.remarks);
-              const basicPay = meta?.basicPay || entry.regularPay;
-              const sss = meta?.sss ?? getDeductionAmount(
-                resolveEntryDeductionBreakdown(
-                  entry,
-                  payrollAdjustments,
-                  employeeContextFromEntry(entry, employees)
-                ),
-                "sss"
-              );
-              const phic = meta?.phic ?? getDeductionAmount(
-                resolveEntryDeductionBreakdown(
-                  entry,
-                  payrollAdjustments,
-                  employeeContextFromEntry(entry, employees)
-                ),
-                "phic"
-              );
-              const hdmf = meta?.hdmf ?? getDeductionAmount(
-                resolveEntryDeductionBreakdown(
-                  entry,
-                  payrollAdjustments,
-                  employeeContextFromEntry(entry, employees)
-                ),
-                "hdmf"
-              );
-              const tax = meta?.tax ?? 0;
-              const leavePay = meta?.leavePay ?? entry.additionalPay;
-              const totalDeductions =
-                entry.cashAdvance + sss + phic + hdmf + tax;
-
-              return (
-                <article className="payroll-print-admin-slip" key={entry.id}>
-                  <header className="payroll-print-admin-header">
-                    <p className="payroll-print-eyebrow">Steer Builders Corporation</p>
-                    <h2>Payslip</h2>
-                    <p>Admin · Semi-monthly payroll</p>
-                  </header>
-
-                  <dl className="payroll-print-admin-meta">
-                    <div>
-                      <dt>Employee Name</dt>
-                      <dd>{entry.employeeName}</dd>
-                    </div>
-                    <div>
-                      <dt>Pay Period</dt>
-                      <dd>{period.label}</dd>
-                    </div>
-                    <div>
-                      <dt>Cut-off</dt>
-                      <dd>
-                        {period.periodStart} – {period.periodEnd}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Designation</dt>
-                      <dd>{entry.designation || "—"}</dd>
-                    </div>
-                  </dl>
-
-                  <div className="payroll-print-admin-columns">
-                    <div>
-                      <h3>Earnings</h3>
-                      <dl className="payroll-print-lines">
-                        <div>
-                          <dt>Basic Salary</dt>
-                          <dd>{formatCurrency(basicPay)}</dd>
-                        </div>
-                        <div>
-                          <dt>Overtime</dt>
-                          <dd>{formatCurrency(entry.overtimePay)}</dd>
-                        </div>
-                        {leavePay > 0 && (
-                          <div>
-                            <dt>Leave Pay</dt>
-                            <dd>{formatCurrency(leavePay)}</dd>
-                          </div>
-                        )}
-                        <div>
-                          <dt>Gross Pay</dt>
-                          <dd>{formatCurrency(entry.grossPay)}</dd>
-                        </div>
-                      </dl>
-                    </div>
-                    <div>
-                      <h3>Deductions</h3>
-                      <dl className="payroll-print-lines">
-                        <div>
-                          <dt>Cash Advance</dt>
-                          <dd>{formatCurrency(entry.cashAdvance)}</dd>
-                        </div>
-                        <div>
-                          <dt>SSS</dt>
-                          <dd>{formatCurrency(sss)}</dd>
-                        </div>
-                        <div>
-                          <dt>PhilHealth</dt>
-                          <dd>{formatCurrency(phic)}</dd>
-                        </div>
-                        <div>
-                          <dt>HDMF</dt>
-                          <dd>{formatCurrency(hdmf)}</dd>
-                        </div>
-                        {tax > 0 && (
-                          <div>
-                            <dt>Tax</dt>
-                            <dd>{formatCurrency(tax)}</dd>
-                          </div>
-                        )}
-                        <div>
-                          <dt>Total Deductions</dt>
-                          <dd>{formatCurrency(totalDeductions || entry.deductions + entry.cashAdvance)}</dd>
-                        </div>
-                      </dl>
-                    </div>
-                  </div>
-
-                  <div className="payroll-print-net payroll-print-admin-net">
-                    <span>Net Pay</span>
-                    <strong>{formatCurrency(entry.netPay)}</strong>
-                  </div>
-
-                  <div className="payroll-print-signatures">
-                    <span>Approved by</span>
-                    <span>Received by</span>
-                  </div>
-                </article>
-              );
-            })}
-          </section>
-        ))}
-      </div>
-    );
-  }
-
-  const pages = chunkEntries(entries, 6);
-  const activeModules = payrollAdjustments
-    .filter((rule) => rule.active)
-    .sort((a, b) => a.sortOrder - b.sortOrder);
+  const printable = entries.filter((entry) => entry.netPay > 0);
+  const pages = chunkEntries(printable, 2);
+  const heading =
+    category === "admin"
+      ? "Admin · Semi-monthly payroll"
+      : "Construction · Weekly payroll";
 
   return (
     <div className="payroll-print-area">
       {pages.map((pageEntries, pageIndex) => (
-        <section className="payroll-print-page" key={`${period.key}-${pageIndex}`}>
-          <div className="payroll-print-page-header">
-            <div>
-              <p className="payroll-print-eyebrow">Steer Builders Corporation</p>
-              <h2>Payroll Slips</h2>
-            </div>
-            <div className="payroll-print-meta">
-              <p>{payrollTabMeta[category].label}</p>
-              <p>{period.label}</p>
-            </div>
-          </div>
+        <section
+          className="payroll-print-page payroll-print-page-admin"
+          key={`${period.key}-${category}-${pageIndex}`}
+        >
+          {pageEntries.map((entry) => {
+            const meta = parseAdminPayslipMeta(entry.remarks);
+            const basicPay = meta?.basicPay || entry.regularPay;
+            const leavePay = meta?.leavePay ?? entry.additionalPay;
+            const sss = meta?.sss ?? 0;
+            const phic = meta?.phic ?? 0;
+            const hdmf = meta?.hdmf ?? 0;
+            const tax = meta?.tax ?? 0;
+            const statutory = sss + phic + hdmf + tax;
+            const totalDeductions =
+              entry.cashAdvance +
+              (statutory > 0 ? statutory : Math.max(0, entry.deductions));
 
-          <div className="payroll-print-grid">
-            {pageEntries.map((entry) => {
-              const employeeContext = employeeContextFromEntry(entry, employees);
-              const breakdown = resolveEntryDeductionBreakdown(
-                entry,
-                payrollAdjustments,
-                employeeContext
-              );
+            return (
+              <article className="payroll-print-admin-slip" key={entry.id}>
+                <header className="payroll-print-admin-header">
+                  <p className="payroll-print-eyebrow">Steer Builders Corporation</p>
+                  <h2>Payslip</h2>
+                  <p>{heading}</p>
+                </header>
 
-              return (
-              <article className="payroll-print-card" key={entry.id}>
-                <div className="payroll-print-card-header">
+                <dl className="payroll-print-admin-meta">
                   <div>
-                    <p className="payroll-print-eyebrow">Payroll Slip</p>
-                    <h3>{entry.employeeName}</h3>
+                    <dt>Employee Name</dt>
+                    <dd>{entry.employeeName}</dd>
                   </div>
-                  <span>{entry.status}</span>
-                </div>
-
-                <dl className="payroll-print-lines">
                   <div>
-                    <dt>Period</dt>
+                    <dt>Pay Period</dt>
                     <dd>{period.label}</dd>
                   </div>
                   <div>
-                    <dt>Site / Designation</dt>
+                    <dt>Cut-off</dt>
                     <dd>
-                      {[entry.siteAssignment, entry.designation]
-                        .filter(Boolean)
-                        .join(" · ") || "—"}
+                      {period.periodStart} – {period.periodEnd}
                     </dd>
                   </div>
                   <div>
-                    <dt>Regular Hours / Pay</dt>
-                    <dd>{entry.hours}h · {formatCurrency(entry.regularPay)}</dd>
-                  </div>
-                  <div>
-                    <dt>OT Hours / Pay</dt>
+                    <dt>
+                      {category === "construction" ? "Site / Designation" : "Designation"}
+                    </dt>
                     <dd>
-                      {entry.overtimeHours}h · {formatCurrency(entry.overtimePay)}
+                      {category === "construction"
+                        ? [entry.siteAssignment, entry.designation]
+                            .filter(Boolean)
+                            .join(" · ") || "—"
+                        : entry.designation || "—"}
                     </dd>
                   </div>
-                  <div>
-                    <dt>Gross Pay</dt>
-                    <dd>{formatCurrency(entry.grossPay)}</dd>
-                  </div>
-                  <div>
-                    <dt>Cash Advance</dt>
-                    <dd>{formatCurrency(entry.cashAdvance)}</dd>
-                  </div>
-                  <div>
-                    <dt>Additional Pay</dt>
-                    <dd>{formatCurrency(entry.additionalPay)}</dd>
-                  </div>
-                  {activeModules.map((rule) => (
-                    <div key={rule.code}>
-                      <dt>{rule.label}</dt>
-                      <dd>
-                        {formatCurrency(getDeductionAmount(breakdown, rule.code))}
-                      </dd>
-                    </div>
-                  ))}
-                  <div>
-                    <dt>Total Deductions</dt>
-                    <dd>{formatCurrency(entry.deductions)}</dd>
-                  </div>
-                  <div className="payroll-print-net">
-                    <dt>Net Pay</dt>
-                    <dd>{formatCurrency(entry.netPay)}</dd>
-                  </div>
-                  {entry.disbursement && (
-                    <div>
-                      <dt>Disbursement</dt>
-                      <dd>{entry.disbursement}</dd>
-                    </div>
-                  )}
-                  {entry.remarks && !parseAdminPayslipMeta(entry.remarks) && (
-                    <div>
-                      <dt>Remarks</dt>
-                      <dd>{entry.remarks}</dd>
-                    </div>
-                  )}
-                  {entry.chargedTo && (
-                    <div>
-                      <dt>Charged To</dt>
-                      <dd>{entry.chargedTo}</dd>
-                    </div>
-                  )}
                 </dl>
 
-                <div className="payroll-print-signatures">
-                  <span>Received by</span>
-                  <span>Prepared by</span>
+                <div className="payroll-print-admin-columns">
+                  <div>
+                    <h3>Earnings</h3>
+                    <dl className="payroll-print-lines">
+                      <div>
+                        <dt>
+                          {category === "construction" ? "Regular Pay" : "Basic Salary"}
+                        </dt>
+                        <dd>{formatCurrency(basicPay)}</dd>
+                      </div>
+                      {category === "construction" && (
+                        <div>
+                          <dt>Regular Hours</dt>
+                          <dd>{entry.hours}h</dd>
+                        </div>
+                      )}
+                      <div>
+                        <dt>Overtime</dt>
+                        <dd>
+                          {category === "construction" && entry.overtimeHours > 0
+                            ? `${entry.overtimeHours}h · ${formatCurrency(entry.overtimePay)}`
+                            : formatCurrency(entry.overtimePay)}
+                        </dd>
+                      </div>
+                      {leavePay > 0 && (
+                        <div>
+                          <dt>
+                            {category === "construction" ? "Additional Pay" : "Leave Pay"}
+                          </dt>
+                          <dd>{formatCurrency(leavePay)}</dd>
+                        </div>
+                      )}
+                      <div>
+                        <dt>Gross Pay</dt>
+                        <dd>{formatCurrency(entry.grossPay)}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                  <div>
+                    <h3>Deductions</h3>
+                    <dl className="payroll-print-lines">
+                      <div>
+                        <dt>Cash Advance</dt>
+                        <dd>{formatCurrency(entry.cashAdvance)}</dd>
+                      </div>
+                      {sss > 0 && (
+                        <div>
+                          <dt>SSS</dt>
+                          <dd>{formatCurrency(sss)}</dd>
+                        </div>
+                      )}
+                      {phic > 0 && (
+                        <div>
+                          <dt>PhilHealth</dt>
+                          <dd>{formatCurrency(phic)}</dd>
+                        </div>
+                      )}
+                      {hdmf > 0 && (
+                        <div>
+                          <dt>HDMF</dt>
+                          <dd>{formatCurrency(hdmf)}</dd>
+                        </div>
+                      )}
+                      {tax > 0 && (
+                        <div>
+                          <dt>Tax</dt>
+                          <dd>{formatCurrency(tax)}</dd>
+                        </div>
+                      )}
+                      {statutory <= 0 && entry.deductions > 0 && (
+                        <div>
+                          <dt>Other Deductions</dt>
+                          <dd>{formatCurrency(entry.deductions)}</dd>
+                        </div>
+                      )}
+                      <div>
+                        <dt>Total Deductions</dt>
+                        <dd>{formatCurrency(totalDeductions)}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                </div>
+
+                <div className="payroll-print-net payroll-print-admin-net">
+                  <span>Net Pay</span>
+                  <strong>{formatCurrency(entry.netPay)}</strong>
+                </div>
+
+                {entry.disbursement ? (
+                  <p className="payroll-print-disbursement">
+                    Disbursement: {entry.disbursement}
+                  </p>
+                ) : null}
+
+                <div className="payroll-print-signatures payroll-print-signatures-named">
+                  <div>
+                    <span className="payroll-print-sign-line" />
+                    <strong>Faye Charlotte Abellanosa</strong>
+                    <em>Approved by</em>
+                    <span className="payroll-print-sign-line payroll-print-sign-line-blank" />
+                    <em>Other approver</em>
+                  </div>
+                  <div>
+                    <span className="payroll-print-sign-line" />
+                    <strong>Wilson S. Barba</strong>
+                    <em>Received by</em>
+                  </div>
                 </div>
               </article>
             );
-            })}
-          </div>
+          })}
         </section>
       ))}
     </div>
@@ -634,18 +544,23 @@ function PayrollTable({
 }) {
   const columnCount = 16;
 
+  const payableEntries = useMemo(
+    () => entries.filter((entry) => entry.netPay > 0),
+    [entries]
+  );
+
   const sortedEntries = useMemo(
-    () => sortRows(entries, sort, (row, key) => row[key]),
-    [entries, sort]
+    () => sortRows(payableEntries, sort, (row, key) => row[key]),
+    [payableEntries, sort]
   );
 
   const totalGross = useMemo(
-    () => entries.reduce((s, p) => s + p.grossPay, 0),
-    [entries]
+    () => payableEntries.reduce((s, p) => s + p.grossPay, 0),
+    [payableEntries]
   );
   const totalNet = useMemo(
-    () => entries.reduce((s, p) => s + p.netPay, 0),
-    [entries]
+    () => payableEntries.reduce((s, p) => s + p.netPay, 0),
+    [payableEntries]
   );
 
   return (
@@ -732,7 +647,7 @@ function PayrollTable({
             {sortedEntries.length === 0 ? (
               <TableEmpty
                 colSpan={columnCount}
-                message={`No uploaded ${category} payroll for this period yet. Upload an Excel file to load payslips.`}
+                message={`No payable ${category} payroll for this period yet (net pay must be greater than 0). Upload an Excel file to load payslips.`}
               />
             ) : (
               sortedEntries.map((entry) => {
@@ -856,7 +771,12 @@ function PayrollTable({
           </TableBody>
         </Table>
         <TableMeta>
-          <span>{entries.length} employees</span>
+          <span>
+            {payableEntries.length} payable
+            {entries.length > payableEntries.length
+              ? ` · ${entries.length - payableEntries.length} zero-net hidden`
+              : " employees"}
+          </span>
           <span className="text-sbc-gold">
             Net total · {formatCurrency(totalNet)}
           </span>
@@ -1080,6 +1000,7 @@ export function PayrollClient({
   const [uploadHistory, setUploadHistory] = useState(initialUploadHistory);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceCategoryRef = useRef<PayrollTab | null>(null);
+  const replacePeriodKeyRef = useRef<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { sort, toggleSort } = useTableSort<PayrollSortKey>({
     defaultKey: "employeeName",
@@ -1508,16 +1429,49 @@ export function PayrollClient({
           : dataTab === "admin"
             ? "admin"
             : "construction");
+    const preferredPeriodKey =
+      replacePeriodKeyRef.current ??
+      (uploadTab === "admin" ? adminPeriod.key : constructionPeriod.key);
     replaceCategoryRef.current = null;
+    replacePeriodKeyRef.current = null;
 
     startTransition(async () => {
       try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const result =
-          uploadTab === "admin"
-            ? await importAdminPayrollExcel(formData)
-            : await importConstructionPayrollExcel(formData);
+        async function runImport(replace: boolean) {
+          const formData = new FormData();
+          formData.append("file", file!);
+          formData.append("preferredPeriodKey", preferredPeriodKey);
+          if (replace) {
+            formData.append("replace", "true");
+            formData.append("periodKey", preferredPeriodKey);
+          }
+          return uploadTab === "admin"
+            ? importAdminPayrollExcel(formData)
+            : importConstructionPayrollExcel(formData);
+        }
+
+        let result = await runImport(false);
+
+        if (result.conflict && result.periodKey) {
+          const confirmed = window.confirm(
+            `${uploadTab === "admin" ? "Admin" : "Construction"} payroll for ${result.periodLabel} already has "${result.existingFilename ?? "a saved file"}".\n\nOnly one file is kept per ${uploadTab === "admin" ? "pay period" : "week"}.\n\nReplace it with this upload?`
+          );
+          if (!confirmed) {
+            setMessage(
+              `Upload cancelled. Existing file for ${result.periodLabel} was kept.`
+            );
+            return;
+          }
+          const retry = new FormData();
+          retry.append("file", file);
+          retry.append("replace", "true");
+          retry.append("periodKey", result.periodKey);
+          retry.append("preferredPeriodKey", result.periodKey);
+          result =
+            uploadTab === "admin"
+              ? await importAdminPayrollExcel(retry)
+              : await importConstructionPayrollExcel(retry);
+        }
 
         if (result.error) {
           setMessage(result.error);
@@ -1545,7 +1499,7 @@ export function PayrollClient({
         setMessage(
           result.preview
             ? `Preview import: saved ${result.importedCount ?? 0} rows from "${result.sheetName}" for ${result.periodLabel}. (Database not connected — local preview only.)`
-            : `Imported ${result.importedCount ?? 0} rows from "${result.sheetName}" for ${result.periodLabel}. Saved for history — you can print or export anytime.`
+            : `Imported ${result.importedCount ?? 0} payable rows from "${result.sheetName}" for ${result.periodLabel}.`
         );
       } finally {
         setUploading(false);
@@ -1594,6 +1548,7 @@ export function PayrollClient({
   function handleReplaceUpload(item: PayrollUploadHistoryItem) {
     const category = item.category === "admin" ? "admin" : "construction";
     replaceCategoryRef.current = category;
+    replacePeriodKeyRef.current = item.periodKey;
     setLastPayrollTab(category);
     setMessage(
       `Choose a replacement ${category} Excel for ${item.periodLabel}. Existing rows for that period will be overwritten.`

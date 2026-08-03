@@ -14,7 +14,6 @@ import {
   normalizeEmployeeName,
   parseConstructionPayrollWorkbook,
   type ImportedPayrollRow,
-  type ParsedMasterEmployee,
 } from "@/lib/payroll-excel-import";
 import {
   getSemiMonthlyPayrollPeriod,
@@ -390,16 +389,124 @@ function previewEntriesFromAdminRows(
   });
 }
 
-export async function importConstructionPayrollExcel(formData: FormData): Promise<{
+async function findExistingUpload(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  category: EmployeeCategory,
+  periodKey: string
+): Promise<{ id: string; filename: string } | null> {
+  const { data, error } = await supabase
+    .from("payroll_uploads")
+    .select("id, filename, category, period_key")
+    .eq("period_key", periodKey)
+    .order("uploaded_at", { ascending: false })
+    .limit(8);
+
+  if (!error && data?.length) {
+    const match = data.find((row) => {
+      const rowCategory =
+        (row.category as EmployeeCategory | undefined) ??
+        categoryFromPeriodKey(String(row.period_key));
+      return rowCategory === category;
+    });
+    if (match) {
+      return { id: String(match.id), filename: String(match.filename) };
+    }
+  }
+
+  // Fallback: any processed payslips for this period + category count as existing.
+  const period =
+    category === "construction"
+      ? getWeeklyPayrollPeriod(
+          periodKey.startsWith("w-") ? periodKey.slice(2) : periodKey
+        )
+      : (() => {
+          const parts = periodKey.startsWith("s-")
+            ? periodKey.slice(2).split("-")
+            : periodKey.split("-");
+          return getSemiMonthlyPayrollPeriod(
+            Number(parts[0]),
+            Number(parts[1]),
+            Number(parts[2]) as 1 | 2
+          );
+        })();
+
+  const { data: slips } = await supabase
+    .from("payslips")
+    .select("id, employees(category), payroll_runs!inner(period_start, period_end)")
+    .eq("payroll_runs.period_start", period.periodStart)
+    .eq("payroll_runs.period_end", period.periodEnd)
+    .eq("status", "processed")
+    .limit(1);
+
+  const hasCategory = (slips ?? []).some((slip) => {
+    const employee = Array.isArray(slip.employees)
+      ? slip.employees[0]
+      : slip.employees;
+    return (employee as { category?: string } | null)?.category === category;
+  });
+
+  if (hasCategory) {
+    return { id: "", filename: "Saved payroll" };
+  }
+
+  return null;
+}
+
+async function clearPeriodPayslips(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  category: EmployeeCategory,
+  period: PayrollPeriod
+) {
+  const { data: runRows } = await supabase
+    .from("payroll_runs")
+    .select("id")
+    .eq("period_start", period.periodStart)
+    .eq("period_end", period.periodEnd);
+
+  const runIds = (runRows ?? []).map((row) => String(row.id));
+  if (!runIds.length) return;
+
+  const { data: payslips } = await supabase
+    .from("payslips")
+    .select("id, employees(category)")
+    .in("payroll_run_id", runIds);
+
+  const ids = (payslips ?? [])
+    .filter((slip) => {
+      const employee = Array.isArray(slip.employees)
+        ? slip.employees[0]
+        : slip.employees;
+      return (employee as { category?: string } | null)?.category === category;
+    })
+    .map((slip) => String(slip.id));
+
+  if (ids.length) {
+    await supabase.from("payslips").delete().in("id", ids);
+  }
+
+  await supabase
+    .from("payroll_uploads")
+    .delete()
+    .eq("period_key", period.key)
+    .eq("category", category);
+}
+
+type ImportResult = {
   error?: string;
   success?: boolean;
   preview?: boolean;
+  conflict?: boolean;
+  existingFilename?: string;
   periodKey?: string;
   periodLabel?: string;
   importedCount?: number;
   sheetName?: string;
   entries?: PayrollEntry[];
-}> {
+};
+
+export async function importConstructionPayrollExcel(
+  formData: FormData
+): Promise<ImportResult> {
   await requireAdmin();
 
   const file = formData.get("file");
@@ -411,6 +518,11 @@ export async function importConstructionPayrollExcel(formData: FormData): Promis
   if (!/\.xlsx?$/i.test(filename)) {
     return { error: "Upload an .xlsx Excel file." };
   }
+
+  const replace = String(formData.get("replace") ?? "") === "true";
+  const preferredPeriodKey = String(
+    formData.get("periodKey") || formData.get("preferredPeriodKey") || ""
+  );
 
   const buffer = await file.arrayBuffer();
   let parsed;
@@ -427,26 +539,48 @@ export async function importConstructionPayrollExcel(formData: FormData): Promis
     };
   }
 
-  const sheets = parsed.sheets;
-  const primarySheet = sheets[sheets.length - 1] ?? sheets[0];
+  // One week only — prefer the period open in the UI, else the latest sheet.
+  const targetSheet =
+    parsed.sheets.find((sheet) => sheet.period.key === preferredPeriodKey) ??
+    parsed.sheets[parsed.sheets.length - 1]!;
 
   if (!isSupabaseConfigured()) {
     return {
       success: true,
       preview: true,
-      periodKey: primarySheet.period.key,
-      periodLabel: primarySheet.period.label,
-      importedCount: sheets.reduce((sum, sheet) => sum + sheet.rows.length, 0),
-      sheetName: sheets.map((sheet) => sheet.sheetName).join(", "),
+      periodKey: targetSheet.period.key,
+      periodLabel: targetSheet.period.label,
+      importedCount: targetSheet.rows.length,
+      sheetName: targetSheet.sheetName,
       entries: previewEntriesFromConstructionRows(
-        primarySheet.rows,
-        primarySheet.period
-      ),
+        targetSheet.rows,
+        targetSheet.period
+      ).filter((entry) => entry.netPay > 0),
     };
   }
 
   try {
     const supabase = await createClient();
+
+    const existing = await findExistingUpload(
+      supabase,
+      "construction",
+      targetSheet.period.key
+    );
+
+    if (existing && !replace) {
+      return {
+        conflict: true,
+        periodKey: targetSheet.period.key,
+        periodLabel: targetSheet.period.label,
+        existingFilename: existing.filename,
+        sheetName: targetSheet.sheetName,
+      };
+    }
+
+    if (existing && replace) {
+      await clearPeriodPayslips(supabase, "construction", targetSheet.period);
+    }
 
     const { data: existingEmployees, error: employeeError } = await supabase
       .from("employees")
@@ -462,131 +596,93 @@ export async function importConstructionPayrollExcel(formData: FormData): Promis
       ])
     );
 
-    const masterSource: ParsedMasterEmployee[] =
-      parsed.masterEmployees.length > 0
-        ? parsed.masterEmployees
-        : primarySheet.rows.map((row) => ({
-            employeeName: row.employeeName,
-            siteAssignment: row.siteAssignment,
-            designation: row.designation,
-            dailyRate: row.dailyRate,
-            hourlyRate: row.hourlyRate,
-          }));
-
-    // Unique employees across master + all sheets (one upsert each).
-    const employeeSeed = new Map<string, ParsedMasterEmployee>();
-    for (const master of masterSource) {
-      employeeSeed.set(normalizeEmployeeName(master.employeeName), master);
-    }
-    for (const sheet of sheets) {
-      for (const row of sheet.rows) {
-        const key = normalizeEmployeeName(row.employeeName);
-        if (!employeeSeed.has(key)) {
-          employeeSeed.set(key, {
-            employeeName: row.employeeName,
-            siteAssignment: row.siteAssignment,
-            designation: row.designation,
-            dailyRate: row.dailyRate,
-            hourlyRate: row.hourlyRate,
-          });
-        }
-      }
-    }
-
-    for (const master of employeeSeed.values()) {
-      const result = await ensureConstructionEmployee(supabase, master, existingByName);
+    // Only ensure employees on this week's sheet (keeps upload fast).
+    for (const row of targetSheet.rows) {
+      const key = normalizeEmployeeName(row.employeeName);
+      if (existingByName.has(key)) continue;
+      const result = await ensureConstructionEmployee(supabase, row, existingByName);
       if (result.error) return { error: result.error };
     }
 
-    let totalImported = 0;
-    const sheetNames: string[] = [];
     const runCache = new Map<string, string>();
+    const run = await ensurePayrollRun(supabase, targetSheet.period, runCache);
+    if (run.error || !run.runId) {
+      return { error: run.error || "Payroll run was not created." };
+    }
 
-    for (const sheet of sheets) {
-      const run = await ensurePayrollRun(supabase, sheet.period, runCache);
-      if (run.error || !run.runId) {
-        return { error: run.error || "Payroll run was not created." };
+    const items: { employeeId: string; payload: PayslipSavePayload }[] = [];
+    for (const row of targetSheet.rows) {
+      const employee = existingByName.get(normalizeEmployeeName(row.employeeName));
+      if (!employee?.id) {
+        return { error: `Could not save ${row.employeeName}.` };
       }
-
-      const items: { employeeId: string; payload: PayslipSavePayload }[] = [];
-
-      for (const row of sheet.rows) {
-        const employee = existingByName.get(normalizeEmployeeName(row.employeeName));
-        if (!employee?.id) {
-          return { error: `Could not save ${row.employeeName}.` };
-        }
-
-        items.push({
-          employeeId: employee.id,
-          payload: {
-            hours: row.hours,
-            overtime_hours: row.overtimeHours,
-            regular_pay: row.regularPay,
-            overtime_pay: row.overtimePay,
-            gross_pay: row.grossPay,
-            cash_advance: row.cashAdvance,
-            additional_pay: row.additionalPay,
-            deductions: Math.max(
-              0,
-              row.grossPay + row.additionalPay - row.cashAdvance - row.netPay
-            ),
-            net_pay: row.netPay,
-            site_assignment: row.siteAssignment,
-            disbursement: row.disbursement,
-            remarks: row.remarks,
-            charged_to: row.chargedTo,
-          },
-        });
-      }
-
-      const saved = await savePayslipsForRun(supabase, run.runId, items);
-      if (saved.error) return { error: saved.error };
-
-      totalImported += items.length;
-      sheetNames.push(sheet.sheetName);
-
-      await recordUpload(supabase, {
-        filename,
-        sheetName: sheet.sheetName,
-        period: sheet.period,
-        rowCount: items.length,
-        runId: run.runId,
-        category: "construction",
+      items.push({
+        employeeId: employee.id,
+        payload: {
+          hours: row.hours,
+          overtime_hours: row.overtimeHours,
+          regular_pay: row.regularPay,
+          overtime_pay: row.overtimePay,
+          gross_pay: row.grossPay,
+          cash_advance: row.cashAdvance,
+          additional_pay: row.additionalPay,
+          deductions: Math.max(
+            0,
+            row.grossPay + row.additionalPay - row.cashAdvance - row.netPay
+          ),
+          net_pay: row.netPay,
+          site_assignment: row.siteAssignment,
+          disbursement: row.disbursement,
+          remarks: row.remarks,
+          charged_to: row.chargedTo,
+        },
       });
     }
 
-    revalidatePath("/admin/payroll");
-    revalidatePath("/admin/employees");
-    revalidatePath("/admin");
+    const saved = await savePayslipsForRun(supabase, run.runId, items);
+    if (saved.error) return { error: saved.error };
 
-    const refreshed = await getPayrollForPeriod("construction", primarySheet.period.key);
+    await recordUpload(supabase, {
+      filename,
+      sheetName: targetSheet.sheetName,
+      period: targetSheet.period,
+      rowCount: items.length,
+      runId: run.runId,
+      category: "construction",
+    });
+
+    revalidatePath("/admin/payroll");
+
+    const entries = previewEntriesFromConstructionRows(
+      targetSheet.rows,
+      targetSheet.period
+    ).filter((entry) => entry.netPay > 0);
+
+    // Refresh once for real payslip ids (needed for inline edits).
+    const refreshed = await getPayrollForPeriod(
+      "construction",
+      targetSheet.period.key
+    );
 
     return {
       success: true,
-      periodKey: primarySheet.period.key,
-      periodLabel:
-        sheets.length > 1
-          ? `${sheets.length} weeks imported · showing ${primarySheet.period.label}`
-          : primarySheet.period.label,
-      importedCount: totalImported,
-      sheetName: sheetNames.join(", "),
-      entries: refreshed.entries.filter((entry) => entry.status === "processed"),
+      periodKey: targetSheet.period.key,
+      periodLabel: targetSheet.period.label,
+      importedCount: items.length,
+      sheetName: targetSheet.sheetName,
+      entries:
+        refreshed.entries.filter((entry) => entry.netPay > 0).length > 0
+          ? refreshed.entries.filter((entry) => entry.netPay > 0)
+          : entries,
     };
   } catch {
     return { error: "Could not import payroll Excel." };
   }
 }
 
-export async function importAdminPayrollExcel(formData: FormData): Promise<{
-  error?: string;
-  success?: boolean;
-  preview?: boolean;
-  periodKey?: string;
-  periodLabel?: string;
-  importedCount?: number;
-  sheetName?: string;
-  entries?: PayrollEntry[];
-}> {
+export async function importAdminPayrollExcel(
+  formData: FormData
+): Promise<ImportResult> {
   await requireAdmin();
 
   const file = formData.get("file");
@@ -598,6 +694,11 @@ export async function importAdminPayrollExcel(formData: FormData): Promise<{
   if (!/\.xlsx?$/i.test(filename)) {
     return { error: "Upload an .xlsx Excel file." };
   }
+
+  const replace = String(formData.get("replace") ?? "") === "true";
+  const preferredPeriodKey = String(
+    formData.get("periodKey") || formData.get("preferredPeriodKey") || ""
+  );
 
   const buffer = await file.arrayBuffer();
   let parsed;
@@ -616,26 +717,48 @@ export async function importAdminPayrollExcel(formData: FormData): Promise<{
     };
   }
 
-  const primaryPeriod = parsed.periods[parsed.periods.length - 1]!;
-  const primaryRows = parsed.rowsByPeriod.get(primaryPeriod.key) ?? [];
+  // One cutoff only — prefer the period open in the UI, else the latest cutoff.
+  const targetPeriod =
+    parsed.periods.find((period) => period.key === preferredPeriodKey) ??
+    parsed.periods[parsed.periods.length - 1]!;
+  const targetRows = parsed.rowsByPeriod.get(targetPeriod.key) ?? [];
 
   if (!isSupabaseConfigured()) {
     return {
       success: true,
       preview: true,
-      periodKey: primaryPeriod.key,
-      periodLabel: primaryPeriod.label,
-      importedCount: [...parsed.rowsByPeriod.values()].reduce(
-        (sum, rows) => sum + rows.length,
-        0
-      ),
+      periodKey: targetPeriod.key,
+      periodLabel: targetPeriod.label,
+      importedCount: targetRows.length,
       sheetName: "Payroll Computation",
-      entries: previewEntriesFromAdminRows(primaryRows, primaryPeriod),
+      entries: previewEntriesFromAdminRows(targetRows, targetPeriod).filter(
+        (entry) => entry.netPay > 0
+      ),
     };
   }
 
   try {
     const supabase = await createClient();
+
+    const existing = await findExistingUpload(
+      supabase,
+      "admin",
+      targetPeriod.key
+    );
+
+    if (existing && !replace) {
+      return {
+        conflict: true,
+        periodKey: targetPeriod.key,
+        periodLabel: targetPeriod.label,
+        existingFilename: existing.filename,
+        sheetName: "Payroll Computation",
+      };
+    }
+
+    if (existing && replace) {
+      await clearPeriodPayslips(supabase, "admin", targetPeriod);
+    }
 
     const { data: existingEmployees, error: employeeError } = await supabase
       .from("employees")
@@ -651,89 +774,69 @@ export async function importAdminPayrollExcel(formData: FormData): Promise<{
       ])
     );
 
-    // Unique admin employees across all cutoffs first.
-    const employeeSeed = new Map<string, ImportedAdminPayrollRow>();
-    for (const rows of parsed.rowsByPeriod.values()) {
-      for (const row of rows) {
-        const key = normalizeEmployeeName(row.employeeName);
-        if (!employeeSeed.has(key)) employeeSeed.set(key, row);
-      }
-    }
-
-    for (const row of employeeSeed.values()) {
+    for (const row of targetRows) {
+      const key = normalizeEmployeeName(row.employeeName);
+      if (existingByName.has(key)) continue;
       const result = await ensureAdminEmployee(supabase, row, existingByName);
       if (result.error) return { error: result.error };
     }
 
-    let totalImported = 0;
     const runCache = new Map<string, string>();
+    const run = await ensurePayrollRun(supabase, targetPeriod, runCache);
+    if (run.error || !run.runId) {
+      return { error: run.error || "Payroll run was not created." };
+    }
 
-    for (const period of parsed.periods) {
-      const rows = parsed.rowsByPeriod.get(period.key) ?? [];
-      const run = await ensurePayrollRun(supabase, period, runCache);
-      if (run.error || !run.runId) {
-        return { error: run.error || "Payroll run was not created." };
+    const items: { employeeId: string; payload: PayslipSavePayload }[] = [];
+    for (const row of targetRows) {
+      const employee = existingByName.get(normalizeEmployeeName(row.employeeName));
+      if (!employee?.id) {
+        return { error: `Could not save ${row.employeeName}.` };
       }
-
-      const items: { employeeId: string; payload: PayslipSavePayload }[] = [];
-
-      for (const row of rows) {
-        const employee = existingByName.get(normalizeEmployeeName(row.employeeName));
-        if (!employee?.id) {
-          return { error: `Could not save ${row.employeeName}.` };
-        }
-
-        const amounts = adminRowToPayslipAmounts(row);
-        items.push({
-          employeeId: employee.id,
-          payload: {
-            hours: amounts.hours,
-            overtime_hours: amounts.overtimeHours,
-            regular_pay: amounts.regularPay,
-            overtime_pay: amounts.overtimePay,
-            gross_pay: amounts.grossPay,
-            cash_advance: amounts.cashAdvance,
-            additional_pay: amounts.additionalPay,
-            deductions: amounts.deductions,
-            net_pay: amounts.netPay,
-            site_assignment: "",
-            disbursement: "",
-            remarks: encodeAdminPayslipMeta(amounts.meta),
-            charged_to: "",
-          },
-        });
-      }
-
-      const saved = await savePayslipsForRun(supabase, run.runId, items);
-      if (saved.error) return { error: saved.error };
-
-      totalImported += items.length;
-      await recordUpload(supabase, {
-        filename,
-        sheetName: "Payroll Computation",
-        period,
-        rowCount: items.length,
-        runId: run.runId,
-        category: "admin",
+      const amounts = adminRowToPayslipAmounts(row);
+      items.push({
+        employeeId: employee.id,
+        payload: {
+          hours: amounts.hours,
+          overtime_hours: amounts.overtimeHours,
+          regular_pay: amounts.regularPay,
+          overtime_pay: amounts.overtimePay,
+          gross_pay: amounts.grossPay,
+          cash_advance: amounts.cashAdvance,
+          additional_pay: amounts.additionalPay,
+          deductions: amounts.deductions,
+          net_pay: amounts.netPay,
+          site_assignment: "",
+          disbursement: "",
+          remarks: encodeAdminPayslipMeta(amounts.meta),
+          charged_to: "",
+        },
       });
     }
 
-    revalidatePath("/admin/payroll");
-    revalidatePath("/admin/employees");
-    revalidatePath("/admin");
+    const saved = await savePayslipsForRun(supabase, run.runId, items);
+    if (saved.error) return { error: saved.error };
 
-    const refreshed = await getPayrollForPeriod("admin", primaryPeriod.key);
+    await recordUpload(supabase, {
+      filename,
+      sheetName: "Payroll Computation",
+      period: targetPeriod,
+      rowCount: items.length,
+      runId: run.runId,
+      category: "admin",
+    });
+
+    revalidatePath("/admin/payroll");
+
+    const refreshed = await getPayrollForPeriod("admin", targetPeriod.key);
 
     return {
       success: true,
-      periodKey: primaryPeriod.key,
-      periodLabel:
-        parsed.periods.length > 1
-          ? `${parsed.periods.length} cutoffs imported · showing ${primaryPeriod.label}`
-          : primaryPeriod.label,
-      importedCount: totalImported,
+      periodKey: targetPeriod.key,
+      periodLabel: targetPeriod.label,
+      importedCount: items.length,
       sheetName: "Payroll Computation",
-      entries: refreshed.entries.filter((entry) => entry.status === "processed"),
+      entries: refreshed.entries.filter((entry) => entry.netPay > 0),
     };
   } catch {
     return { error: "Could not import admin payroll Excel." };
