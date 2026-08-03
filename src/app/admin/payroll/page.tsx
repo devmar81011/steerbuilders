@@ -4,29 +4,24 @@ import {
   getHourlyAttendanceForWeek,
 } from "@/lib/actions/attendance";
 import { getPayrollAdjustments } from "@/lib/actions/adjustments";
-import { getEmployees, getPayrollEntries } from "@/lib/actions/payroll";
-import { getPayrollUploadHistory } from "@/lib/actions/payroll-import";
+import { getEmployees } from "@/lib/actions/payroll";
 import { getDisbursementMethods, getOtPayPercent } from "@/lib/actions/site-settings";
 import { getWeekStartsForPayrollPeriod } from "@/lib/payroll-from-attendance";
+import { getCurrentPayrollPeriod } from "@/lib/payroll-periods";
 
 export default async function PayrollPage() {
-  const [
-    payroll,
-    employees,
-    payrollAdjustments,
-    disbursementMethods,
-    otPayPercent,
-    uploadHistory,
-  ] = await Promise.all([
-      getPayrollEntries(),
+  const constructionPeriod = getCurrentPayrollPeriod("construction");
+  const adminPeriod = getCurrentPayrollPeriod("admin");
+  const ojtPeriod = getCurrentPayrollPeriod("ojt");
+
+  const [employees, payrollAdjustments, disbursementMethods, otPayPercent] =
+    await Promise.all([
       getEmployees(),
       getPayrollAdjustments(),
       getDisbursementMethods(),
       getOtPayPercent(),
-      getPayrollUploadHistory(),
     ]);
 
-  const { constructionPeriod, adminPeriod, ojtPeriod } = payroll;
   const { rows: constructionAttendance } =
     await getConstructionAttendanceForWeek(constructionPeriod.periodStart);
 
@@ -50,21 +45,20 @@ export default async function PayrollPage() {
 
   return (
     <PayrollClient
-        initialConstructionEntries={payroll.constructionEntries}
-        initialAdminEntries={payroll.adminEntries}
-        initialOjtEntries={payroll.ojtEntries}
-        initialConstructionPeriod={constructionPeriod}
-        initialAdminPeriod={adminPeriod}
-        initialOjtPeriod={ojtPeriod}
-        usingDatabase={payroll.usingDatabase}
-        employees={employees}
-        constructionAttendance={constructionAttendance}
-        adminAttendance={adminAttendance}
-        ojtAttendance={ojtAttendance}
-        payrollAdjustments={payrollAdjustments}
-        disbursementMethods={disbursementMethods}
-        otPayPercent={otPayPercent}
-        initialUploadHistory={uploadHistory}
+      initialConstructionEntries={[]}
+      initialAdminEntries={[]}
+      initialOjtEntries={[]}
+      initialConstructionPeriod={constructionPeriod}
+      initialAdminPeriod={adminPeriod}
+      initialOjtPeriod={ojtPeriod}
+      usingDatabase={false}
+      employees={employees}
+      constructionAttendance={constructionAttendance}
+      adminAttendance={adminAttendance}
+      ojtAttendance={ojtAttendance}
+      payrollAdjustments={payrollAdjustments}
+      disbursementMethods={disbursementMethods}
+      otPayPercent={otPayPercent}
     />
   );
 }

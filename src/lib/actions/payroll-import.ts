@@ -581,15 +581,6 @@ export async function importConstructionPayrollExcel(
 
       totalImported += items.length;
       sheetNames.push(sheet.sheetName);
-
-      await recordUpload(supabase, {
-        filename,
-        sheetName: sheet.sheetName,
-        period: sheet.period,
-        rowCount: items.length,
-        runId: run.runId,
-        category: "construction",
-      });
     }
 
     revalidatePath("/admin/payroll");
@@ -602,10 +593,7 @@ export async function importConstructionPayrollExcel(
     return {
       success: true,
       periodKey: viewSheet.period.key,
-      periodLabel:
-        sheets.length > 1
-          ? `${sheets.length} weeks from sheet tabs · showing ${viewSheet.period.label}`
-          : `${viewSheet.sheetName} · ${viewSheet.period.label}`,
+      periodLabel: viewSheet.period.label,
       importedCount: totalImported,
       sheetName: sheetNames.join(", "),
       entries: refreshed.entries.filter((entry) => entry.netPay > 0),
@@ -749,14 +737,6 @@ export async function importAdminPayrollExcel(
       if (saved.error) return { error: saved.error };
 
       totalImported += items.length;
-      await recordUpload(supabase, {
-        filename,
-        sheetName: "Payroll Computation",
-        period,
-        rowCount: items.length,
-        runId: run.runId,
-        category: "admin",
-      });
     }
 
     revalidatePath("/admin/payroll");
@@ -766,10 +746,7 @@ export async function importAdminPayrollExcel(
     return {
       success: true,
       periodKey: viewPeriod.key,
-      periodLabel:
-        periods.length > 1
-          ? `${periods.length} cutoffs from Admin file · showing ${viewPeriod.label}`
-          : viewPeriod.label,
+      periodLabel: viewPeriod.label,
       importedCount: totalImported,
       sheetName: "Payroll Computation",
       entries: refreshed.entries.filter((entry) => entry.netPay > 0),
