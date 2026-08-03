@@ -1592,7 +1592,8 @@ export function PayrollClient({
           </p>
           <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Payroll</h1>
           <p className="mt-1 max-w-xl text-sm text-sbc-gray">
-            Upload completed Excel payroll, save it for history, then print or export.
+            Upload completed Excel payroll, save it for history, then print or export
+            from Construction / Admin.
           </p>
         </div>
 
@@ -1632,13 +1633,6 @@ export function PayrollClient({
                 <CalendarIcon />
                 {usesWeeklyPayroll(dataTab) ? "This Week" : "Current"}
               </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".xlsx,.xls"
-                className="hidden"
-                onChange={(e) => handleExcelUpload(e.target.files?.[0] ?? null)}
-              />
               <Button
                 type="button"
                 size="sm"
@@ -1652,37 +1646,15 @@ export function PayrollClient({
                 <UploadIcon />
                 {uploading ? "Uploading…" : "Upload Excel"}
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={activeEntries.filter((e) => e.netPay > 0).length === 0}
-                onClick={handleExportPayroll}
-              >
-                <ExportIcon />
-                Export
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={activeEntries.filter((e) => e.netPay > 0).length === 0}
-                onClick={() => window.print()}
-              >
-                <PrintIcon />
-                Print
-              </Button>
             </>
           )}
-          {isUploadsTab && (
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              className="hidden"
-              onChange={(e) => handleExcelUpload(e.target.files?.[0] ?? null)}
-            />
-          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={(e) => handleExcelUpload(e.target.files?.[0] ?? null)}
+          />
         </div>
       </div>
 
@@ -1766,16 +1738,40 @@ export function PayrollClient({
               onReplace={handleReplaceUpload}
             />
           ) : (
-            <PayrollTable
-              entries={activeEntries}
-              category={dataTab}
-              period={activePeriod}
-              pendingId={pendingId}
-              sort={sort}
-              disbursementMethods={disbursementMethods}
-              onToggleSort={toggleSort}
-              onInlineUpdate={handleInlineUpdate}
-            />
+            <>
+              <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={activeEntries.filter((e) => e.netPay > 0).length === 0}
+                  onClick={handleExportPayroll}
+                >
+                  <ExportIcon />
+                  Export CSV
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={activeEntries.filter((e) => e.netPay > 0).length === 0}
+                  onClick={() => window.print()}
+                >
+                  <PrintIcon />
+                  Print Slips
+                </Button>
+              </div>
+              <PayrollTable
+                entries={activeEntries}
+                category={dataTab}
+                period={activePeriod}
+                pendingId={pendingId}
+                sort={sort}
+                disbursementMethods={disbursementMethods}
+                onToggleSort={toggleSort}
+                onInlineUpdate={handleInlineUpdate}
+              />
+            </>
           )}
         </div>
       </div>
