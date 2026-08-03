@@ -20,11 +20,8 @@ import {
 } from "@/components/ui/table";
 import { getPayrollForPeriod, updatePayrollEntry } from "@/lib/actions/payroll";
 import {
-  getPayrollUploadHistory,
   importAdminPayrollExcel,
   importConstructionPayrollExcel,
-  deletePayrollUpload,
-  type PayrollUploadHistoryItem,
 } from "@/lib/actions/payroll-import";
 import {
   parseAdminPayslipMeta,
@@ -56,7 +53,6 @@ import {
   payrollExportFilename,
 } from "@/lib/payroll-export";
 import { radii } from "@/lib/design-tokens";
-import { IconButton, TrashIcon } from "@/components/ui/icon-button";
 
 type Props = {
   initialConstructionEntries: PayrollEntry[];
@@ -73,7 +69,6 @@ type Props = {
   payrollAdjustments: PayrollAdjustment[];
   disbursementMethods: string[];
   otPayPercent: number;
-  initialUploadHistory: PayrollUploadHistoryItem[];
 };
 
 type PayrollForm = {
@@ -134,10 +129,8 @@ type PayrollSortKey =
   | "deductions"
   | "netPay";
 
-type PayrollViewTab = PayrollTab | "uploads";
-
 const tabs: {
-  id: PayrollViewTab;
+  id: PayrollTab;
   label: string;
   hint: string;
 }[] = [
@@ -150,11 +143,6 @@ const tabs: {
     id: "admin",
     label: "Admin",
     hint: "Semi-monthly",
-  },
-  {
-    id: "uploads",
-    label: "Uploads",
-    hint: "Manage files",
   },
 ];
 
@@ -786,153 +774,6 @@ function PayrollTable({
   );
 }
 
-function formatUploadedAt(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-function UploadsPanel({
-  uploads,
-  busy,
-  filter,
-  onFilterChange,
-  onOpen,
-  onDelete,
-}: {
-  uploads: PayrollUploadHistoryItem[];
-  busy: boolean;
-  filter: "all" | PayrollTab;
-  onFilterChange: (filter: "all" | PayrollTab) => void;
-  onOpen: (item: PayrollUploadHistoryItem) => void;
-  onDelete: (item: PayrollUploadHistoryItem) => void;
-}) {
-  const filtered =
-    filter === "all"
-      ? uploads
-      : uploads.filter((item) => item.category === filter);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
-            Saved periods
-          </p>
-          <p className="mt-1 text-sm text-sbc-gray">
-            Open a week/cutoff from your uploaded workbook, or delete a wrong period.
-            Re-upload the Excel from Construction / Admin to update.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {(
-            [
-              ["all", "All"],
-              ["construction", "Construction"],
-              ["admin", "Admin"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              disabled={busy}
-              onClick={() => onFilterChange(id)}
-              className={`rounded-md px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] transition-colors ${
-                filter === id
-                  ? "bg-sbc-gold/15 text-sbc-gold-dark"
-                  : "text-sbc-gray hover:bg-sbc-off-white hover:text-sbc-black"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <TableShell minWidth="900px" scrollable className="rounded-none border-0">
-        <Table>
-          <TableHeader>
-            <tr>
-              <TableHead>Type</TableHead>
-              <TableHead>Period</TableHead>
-              <TableHead>Sheet / Source</TableHead>
-              <TableHead align="right">Rows</TableHead>
-              <TableHead>Uploaded</TableHead>
-              <TableHead align="right">Actions</TableHead>
-            </tr>
-          </TableHeader>
-          <TableBody>
-            {filtered.length === 0 ? (
-              <TableEmpty
-                colSpan={6}
-                message="No uploads yet. Upload one Construction or Admin Excel workbook first."
-              />
-            ) : (
-              filtered.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <span className="text-xs font-semibold uppercase tracking-widest text-sbc-gold-dark">
-                      {item.category}
-                    </span>
-                  </TableCell>
-                  <TablePrimaryCell>{item.periodLabel}</TablePrimaryCell>
-                  <TableCell>
-                    <span className="block max-w-[220px] truncate" title={item.sheetName || item.filename}>
-                      {item.sheetName || item.filename}
-                    </span>
-                    {item.sheetName ? (
-                      <span className="mt-0.5 block text-[11px] text-sbc-gray">
-                        {item.filename}
-                      </span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell align="right" numeric>
-                    {item.rowCount}
-                  </TableCell>
-                  <TableCell>{formatUploadedAt(item.uploadedAt)}</TableCell>
-                  <TableCell align="right">
-                    <div className="flex flex-wrap items-center justify-end gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => onOpen(item)}
-                      >
-                        Open
-                      </Button>
-                      <IconButton
-                        label={`Delete ${item.periodLabel}`}
-                        variant="danger"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => onDelete(item)}
-                      >
-                        <TrashIcon />
-                      </IconButton>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-        <TableMeta>
-          <span>
-            {filtered.length} saved period{filtered.length === 1 ? "" : "s"}
-          </span>
-        </TableMeta>
-      </TableShell>
-    </div>
-  );
-}
-
 export function PayrollClient({
   initialConstructionEntries,
   initialAdminEntries,
@@ -947,13 +788,11 @@ export function PayrollClient({
   payrollAdjustments,
   disbursementMethods,
   otPayPercent,
-  initialUploadHistory,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<PayrollViewTab>("construction");
-  const [lastPayrollTab, setLastPayrollTab] =
-    useState<PayrollTab>("construction");
-  const [uploadsFilter, setUploadsFilter] = useState<"all" | PayrollTab>("all");
-  // Upload-first: show only saved Excel payslips — do not invent rows from attendance.
+  const [activeTab, setActiveTab] = useState<PayrollTab>("construction");
+  // Session-only: empty until Excel is uploaded this visit; refresh clears the table.
+  const [constructionReady, setConstructionReady] = useState(false);
+  const [adminReady, setAdminReady] = useState(false);
   const [constructionEntries, setConstructionEntries] = useState(
     initialConstructionEntries
   );
@@ -986,22 +825,24 @@ export function PayrollClient({
   const [message, setMessage] = useState<string | null>(null);
   const [loadingPeriod, setLoadingPeriod] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadHistory, setUploadHistory] = useState(initialUploadHistory);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const { sort, toggleSort } = useTableSort<PayrollSortKey>({
     defaultKey: "employeeName",
   });
 
-  const isUploadsTab = activeTab === "uploads";
   const dataTab: PayrollTab =
     activeTab === "admin"
       ? "admin"
       : activeTab === "ojt"
         ? "ojt"
-        : lastPayrollTab === "admin"
-          ? "admin"
-          : "construction";
+        : "construction";
+  const sessionReady =
+    dataTab === "admin"
+      ? adminReady
+      : dataTab === "construction"
+        ? constructionReady
+        : true;
 
   const activeMeta = payrollTabMeta[dataTab];
   const activePeriod =
@@ -1150,13 +991,34 @@ export function PayrollClient({
     });
   }
 
+  function applyEmptyPeriod(tab: PayrollTab, period: typeof activePeriod) {
+    if (tab === "construction") {
+      setConstructionPeriod(period);
+      setConstructionEntries([]);
+      return;
+    }
+    if (tab === "admin") {
+      setAdminPeriod(period);
+      setAdminEntries([]);
+      return;
+    }
+    setOjtPeriod(period);
+    setOjtEntries([]);
+  }
+
   function loadPeriod(direction: -1 | 1) {
-    if (isUploadsTab) return;
     setLoadingPeriod(true);
     setMessage(null);
     resetForm();
 
     const nextPeriod = shiftPayrollPeriod(dataTab, activePeriod, direction);
+
+    // Before an upload this visit, only move the period label — keep the table empty.
+    if (!sessionReady) {
+      applyEmptyPeriod(dataTab, nextPeriod);
+      setLoadingPeriod(false);
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -1169,12 +1031,17 @@ export function PayrollClient({
   }
 
   function jumpToCurrentPeriod() {
-    if (isUploadsTab) return;
     setLoadingPeriod(true);
     setMessage(null);
     resetForm();
 
     const current = getCurrentPayrollPeriod(dataTab);
+
+    if (!sessionReady) {
+      applyEmptyPeriod(dataTab, current);
+      setLoadingPeriod(false);
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -1384,37 +1251,12 @@ export function PayrollClient({
     });
   }
 
-  function loadPeriodByKey(periodKey: string, tab: PayrollTab) {
-    setLoadingPeriod(true);
-    setMessage(null);
-    resetForm();
-
-    startTransition(async () => {
-      try {
-        const result = await getPayrollForPeriod(tab, periodKey);
-        applyPeriodResult(tab, result);
-        setLastPayrollTab(tab);
-        setActiveTab(tab);
-      } finally {
-        setLoadingPeriod(false);
-      }
-    });
-  }
-
   function handleExcelUpload(file: File | null) {
     if (!file) return;
     setUploading(true);
     setMessage(null);
-    const uploadTab =
-      activeTab === "admin"
-        ? "admin"
-        : activeTab === "uploads"
-          ? lastPayrollTab === "admin"
-            ? "admin"
-            : "construction"
-          : dataTab === "admin"
-            ? "admin"
-            : "construction";
+    const uploadTab: PayrollTab =
+      dataTab === "admin" ? "admin" : "construction";
     const preferredPeriodKey =
       uploadTab === "admin" ? adminPeriod.key : constructionPeriod.key;
 
@@ -1439,18 +1281,15 @@ export function PayrollClient({
           if (uploadTab === "admin") {
             setAdminEntries(result.entries);
             setAdminPeriod(period);
-            setLastPayrollTab("admin");
+            setAdminReady(true);
             setActiveTab("admin");
           } else {
             setConstructionEntries(result.entries);
             setConstructionPeriod(period);
-            setLastPayrollTab("construction");
+            setConstructionReady(true);
             setActiveTab("construction");
           }
         }
-
-        const history = await getPayrollUploadHistory();
-        setUploadHistory(history);
 
         setMessage(
           result.preview
@@ -1464,45 +1303,7 @@ export function PayrollClient({
     });
   }
 
-  function handleDeleteUpload(item: PayrollUploadHistoryItem) {
-    const confirmed = window.confirm(
-      `Delete ${item.category} payroll for ${item.periodLabel}?\n\nThis removes the saved payslips for that period. Re-upload the Excel workbook to restore or update it.`
-    );
-    if (!confirmed) return;
-
-    setLoadingPeriod(true);
-    setMessage(null);
-
-    startTransition(async () => {
-      try {
-        const result = await deletePayrollUpload(item.id);
-        if (result.error) {
-          setMessage(result.error);
-          return;
-        }
-
-        const history = await getPayrollUploadHistory();
-        setUploadHistory(history);
-
-        if (result.periodKey && result.category) {
-          const refreshed = await getPayrollForPeriod(
-            result.category,
-            result.periodKey
-          );
-          applyPeriodResult(result.category, refreshed);
-        }
-
-        setMessage(
-          `Deleted ${item.category} payroll for ${item.periodLabel}. Upload the workbook again anytime.`
-        );
-      } finally {
-        setLoadingPeriod(false);
-      }
-    });
-  }
-
   function handleExportPayroll() {
-    if (isUploadsTab) return;
     const csv = buildPayrollCsv({
       entries: activeEntries,
       employees,
@@ -1537,60 +1338,56 @@ export function PayrollClient({
           </p>
           <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Payroll</h1>
           <p className="mt-1 max-w-xl text-sm text-sbc-gray">
-            Upload completed Excel payroll, save it for history, then print or export
-            from Construction / Admin.
+            Upload Excel payroll for this session, then print or export. Refreshing
+            the page clears the table so you upload again.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {!isUploadsTab && (
-            <>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={isBusy}
-                onClick={() => loadPeriod(-1)}
-              >
-                <ChevronLeftIcon />
-                Prev
-              </Button>
-              <span className="min-w-[140px] text-center text-sm font-medium text-sbc-black">
-                {activePeriod.label}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={isBusy}
-                onClick={() => loadPeriod(1)}
-              >
-                Next
-                <ChevronRightIcon />
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={isBusy}
-                onClick={jumpToCurrentPeriod}
-              >
-                <CalendarIcon />
-                {usesWeeklyPayroll(dataTab) ? "This Week" : "Current"}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                disabled={isBusy || uploading}
-                onClick={() => {
-                  fileInputRef.current?.click();
-                }}
-              >
-                <UploadIcon />
-                {uploading ? "Uploading…" : "Upload Excel"}
-              </Button>
-            </>
-          )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={isBusy}
+            onClick={() => loadPeriod(-1)}
+          >
+            <ChevronLeftIcon />
+            Prev
+          </Button>
+          <span className="min-w-[140px] text-center text-sm font-medium text-sbc-black">
+            {activePeriod.label}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={isBusy}
+            onClick={() => loadPeriod(1)}
+          >
+            Next
+            <ChevronRightIcon />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={isBusy}
+            onClick={jumpToCurrentPeriod}
+          >
+            <CalendarIcon />
+            {usesWeeklyPayroll(dataTab) ? "This Week" : "Current"}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={isBusy || uploading}
+            onClick={() => {
+              fileInputRef.current?.click();
+            }}
+          >
+            <UploadIcon />
+            {uploading ? "Uploading…" : "Upload Excel"}
+          </Button>
           <input
             ref={fileInputRef}
             type="file"
@@ -1603,17 +1400,11 @@ export function PayrollClient({
 
       <p className="mb-4 rounded-lg border border-sbc-gold/25 bg-sbc-gold/5 px-4 py-3 text-sm text-sbc-gray">
         <span className="font-semibold text-sbc-black">
-          {isUploadsTab
-            ? "Uploads · "
-            : activeTab === "admin"
-              ? "Admin · "
-              : "Construction · "}
+          {activeTab === "admin" ? "Admin · " : "Construction · "}
         </span>
-        {isUploadsTab
-          ? "Open or delete saved weeks/cutoffs. Re-upload the Construction or Admin workbook to refresh all periods in that file."
-          : activeTab === "admin"
-            ? "Upload one Admin Excel workbook. All cutoffs in Payroll Computation are imported (overwrites matching cutoffs)."
-            : "Upload one Construction Excel workbook. Each sheet tab (e.g. 7.3.26 → July 3, 2026) is one Mon–Sun week."}
+        {activeTab === "admin"
+          ? "Upload one Admin Excel workbook. All cutoffs in Payroll Computation are imported for this session."
+          : "Upload one Construction Excel workbook. Each sheet tab (e.g. 7.3.26 → July 3, 2026) is one Mon–Sun week."}
       </p>
 
       {message && (
@@ -1639,9 +1430,6 @@ export function PayrollClient({
                 disabled={isBusy}
                 onClick={() => {
                   setActiveTab(tab.id);
-                  if (tab.id === "construction" || tab.id === "admin") {
-                    setLastPayrollTab(tab.id);
-                  }
                   resetForm();
                   setMessage(null);
                 }}
@@ -1667,54 +1455,38 @@ export function PayrollClient({
         </div>
 
         <div className="rounded-b-lg rounded-tr-lg border border-sbc-gray-light bg-sbc-white p-4 sm:p-5">
-          {isUploadsTab ? (
-            <UploadsPanel
-              uploads={uploadHistory}
-              busy={isBusy}
-              filter={uploadsFilter}
-              onFilterChange={setUploadsFilter}
-              onOpen={(item) => {
-                const tab = item.category === "admin" ? "admin" : "construction";
-                loadPeriodByKey(item.periodKey, tab);
-              }}
-              onDelete={handleDeleteUpload}
-            />
-          ) : (
-            <>
-              <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={activeEntries.filter((e) => e.netPay > 0).length === 0}
-                  onClick={handleExportPayroll}
-                >
-                  <ExportIcon />
-                  Export CSV
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={activeEntries.filter((e) => e.netPay > 0).length === 0}
-                  onClick={() => window.print()}
-                >
-                  <PrintIcon />
-                  Print Slips
-                </Button>
-              </div>
-              <PayrollTable
-                entries={activeEntries}
-                category={dataTab}
-                period={activePeriod}
-                pendingId={pendingId}
-                sort={sort}
-                disbursementMethods={disbursementMethods}
-                onToggleSort={toggleSort}
-                onInlineUpdate={handleInlineUpdate}
-              />
-            </>
-          )}
+          <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={activeEntries.filter((e) => e.netPay > 0).length === 0}
+              onClick={handleExportPayroll}
+            >
+              <ExportIcon />
+              Export CSV
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={activeEntries.filter((e) => e.netPay > 0).length === 0}
+              onClick={() => window.print()}
+            >
+              <PrintIcon />
+              Print Slips
+            </Button>
+          </div>
+          <PayrollTable
+            entries={activeEntries}
+            category={dataTab}
+            period={activePeriod}
+            pendingId={pendingId}
+            sort={sort}
+            disbursementMethods={disbursementMethods}
+            onToggleSort={toggleSort}
+            onInlineUpdate={handleInlineUpdate}
+          />
         </div>
       </div>
       </div>
