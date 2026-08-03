@@ -1,6 +1,7 @@
 import type { Employee, PayrollEntry } from "@/lib/mvp-data";
 import type { PayrollAdjustment } from "@/lib/payroll-adjustments";
 import type { PayrollPeriod, PayrollTab } from "@/lib/payroll-periods";
+import { formatDateISO, parseDateISO } from "@/lib/attendance";
 import {
   getDeductionAmount,
   resolveEntryDeductionBreakdown,
@@ -45,6 +46,7 @@ export function buildPayrollCsv(input: {
     csvRow(["Period", period.label]),
     csvRow(["Period Start", period.periodStart]),
     csvRow(["Period End", period.periodEnd]),
+    csvRow(["Upload Date", getPayrollUploadDate(category, period)]),
     csvRow(["Process Date", period.processDate]),
     "",
     csvRow([
@@ -150,10 +152,32 @@ export function buildPayrollCsv(input: {
   return `\uFEFF${rows.join("\r\n")}\r\n`;
 }
 
+/**
+ * Date used when exporting/uploading payroll for a period:
+ * - Construction (weekly): Friday of that pay period
+ * - Admin / OJT (semi-monthly): 15th or last day of the month
+ */
+export function getPayrollUploadDate(
+  category: PayrollTab,
+  period: PayrollPeriod
+): string {
+  if (period.cadence === "weekly" || category === "construction") {
+    const start = parseDateISO(period.periodStart);
+    const end = parseDateISO(period.periodEnd);
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      if (cursor.getDay() === 5) return formatDateISO(cursor);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return period.periodEnd;
+  }
+  return period.processDate;
+}
+
 export function payrollExportFilename(
   category: PayrollTab,
   period: PayrollPeriod
 ): string {
-  const safeKey = period.key.replace(/[^a-z0-9-]+/gi, "-");
-  return `steer-builders-payroll-${category}-${safeKey}.csv`;
+  const uploadDate = getPayrollUploadDate(category, period);
+  return `steer-builders-payroll-${category}-${uploadDate}.csv`;
 }

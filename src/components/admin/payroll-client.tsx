@@ -50,6 +50,7 @@ import { usesWeeklyPayroll } from "@/lib/employee-categories";
 import { calculatePayrollAmounts } from "@/lib/payroll-calculations";
 import {
   buildPayrollCsv,
+  getPayrollUploadDate,
   payrollExportFilename,
 } from "@/lib/payroll-export";
 import { radii } from "@/lib/design-tokens";
@@ -635,7 +636,7 @@ function PayrollTable({
             {sortedEntries.length === 0 ? (
               <TableEmpty
                 colSpan={columnCount}
-                message={`No payable ${category} payroll for this period yet (net pay must be greater than 0). Upload an Excel file to load payslips.`}
+                message={`No payable ${category} payroll for this period yet (net pay must be greater than 0). Upload a payroll file to load payslips.`}
               />
             ) : (
               sortedEntries.map((entry) => {
@@ -1314,6 +1315,7 @@ export function PayrollClient({
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
+    const uploadDate = getPayrollUploadDate(dataTab, activePeriod);
 
     link.href = url;
     link.download = payrollExportFilename(dataTab, activePeriod);
@@ -1322,7 +1324,7 @@ export function PayrollClient({
     link.remove();
     URL.revokeObjectURL(url);
     setMessage(
-      `${activeMeta.label} payroll for ${activePeriod.label} exported successfully.`
+      `${activeMeta.label} payroll for ${activePeriod.label} exported (${uploadDate}).`
     );
   }
 
@@ -1338,8 +1340,8 @@ export function PayrollClient({
           </p>
           <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Payroll</h1>
           <p className="mt-1 max-w-xl text-sm text-sbc-gray">
-            Upload Excel payroll for this session, then print or export. Refreshing
-            the page clears the table so you upload again.
+            Upload payroll for this session, then print or export. Refreshing the
+            page clears the table so you upload again.
           </p>
         </div>
 
@@ -1386,7 +1388,7 @@ export function PayrollClient({
             }}
           >
             <UploadIcon />
-            {uploading ? "Uploading…" : "Upload Excel"}
+            {uploading ? "Uploading…" : "Upload payroll"}
           </Button>
           <input
             ref={fileInputRef}
@@ -1403,8 +1405,8 @@ export function PayrollClient({
           {activeTab === "admin" ? "Admin · " : "Construction · "}
         </span>
         {activeTab === "admin"
-          ? "Upload one Admin Excel workbook. All cutoffs in Payroll Computation are imported for this session."
-          : "Upload one Construction Excel workbook. Each sheet tab (e.g. 7.3.26 → July 3, 2026) is one Mon–Sun week."}
+          ? "Upload one Admin payroll workbook. Exports use the 15th or month-end for that cutoff."
+          : "Upload one Construction payroll workbook. Exports use that week’s Friday date."}
       </p>
 
       {message && (
