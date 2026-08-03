@@ -6,6 +6,7 @@ import {
   getDeductionAmount,
   resolveEntryDeductionBreakdown,
 } from "@/lib/deduction-lines";
+import { adminEmploymentStatusFromRemarks } from "@/lib/admin-payroll-excel-import";
 import { payrollTabMeta } from "@/lib/payroll-periods";
 
 type CsvCell = string | number;
@@ -106,7 +107,9 @@ export function buildPayrollCsv(input: {
         ...(includeDisbursementColumns ? [entry.disbursement] : []),
         entry.remarks,
         ...(includeDisbursementColumns ? [entry.chargedTo] : []),
-        entry.status,
+        includeDisbursementColumns
+          ? entry.status
+          : adminEmploymentStatusFromRemarks(entry.remarks) || entry.status,
       ])
     );
   }

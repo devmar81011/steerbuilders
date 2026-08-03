@@ -24,6 +24,7 @@ import {
   importConstructionPayrollExcel,
 } from "@/lib/actions/payroll-import";
 import {
+  adminEmploymentStatusFromRemarks,
   parseAdminPayslipMeta,
 } from "@/lib/admin-payroll-excel-import";
 import { formatCurrency, type Employee, type PayrollEntry } from "@/lib/mvp-data";
@@ -343,6 +344,10 @@ function PayrollPrintSheet({
         >
           {pageEntries.map((entry) => {
             const meta = parseAdminPayslipMeta(entry.remarks);
+            const employmentStatus =
+              category === "admin"
+                ? adminEmploymentStatusFromRemarks(entry.remarks)
+                : "";
             const basicPay = meta?.basicPay || entry.regularPay;
             const leavePay = meta?.leavePay ?? entry.additionalPay;
             const sss = meta?.sss ?? 0;
@@ -365,8 +370,17 @@ function PayrollPrintSheet({
                 <dl className="payroll-print-admin-meta">
                   <div>
                     <dt>Employee Name</dt>
-                    <dd>{entry.employeeName}</dd>
+                    <dd>
+                      {entry.employeeName}
+                      {employmentStatus ? ` · ${employmentStatus}` : ""}
+                    </dd>
                   </div>
+                  {employmentStatus ? (
+                    <div>
+                      <dt>Status</dt>
+                      <dd>{employmentStatus}</dd>
+                    </div>
+                  ) : null}
                   <div>
                     <dt>Pay Period</dt>
                     <dd>{period.label}</dd>
@@ -532,7 +546,9 @@ function PayrollTable({
   ) => void;
 }) {
   const showDisbursementColumns = category === "construction";
-  const columnCount = showDisbursementColumns ? 16 : 14;
+  const showEmploymentStatus = category === "admin";
+  const columnCount =
+    (showDisbursementColumns ? 16 : 14) + (showEmploymentStatus ? 1 : 0);
 
   const payableEntries = useMemo(
     () => entries.filter((entry) => entry.netPay > 0),
@@ -592,6 +608,7 @@ function PayrollTable({
               >
                 Employee
               </SortableTableHead>
+              {showEmploymentStatus ? <TableHead>Status</TableHead> : null}
               <TableHead>Site Assignment</TableHead>
               <TableHead align="right">Daily Rate</TableHead>
               <TableHead>Designation</TableHead>
@@ -651,12 +668,25 @@ function PayrollTable({
                     [...disbursementMethods, entry.disbursement].filter(Boolean)
                   )
                 );
+                const employmentStatus = showEmploymentStatus
+                  ? adminEmploymentStatusFromRemarks(entry.remarks)
+                  : "";
 
                 return (
                   <TableRow key={entry.id}>
                     <TablePrimaryCell sticky>
-                      {entry.employeeName}
+                      <span className="inline-flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                        <span>{entry.employeeName}</span>
+                        {employmentStatus ? (
+                          <span className="text-xs font-semibold uppercase tracking-wide text-sbc-gold-dark">
+                            {employmentStatus}
+                          </span>
+                        ) : null}
+                      </span>
                     </TablePrimaryCell>
+                    {showEmploymentStatus ? (
+                      <TableCell>{employmentStatus || "—"}</TableCell>
+                    ) : null}
                     <TableCell>{entry.siteAssignment || "—"}</TableCell>
                     <TableCell align="right" numeric>
                       {formatCurrency(entry.dailyRate)}

@@ -48,9 +48,21 @@ export type AdminPayslipMeta = {
   leavePay: number;
   basicPay: number;
   periodCode: string;
+  /** Excel Status column — typically FTE or Intern */
+  employmentStatus?: string;
 };
 
 const META_PREFIX = "__ADMIN_META__:";
+
+/** Normalize Excel Status values to FTE / Intern when possible. */
+export function normalizeAdminEmploymentStatus(raw: string): string {
+  const value = raw.trim();
+  if (!value) return "";
+  const lower = value.toLowerCase();
+  if (/\bintern\b|\bojt\b/.test(lower)) return "Intern";
+  if (/\bfte\b|full[\s-]?time/.test(lower)) return "FTE";
+  return value;
+}
 
 export function encodeAdminPayslipMeta(meta: AdminPayslipMeta): string {
   return `${META_PREFIX}${JSON.stringify(meta)}`;
@@ -65,6 +77,13 @@ export function parseAdminPayslipMeta(
   } catch {
     return null;
   }
+}
+
+export function adminEmploymentStatusFromRemarks(
+  remarks: string | null | undefined
+): string {
+  const meta = parseAdminPayslipMeta(remarks);
+  return meta?.employmentStatus?.trim() || "";
 }
 
 export function periodFromAdminCode(code: string): PayrollPeriod | null {
@@ -245,6 +264,7 @@ export function adminRowToPayslipAmounts(row: ImportedAdminPayrollRow) {
       leavePay: row.leavePay,
       basicPay: row.basicPay,
       periodCode: row.periodCode,
+      employmentStatus: normalizeAdminEmploymentStatus(row.status),
     } satisfies AdminPayslipMeta,
   };
 }
