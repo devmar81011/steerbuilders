@@ -7,11 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import {
-  TableEditButton,
-  TableProcessButton,
-  TableRowActions,
-} from "@/components/admin/table-row-actions";
-import {
   Table,
   TableBody,
   TableCell,
@@ -28,6 +23,7 @@ import {
   getPayrollUploadHistory,
   importAdminPayrollExcel,
   importConstructionPayrollExcel,
+  deletePayrollUpload,
   type PayrollUploadHistoryItem,
 } from "@/lib/actions/payroll-import";
 import {
@@ -60,6 +56,7 @@ import {
   payrollExportFilename,
 } from "@/lib/payroll-export";
 import { radii } from "@/lib/design-tokens";
+import { IconButton, TrashIcon } from "@/components/ui/icon-button";
 
 type Props = {
   initialConstructionEntries: PayrollEntry[];
@@ -135,11 +132,12 @@ type PayrollSortKey =
   | "hours"
   | "grossPay"
   | "deductions"
-  | "netPay"
-  | "status";
+  | "netPay";
+
+type PayrollViewTab = PayrollTab | "uploads";
 
 const tabs: {
-  id: PayrollTab;
+  id: PayrollViewTab;
   label: string;
   hint: string;
 }[] = [
@@ -153,7 +151,17 @@ const tabs: {
     label: "Admin",
     hint: "Semi-monthly",
   },
+  {
+    id: "uploads",
+    label: "Uploads",
+    hint: "Manage files",
+  },
 ];
+
+function displayRemarks(remarks: string): string {
+  if (parseAdminPayslipMeta(remarks)) return "—";
+  return remarks || "—";
+}
 
 function UploadIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
@@ -263,11 +271,6 @@ function CalendarIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
       <path d="M8 3V7M16 3V7M4 10H20" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
     </svg>
   );
-}
-
-function displayRemarks(remarks: string): string {
-  if (parseAdminPayslipMeta(remarks)) return "—";
-  return remarks || "—";
 }
 
 function chunkEntries(entries: PayrollEntry[], size: number): PayrollEntry[][] {
@@ -610,34 +613,26 @@ function PayrollTable({
   entries,
   category,
   period,
-  editingId,
-  form,
   pendingId,
   sort,
   disbursementMethods,
   onToggleSort,
-  onStartEdit,
-  onProcess,
   onInlineUpdate,
 }: {
   entries: PayrollEntry[];
   category: PayrollTab;
   period: PayrollPeriod;
-  editingId: string | null;
-  form: PayrollForm;
   pendingId: string | null;
   sort: ReturnType<typeof useTableSort<PayrollSortKey>>["sort"];
   disbursementMethods: string[];
   onToggleSort: (key: PayrollSortKey) => void;
-  onStartEdit: (entry: PayrollEntry) => void;
-  onProcess: (id: string) => void;
   onInlineUpdate: (
     entry: PayrollEntry,
     field: InlinePayrollField,
     value: string
   ) => void;
 }) {
-  const columnCount = 18;
+  const columnCount = 16;
 
   const sortedEntries = useMemo(
     () => sortRows(entries, sort, (row, key) => row[key]),
@@ -679,7 +674,7 @@ function PayrollTable({
         </div>
       </div>
 
-      <TableShell minWidth="2700px" scrollable className="rounded-none border-0">
+      <TableShell minWidth="2400px" scrollable className="rounded-none border-0">
         <Table>
           <TableHeader>
             <tr>
@@ -731,16 +726,6 @@ function PayrollTable({
               <TableHead>Disbursement</TableHead>
               <TableHead>Remarks</TableHead>
               <TableHead>Charged To</TableHead>
-              <SortableTableHead
-                sortKey="status"
-                align="right"
-                activeKey={sort.key}
-                direction={sort.direction}
-                onSort={(key) => onToggleSort(key as PayrollSortKey)}
-              >
-                Status
-              </SortableTableHead>
-              <TableHead align="right">Actions</TableHead>
             </tr>
           </TableHeader>
           <TableBody>
@@ -864,28 +849,6 @@ function PayrollTable({
                         }
                       />
                     </TableCell>
-                    <TableCell align="right">
-                      <span
-                        className={`text-xs font-semibold uppercase tracking-widest ${
-                          entry.status === "processed"
-                            ? "text-sbc-gold"
-                            : "text-sbc-gray"
-                        }`}
-                      >
-                        {entry.status}
-                      </span>
-                    </TableCell>
-                    <TableCell align="right">
-                      <TableRowActions>
-                        <TableEditButton onClick={() => onStartEdit(entry)} />
-                        {entry.status === "draft" && (
-                          <TableProcessButton
-                            onClick={() => onProcess(entry.id)}
-                            disabled={pendingId === entry.id}
-                          />
-                        )}
-                      </TableRowActions>
-                    </TableCell>
                   </TableRow>
                 );
               })
@@ -899,11 +862,165 @@ function PayrollTable({
           </span>
         </TableMeta>
       </TableShell>
-
-      {editingId && (
-        <p className="sr-only">Editing regular hours: {form.hours}</p>
-      )}
     </>
+  );
+}
+
+function formatUploadedAt(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function UploadsPanel({
+  uploads,
+  busy,
+  filter,
+  onFilterChange,
+  onOpen,
+  onDelete,
+  onReplace,
+}: {
+  uploads: PayrollUploadHistoryItem[];
+  busy: boolean;
+  filter: "all" | PayrollTab;
+  onFilterChange: (filter: "all" | PayrollTab) => void;
+  onOpen: (item: PayrollUploadHistoryItem) => void;
+  onDelete: (item: PayrollUploadHistoryItem) => void;
+  onReplace: (item: PayrollUploadHistoryItem) => void;
+}) {
+  const filtered =
+    filter === "all"
+      ? uploads
+      : uploads.filter((item) => item.category === filter);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
+            Saved uploads
+          </p>
+          <p className="mt-1 text-sm text-sbc-gray">
+            Open a period, replace a wrong file, or delete an upload.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {(
+            [
+              ["all", "All"],
+              ["construction", "Construction"],
+              ["admin", "Admin"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              disabled={busy}
+              onClick={() => onFilterChange(id)}
+              className={`rounded-md px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] transition-colors ${
+                filter === id
+                  ? "bg-sbc-gold/15 text-sbc-gold-dark"
+                  : "text-sbc-gray hover:bg-sbc-off-white hover:text-sbc-black"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <TableShell minWidth="900px" scrollable className="rounded-none border-0">
+        <Table>
+          <TableHeader>
+            <tr>
+              <TableHead>Type</TableHead>
+              <TableHead>Period</TableHead>
+              <TableHead>File</TableHead>
+              <TableHead align="right">Rows</TableHead>
+              <TableHead>Uploaded</TableHead>
+              <TableHead align="right">Actions</TableHead>
+            </tr>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableEmpty
+                colSpan={6}
+                message="No uploads yet. Use Upload Excel on Construction or Admin first."
+              />
+            ) : (
+              filtered.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>
+                    <span className="text-xs font-semibold uppercase tracking-widest text-sbc-gold-dark">
+                      {item.category}
+                    </span>
+                  </TableCell>
+                  <TablePrimaryCell>{item.periodLabel}</TablePrimaryCell>
+                  <TableCell>
+                    <span className="block max-w-[220px] truncate" title={item.filename}>
+                      {item.filename}
+                    </span>
+                    {item.sheetName ? (
+                      <span className="mt-0.5 block text-[11px] text-sbc-gray">
+                        {item.sheetName}
+                      </span>
+                    ) : null}
+                  </TableCell>
+                  <TableCell align="right" numeric>
+                    {item.rowCount}
+                  </TableCell>
+                  <TableCell>{formatUploadedAt(item.uploadedAt)}</TableCell>
+                  <TableCell align="right">
+                    <div className="flex flex-wrap items-center justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => onOpen(item)}
+                      >
+                        Open
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => onReplace(item)}
+                      >
+                        <UploadIcon />
+                        Replace
+                      </Button>
+                      <IconButton
+                        label={`Delete ${item.periodLabel}`}
+                        variant="danger"
+                        size="sm"
+                        disabled={busy}
+                        onClick={() => onDelete(item)}
+                      >
+                        <TrashIcon />
+                      </IconButton>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+        <TableMeta>
+          <span>
+            {filtered.length} saved upload{filtered.length === 1 ? "" : "s"}
+          </span>
+        </TableMeta>
+      </TableShell>
+    </div>
   );
 }
 
@@ -923,7 +1040,10 @@ export function PayrollClient({
   otPayPercent,
   initialUploadHistory,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<PayrollTab>("construction");
+  const [activeTab, setActiveTab] = useState<PayrollViewTab>("construction");
+  const [lastPayrollTab, setLastPayrollTab] =
+    useState<PayrollTab>("construction");
+  const [uploadsFilter, setUploadsFilter] = useState<"all" | PayrollTab>("all");
   // Upload-first: show only saved Excel payslips — do not invent rows from attendance.
   const [constructionEntries, setConstructionEntries] = useState(
     initialConstructionEntries
@@ -959,28 +1079,39 @@ export function PayrollClient({
   const [uploading, setUploading] = useState(false);
   const [uploadHistory, setUploadHistory] = useState(initialUploadHistory);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const replaceCategoryRef = useRef<PayrollTab | null>(null);
   const [pending, startTransition] = useTransition();
   const { sort, toggleSort } = useTableSort<PayrollSortKey>({
     defaultKey: "employeeName",
   });
 
-  const activeMeta = payrollTabMeta[activeTab];
+  const isUploadsTab = activeTab === "uploads";
+  const dataTab: PayrollTab =
+    activeTab === "admin"
+      ? "admin"
+      : activeTab === "ojt"
+        ? "ojt"
+        : lastPayrollTab === "admin"
+          ? "admin"
+          : "construction";
+
+  const activeMeta = payrollTabMeta[dataTab];
   const activePeriod =
-    activeTab === "construction"
+    dataTab === "construction"
       ? constructionPeriod
-      : activeTab === "admin"
+      : dataTab === "admin"
         ? adminPeriod
         : ojtPeriod;
   const activeEntries =
-    activeTab === "construction"
+    dataTab === "construction"
       ? constructionEntries
-      : activeTab === "admin"
+      : dataTab === "admin"
         ? adminEntries
         : ojtEntries;
   const setActiveEntries =
-    activeTab === "construction"
+    dataTab === "construction"
       ? setConstructionEntries
-      : activeTab === "admin"
+      : dataTab === "admin"
         ? setAdminEntries
         : setOjtEntries;
   const activeDeductionModules = useMemo(
@@ -1112,16 +1243,17 @@ export function PayrollClient({
   }
 
   function loadPeriod(direction: -1 | 1) {
+    if (isUploadsTab) return;
     setLoadingPeriod(true);
     setMessage(null);
     resetForm();
 
-    const nextPeriod = shiftPayrollPeriod(activeTab, activePeriod, direction);
+    const nextPeriod = shiftPayrollPeriod(dataTab, activePeriod, direction);
 
     startTransition(async () => {
       try {
-        const result = await getPayrollForPeriod(activeTab, nextPeriod.key);
-        applyPeriodResult(activeTab, result);
+        const result = await getPayrollForPeriod(dataTab, nextPeriod.key);
+        applyPeriodResult(dataTab, result);
       } finally {
         setLoadingPeriod(false);
       }
@@ -1129,16 +1261,17 @@ export function PayrollClient({
   }
 
   function jumpToCurrentPeriod() {
+    if (isUploadsTab) return;
     setLoadingPeriod(true);
     setMessage(null);
     resetForm();
 
-    const current = getCurrentPayrollPeriod(activeTab);
+    const current = getCurrentPayrollPeriod(dataTab);
 
     startTransition(async () => {
       try {
-        const result = await getPayrollForPeriod(activeTab, current.key);
-        applyPeriodResult(activeTab, result);
+        const result = await getPayrollForPeriod(dataTab, current.key);
+        applyPeriodResult(dataTab, result);
       } finally {
         setLoadingPeriod(false);
       }
@@ -1343,7 +1476,7 @@ export function PayrollClient({
     });
   }
 
-  function loadPeriodByKey(periodKey: string, tab: PayrollTab = activeTab) {
+  function loadPeriodByKey(periodKey: string, tab: PayrollTab) {
     setLoadingPeriod(true);
     setMessage(null);
     resetForm();
@@ -1352,6 +1485,7 @@ export function PayrollClient({
       try {
         const result = await getPayrollForPeriod(tab, periodKey);
         applyPeriodResult(tab, result);
+        setLastPayrollTab(tab);
         setActiveTab(tab);
       } finally {
         setLoadingPeriod(false);
@@ -1363,7 +1497,18 @@ export function PayrollClient({
     if (!file) return;
     setUploading(true);
     setMessage(null);
-    const uploadTab = activeTab === "admin" ? "admin" : "construction";
+    const uploadTab =
+      replaceCategoryRef.current ??
+      (activeTab === "admin"
+        ? "admin"
+        : activeTab === "uploads"
+          ? lastPayrollTab === "admin"
+            ? "admin"
+            : "construction"
+          : dataTab === "admin"
+            ? "admin"
+            : "construction");
+    replaceCategoryRef.current = null;
 
     startTransition(async () => {
       try {
@@ -1384,10 +1529,12 @@ export function PayrollClient({
           if (uploadTab === "admin") {
             setAdminEntries(result.entries);
             setAdminPeriod(period);
+            setLastPayrollTab("admin");
             setActiveTab("admin");
           } else {
             setConstructionEntries(result.entries);
             setConstructionPeriod(period);
+            setLastPayrollTab("construction");
             setActiveTab("construction");
           }
         }
@@ -1407,12 +1554,60 @@ export function PayrollClient({
     });
   }
 
+  function handleDeleteUpload(item: PayrollUploadHistoryItem) {
+    const confirmed = window.confirm(
+      `Delete ${item.category} payroll for ${item.periodLabel}?\n\nThis removes the saved payslips so you can upload the correct Excel file.`
+    );
+    if (!confirmed) return;
+
+    setLoadingPeriod(true);
+    setMessage(null);
+
+    startTransition(async () => {
+      try {
+        const result = await deletePayrollUpload(item.id);
+        if (result.error) {
+          setMessage(result.error);
+          return;
+        }
+
+        const history = await getPayrollUploadHistory();
+        setUploadHistory(history);
+
+        if (result.periodKey && result.category) {
+          const refreshed = await getPayrollForPeriod(
+            result.category,
+            result.periodKey
+          );
+          applyPeriodResult(result.category, refreshed);
+        }
+
+        setMessage(
+          `Deleted ${item.category} payroll for ${item.periodLabel}. Upload the correct Excel anytime.`
+        );
+      } finally {
+        setLoadingPeriod(false);
+      }
+    });
+  }
+
+  function handleReplaceUpload(item: PayrollUploadHistoryItem) {
+    const category = item.category === "admin" ? "admin" : "construction";
+    replaceCategoryRef.current = category;
+    setLastPayrollTab(category);
+    setMessage(
+      `Choose a replacement ${category} Excel for ${item.periodLabel}. Existing rows for that period will be overwritten.`
+    );
+    fileInputRef.current?.click();
+  }
+
   function handleExportPayroll() {
+    if (isUploadsTab) return;
     const csv = buildPayrollCsv({
       entries: activeEntries,
       employees,
       payrollAdjustments,
-      category: activeTab,
+      category: dataTab,
       period: activePeriod,
     });
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -1420,7 +1615,7 @@ export function PayrollClient({
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = payrollExportFilename(activeTab, activePeriod);
+    link.download = payrollExportFilename(dataTab, activePeriod);
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -1431,15 +1626,6 @@ export function PayrollClient({
   }
 
   const isBusy = pending || loadingPeriod || uploading;
-  const filteredHistory = useMemo(
-    () =>
-      uploadHistory.filter((item) =>
-        activeTab === "admin"
-          ? item.category === "admin"
-          : item.category === "construction"
-      ),
-    [uploadHistory, activeTab]
-  );
 
   return (
     <>
@@ -1460,20 +1646,20 @@ export function PayrollClient({
             type="button"
             variant="ghost"
             size="sm"
-            disabled={isBusy}
+            disabled={isBusy || isUploadsTab}
             onClick={() => loadPeriod(-1)}
           >
             <ChevronLeftIcon />
             Prev
           </Button>
           <span className="min-w-[140px] text-center text-sm font-medium text-sbc-black">
-            {activePeriod.label}
+            {isUploadsTab ? "Uploads" : activePeriod.label}
           </span>
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            disabled={isBusy}
+            disabled={isBusy || isUploadsTab}
             onClick={() => loadPeriod(1)}
           >
             Next
@@ -1483,11 +1669,11 @@ export function PayrollClient({
             type="button"
             variant="ghost"
             size="sm"
-            disabled={isBusy}
+            disabled={isBusy || isUploadsTab}
             onClick={jumpToCurrentPeriod}
           >
             <CalendarIcon />
-            {usesWeeklyPayroll(activeTab) ? "This Week" : "Current"}
+            {usesWeeklyPayroll(dataTab) ? "This Week" : "Current"}
           </Button>
           <input
             ref={fileInputRef}
@@ -1499,8 +1685,11 @@ export function PayrollClient({
           <Button
             type="button"
             size="sm"
-            disabled={isBusy || uploading}
-            onClick={() => fileInputRef.current?.click()}
+            disabled={isBusy || uploading || isUploadsTab}
+            onClick={() => {
+              replaceCategoryRef.current = null;
+              fileInputRef.current?.click();
+            }}
           >
             <UploadIcon />
             {uploading ? "Uploading…" : "Upload Excel"}
@@ -1509,7 +1698,7 @@ export function PayrollClient({
             type="button"
             variant="ghost"
             size="sm"
-            disabled={activeEntries.length === 0}
+            disabled={isUploadsTab || activeEntries.length === 0}
             onClick={handleExportPayroll}
           >
             <ExportIcon />
@@ -1519,7 +1708,7 @@ export function PayrollClient({
             type="button"
             variant="ghost"
             size="sm"
-            disabled={activeEntries.length === 0}
+            disabled={isUploadsTab || activeEntries.length === 0}
             onClick={() => window.print()}
           >
             <PrintIcon />
@@ -1530,205 +1719,23 @@ export function PayrollClient({
 
       <p className="mb-4 rounded-lg border border-sbc-gold/25 bg-sbc-gold/5 px-4 py-3 text-sm text-sbc-gray">
         <span className="font-semibold text-sbc-black">
-          {activeTab === "admin" ? "Admin · " : "Construction · "}
+          {isUploadsTab
+            ? "Uploads · "
+            : activeTab === "admin"
+              ? "Admin · "
+              : "Construction · "}
         </span>
-        {activeTab === "admin"
-          ? "Upload the Admin workbook (Payroll Computation). Print uses the Excel Payslip layout."
-          : "Upload the Operations weekly Excel. The table stays empty until you upload."}
+        {isUploadsTab
+          ? "Review saved Excel imports. Open a period, replace a wrong file, or delete it and upload again."
+          : activeTab === "admin"
+            ? "Upload the Admin workbook (Payroll Computation). Print uses the Excel Payslip layout."
+            : "Upload the Operations weekly Excel. The table stays empty until you upload."}
       </p>
-
-      {filteredHistory.length > 0 && (
-        <div className="mb-4 rounded-lg border border-sbc-gray-light bg-sbc-white p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-widest text-sbc-gold">
-                Upload history
-              </p>
-              <p className="mt-1 text-sm text-sbc-gray">
-                Open a previously uploaded{" "}
-                {activeTab === "admin" ? "admin cutoff" : "construction week"}
-              </p>
-            </div>
-            <div className="min-w-[260px]">
-              <Select
-                label="Saved uploads"
-                size="sm"
-                value=""
-                onChange={(e) => {
-                  const periodKey = e.target.value;
-                  if (periodKey) loadPeriodByKey(periodKey, activeTab);
-                }}
-              >
-                <option value="">
-                  {activeTab === "admin"
-                    ? "Select a saved cutoff…"
-                    : "Select a saved week…"}
-                </option>
-                {filteredHistory.map((item) => (
-                  <option key={item.id} value={item.periodKey}>
-                    {item.periodLabel} · {item.rowCount} rows · {item.filename}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-        </div>
-      )}
 
       {message && (
         <p className="mb-4 rounded-lg border border-sbc-gold/30 bg-sbc-gold/10 px-4 py-3 text-sm font-semibold text-sbc-black">
           {message}
         </p>
-      )}
-
-      {editingId && (
-        <form
-          onSubmit={handleSubmit}
-          className="mb-6 grid gap-4 rounded-lg border border-sbc-gray-light bg-sbc-white p-6 md:grid-cols-2"
-        >
-          <p className="md:col-span-2 text-xs font-medium uppercase tracking-widest text-sbc-gold">
-            Edit Payroll Entry
-          </p>
-          <div className="md:col-span-2 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {[
-              ["Daily Rate", formatCurrency(editingEntry?.dailyRate ?? 0)],
-              ["Hourly Rate", formatCurrency(editingEntry?.hourlyRate ?? 0)],
-              ["Regular Pay", formatCurrency(amountPreview.regularPay)],
-              ["OT Pay", formatCurrency(amountPreview.overtimePay)],
-              ["Gross Pay", formatCurrency(amountPreview.grossPay)],
-              ["Net Pay", formatCurrency(amountPreview.netPay)],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                className="rounded-lg border border-sbc-gray-light bg-sbc-off-white px-3 py-2"
-              >
-                <p className="text-[10px] font-medium uppercase tracking-widest text-sbc-gray">
-                  {label}
-                </p>
-                <p className="mt-1 text-sm font-semibold text-sbc-black">{value}</p>
-              </div>
-            ))}
-          </div>
-          <Input
-            label="Regular Hours"
-            size="sm"
-            type="number"
-            min="0"
-            step="0.25"
-            value={form.hours}
-            onChange={(e) => updateHours("hours", e.target.value)}
-            required
-          />
-          <Input
-            label="OT Hours"
-            size="sm"
-            type="number"
-            min="0"
-            step="0.25"
-            value={form.overtimeHours}
-            onChange={(e) => updateHours("overtimeHours", e.target.value)}
-            required
-          />
-          <Input
-            label="Cash Advance (PHP)"
-            size="sm"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.cashAdvance}
-            onChange={(e) => setForm({ ...form, cashAdvance: e.target.value })}
-            required
-          />
-          <p className="md:col-span-2 -mt-2 text-xs text-sbc-gray">
-            Deducted from this pay period&apos;s net (this week for construction,
-            this semi-monthly cutoff for admin).
-          </p>
-          <Input
-            label="Additional Pay (PHP)"
-            size="sm"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.additionalPay}
-            onChange={(e) => setForm({ ...form, additionalPay: e.target.value })}
-            required
-          />
-          <Input
-            label="Site Assignment"
-            size="sm"
-            value={form.siteAssignment}
-            onChange={(e) => setForm({ ...form, siteAssignment: e.target.value })}
-          />
-          <Select
-            label="Disbursement"
-            size="sm"
-            value={form.disbursement}
-            onChange={(e) => setForm({ ...form, disbursement: e.target.value })}
-          >
-            <option value="">Select disbursement method</option>
-            {Array.from(
-              new Set(
-                [...disbursementMethods, form.disbursement].filter(Boolean)
-              )
-            ).map((method) => (
-              <option key={method} value={method}>
-                {method}
-              </option>
-            ))}
-          </Select>
-          <Input
-            label="Remarks"
-            size="sm"
-            value={form.remarks}
-            onChange={(e) => setForm({ ...form, remarks: e.target.value })}
-          />
-          <Input
-            label="Charged To"
-            size="sm"
-            value={form.chargedTo}
-            onChange={(e) => setForm({ ...form, chargedTo: e.target.value })}
-          />
-          {activeDeductionModules.map((rule) => (
-            <Input
-              key={rule.code}
-              label={`${rule.label} (PHP)`}
-              size="sm"
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.deductionLines[rule.code] ?? "0"}
-              onChange={(e) => updateDeductionLine(rule.code, e.target.value)}
-              required
-            />
-          ))}
-          <div className="flex flex-col gap-2">
-            <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
-              Total Deductions
-            </p>
-            <p className="rounded-lg border border-sbc-gray-light bg-sbc-off-white px-3 py-2 text-sm font-semibold text-sbc-black">
-              {formatCurrency(totalDeductionPreview)}
-            </p>
-          </div>
-          <Select
-            label="Status"
-            size="sm"
-            value={form.status}
-            onChange={(e) =>
-              setForm({ ...form, status: e.target.value as "draft" | "processed" })
-            }
-          >
-            <option value="draft">Draft</option>
-            <option value="processed">Processed</option>
-          </Select>
-          <div className="md:col-span-2 flex flex-wrap gap-3">
-            <Button type="submit" size="sm" disabled={pending}>
-              Update Entry
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={resetForm}>
-              Cancel
-            </Button>
-          </div>
-        </form>
       )}
 
       <div className="mb-0">
@@ -1748,6 +1755,9 @@ export function PayrollClient({
                 disabled={isBusy}
                 onClick={() => {
                   setActiveTab(tab.id);
+                  if (tab.id === "construction" || tab.id === "admin") {
+                    setLastPayrollTab(tab.id);
+                  }
                   resetForm();
                   setMessage(null);
                 }}
@@ -1773,27 +1783,38 @@ export function PayrollClient({
         </div>
 
         <div className="rounded-b-lg rounded-tr-lg border border-sbc-gray-light bg-sbc-white p-4 sm:p-5">
-          <PayrollTable
-            entries={activeEntries}
-            category={activeTab}
-            period={activePeriod}
-            editingId={editingId}
-            form={form}
-            pendingId={pendingId}
-            sort={sort}
-            disbursementMethods={disbursementMethods}
-            onToggleSort={toggleSort}
-            onStartEdit={startEdit}
-            onProcess={handleProcess}
-            onInlineUpdate={handleInlineUpdate}
-          />
+          {isUploadsTab ? (
+            <UploadsPanel
+              uploads={uploadHistory}
+              busy={isBusy}
+              filter={uploadsFilter}
+              onFilterChange={setUploadsFilter}
+              onOpen={(item) => {
+                const tab = item.category === "admin" ? "admin" : "construction";
+                loadPeriodByKey(item.periodKey, tab);
+              }}
+              onDelete={handleDeleteUpload}
+              onReplace={handleReplaceUpload}
+            />
+          ) : (
+            <PayrollTable
+              entries={activeEntries}
+              category={dataTab}
+              period={activePeriod}
+              pendingId={pendingId}
+              sort={sort}
+              disbursementMethods={disbursementMethods}
+              onToggleSort={toggleSort}
+              onInlineUpdate={handleInlineUpdate}
+            />
+          )}
         </div>
       </div>
       </div>
 
       <PayrollPrintSheet
         entries={activeEntries}
-        category={activeTab}
+        category={dataTab}
         period={activePeriod}
         payrollAdjustments={payrollAdjustments}
         employees={employees}

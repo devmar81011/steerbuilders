@@ -833,7 +833,7 @@ export async function getPayrollUploadHistory(
       .from("payroll_uploads")
       .select("*")
       .order("uploaded_at", { ascending: false })
-      .limit(24);
+      .limit(48);
 
     if (!error && data) {
       const mapped = data.map((row) => {
@@ -857,12 +857,158 @@ export async function getPayrollUploadHistory(
       return (category
         ? mapped.filter((item) => item.category === category)
         : mapped
-      ).slice(0, 12);
+      ).slice(0, 36);
     }
 
     const fallback = await historyFromPayrollRuns(supabase);
     return category ? fallback.filter((item) => item.category === category) : fallback;
   } catch {
     return [];
+  }
+}
+
+/**
+ * Remove a saved upload and its payslips for that category/period
+ * so a wrong Excel file can be deleted and re-uploaded.
+ */
+export async function deletePayrollUpload(uploadId: string): Promise<{
+  error?: string;
+  success?: boolean;
+  periodKey?: string;
+  category?: EmployeeCategory;
+}> {
+  await requireAdmin();
+
+  if (!isSupabaseConfigured()) {
+    return { error: "Database is not connected." };
+  }
+
+  try {
+    const supabase = await createClient();
+
+    let periodStart: string | undefined;
+    let periodEnd: string | undefined;
+    let periodKey: string | undefined;
+    let category: EmployeeCategory = "construction";
+    let payrollRunId: string | null = null;
+
+    const { data: uploadRow, error: uploadLookupError } = await supabase
+      .from("payroll_uploads")
+      .select("*")
+      .eq("id", uploadId)
+      .maybeSingle();
+
+    if (!uploadLookupError && uploadRow) {
+      periodStart = String(uploadRow.period_start);
+      periodEnd = String(uploadRow.period_end);
+      periodKey = String(uploadRow.period_key);
+      category = ((uploadRow.category as EmployeeCategory | undefined) ??
+        categoryFromPeriodKey(periodKey)) as EmployeeCategory;
+      payrollRunId = (uploadRow.payroll_run_id as string | null) ?? null;
+    } else {
+      // Fallback history items use payroll_run ids.
+      const { data: runRow, error: runError } = await supabase
+        .from("payroll_runs")
+        .select("id, period_start, period_end")
+        .eq("id", uploadId)
+        .maybeSingle();
+
+      if (runError || !runRow) {
+        return { error: "Upload record was not found." };
+      }
+
+      periodStart = String(runRow.period_start);
+      periodEnd = String(runRow.period_end);
+      payrollRunId = String(runRow.id);
+
+      const { data: slips } = await supabase
+        .from("payslips")
+        .select("id, employees(category)")
+        .eq("payroll_run_id", payrollRunId);
+      const categories = (slips ?? [])
+        .map((slip) => {
+          const employee = Array.isArray(slip.employees)
+            ? slip.employees[0]
+            : slip.employees;
+          return (employee as { category?: string } | null)?.category;
+        })
+        .filter((value): value is string => Boolean(value));
+      category =
+        categories.includes("admin") && !categories.includes("construction")
+          ? "admin"
+          : "construction";
+      periodKey =
+        category === "construction"
+          ? getWeeklyPayrollPeriod(periodStart).key
+          : (() => {
+              const start = new Date(`${periodStart}T00:00:00`);
+              const half = start.getDate() <= 15 ? 1 : 2;
+              return getSemiMonthlyPayrollPeriod(
+                start.getFullYear(),
+                start.getMonth() + 1,
+                half as 1 | 2
+              ).key;
+            })();
+    }
+
+    if (!periodStart || !periodEnd || !periodKey) {
+      return { error: "Upload period could not be resolved." };
+    }
+
+    const { data: runRows, error: runsError } = await supabase
+      .from("payroll_runs")
+      .select("id")
+      .eq("period_start", periodStart)
+      .eq("period_end", periodEnd);
+
+    if (runsError) return { error: runsError.message };
+
+    const runIds = (runRows ?? []).map((row) => String(row.id));
+    if (payrollRunId && !runIds.includes(payrollRunId)) {
+      runIds.push(payrollRunId);
+    }
+
+    if (runIds.length) {
+      const { data: payslips, error: payslipError } = await supabase
+        .from("payslips")
+        .select("id, employee_id, employees(category)")
+        .in("payroll_run_id", runIds);
+
+      if (payslipError) return { error: payslipError.message };
+
+      const idsToDelete = (payslips ?? [])
+        .filter((slip) => {
+          const employee = Array.isArray(slip.employees)
+            ? slip.employees[0]
+            : slip.employees;
+          return (
+            (employee as { category?: string } | null)?.category === category
+          );
+        })
+        .map((slip) => String(slip.id));
+
+      if (idsToDelete.length) {
+        const { error: deleteSlipsError } = await supabase
+          .from("payslips")
+          .delete()
+          .in("id", idsToDelete);
+        if (deleteSlipsError) return { error: deleteSlipsError.message };
+      }
+    }
+
+    await supabase.from("payroll_uploads").delete().eq("id", uploadId);
+    // Also clear any duplicate upload rows for same period/category.
+    await supabase
+      .from("payroll_uploads")
+      .delete()
+      .eq("period_key", periodKey)
+      .eq("category", category);
+
+    revalidatePath("/admin/payroll");
+    revalidatePath("/admin");
+
+    return { success: true, periodKey, category };
+  } catch {
+    return { error: "Could not delete that payroll upload." };
   }
 }
