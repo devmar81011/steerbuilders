@@ -630,8 +630,11 @@ function PayrollTable({
 }) {
   const showDisbursementColumns = category === "construction";
   const showEmploymentStatus = category === "admin";
+  const showAdminShareColumns = category === "admin";
   const columnCount =
-    (showDisbursementColumns ? 16 : 14) + (showEmploymentStatus ? 1 : 0);
+    (showDisbursementColumns ? 16 : 14) +
+    (showEmploymentStatus ? 1 : 0) +
+    (showAdminShareColumns ? 3 : 0);
 
   const payableEntries = useMemo(
     () => entries.filter((entry) => entry.netPay > 0),
@@ -718,6 +721,13 @@ function PayrollTable({
                 Gross
               </SortableTableHead>
               <TableHead align="right">Cash Advance</TableHead>
+              {showAdminShareColumns ? (
+                <>
+                  <TableHead align="right">SSS Cont</TableHead>
+                  <TableHead align="right">PHIC</TableHead>
+                  <TableHead align="right">HDMF Cont</TableHead>
+                </>
+              ) : null}
               <TableHead align="right">Additional Pay</TableHead>
               <SortableTableHead
                 sortKey="netPay"
@@ -754,18 +764,14 @@ function PayrollTable({
                 const employmentStatus = showEmploymentStatus
                   ? adminEmploymentStatusFromRemarks(entry.remarks)
                   : "";
+                const adminMeta = showAdminShareColumns
+                  ? parseAdminPayslipMeta(entry.remarks)
+                  : null;
 
                 return (
                   <TableRow key={entry.id}>
                     <TablePrimaryCell sticky>
-                      <span className="inline-flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                        <span>{entry.employeeName}</span>
-                        {employmentStatus ? (
-                          <span className="text-xs font-semibold uppercase tracking-wide text-sbc-gold-dark">
-                            {employmentStatus}
-                          </span>
-                        ) : null}
-                      </span>
+                      {entry.employeeName}
                     </TablePrimaryCell>
                     {showEmploymentStatus ? (
                       <TableCell>{employmentStatus || "—"}</TableCell>
@@ -808,6 +814,19 @@ function PayrollTable({
                         }
                       />
                     </TableCell>
+                    {showAdminShareColumns ? (
+                      <>
+                        <TableCell align="right" numeric>
+                          {formatCurrency(adminMeta?.sss ?? 0)}
+                        </TableCell>
+                        <TableCell align="right" numeric>
+                          {formatCurrency(adminMeta?.phic ?? 0)}
+                        </TableCell>
+                        <TableCell align="right" numeric>
+                          {formatCurrency(adminMeta?.hdmf ?? 0)}
+                        </TableCell>
+                      </>
+                    ) : null}
                     <TableCell align="right">
                       <InlineTextField
                         type="number"
