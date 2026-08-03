@@ -145,27 +145,13 @@ async function ensureAdminEmployee(
   return { id: data.id as string };
 }
 
-async function upsertRunAndPayslip(
+async function ensurePayrollRun(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  employeeId: string,
   period: PayrollPeriod,
-  payload: {
-    hours: number;
-    overtime_hours: number;
-    regular_pay: number;
-    overtime_pay: number;
-    gross_pay: number;
-    cash_advance: number;
-    additional_pay: number;
-    deductions: number;
-    net_pay: number;
-    site_assignment?: string;
-    disbursement?: string;
-    remarks?: string;
-    charged_to?: string;
-  }
-): Promise<{ error?: string; runId?: string; payslipId?: string }> {
-  let payrollRunId: string | undefined;
+  runCache: Map<string, string>
+): Promise<{ runId?: string; error?: string }> {
+  const cached = runCache.get(period.key);
+  if (cached) return { runId: cached };
 
   const { data: existingRun, error: runLookupError } = await supabase
     .from("payroll_runs")
@@ -176,8 +162,9 @@ async function upsertRunAndPayslip(
 
   if (runLookupError) return { error: runLookupError.message };
 
-  if (existingRun?.id) {
-    payrollRunId = existingRun.id as string;
+  let payrollRunId = existingRun?.id as string | undefined;
+
+  if (payrollRunId) {
     await supabase
       .from("payroll_runs")
       .update({ status: "processed" })
@@ -197,42 +184,86 @@ async function upsertRunAndPayslip(
   }
 
   if (!payrollRunId) return { error: "Payroll run was not created." };
+  runCache.set(period.key, payrollRunId);
+  return { runId: payrollRunId };
+}
 
-  const payslipPayload = {
-    ...payload,
-    status: "processed" as const,
-  };
+type PayslipSavePayload = {
+  hours: number;
+  overtime_hours: number;
+  regular_pay: number;
+  overtime_pay: number;
+  gross_pay: number;
+  cash_advance: number;
+  additional_pay: number;
+  deductions: number;
+  net_pay: number;
+  site_assignment?: string;
+  disbursement?: string;
+  remarks?: string;
+  charged_to?: string;
+};
 
-  const { data: existingPayslip, error: payslipLookupError } = await supabase
+async function savePayslipsForRun(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  payrollRunId: string,
+  items: { employeeId: string; payload: PayslipSavePayload }[]
+): Promise<{ error?: string }> {
+  if (!items.length) return {};
+
+  const { data: existingPayslips, error: existingError } = await supabase
     .from("payslips")
-    .select("id")
-    .eq("payroll_run_id", payrollRunId)
-    .eq("employee_id", employeeId)
-    .maybeSingle();
+    .select("id, employee_id")
+    .eq("payroll_run_id", payrollRunId);
 
-  if (payslipLookupError) return { error: payslipLookupError.message };
+  if (existingError) return { error: existingError.message };
 
-  if (existingPayslip?.id) {
-    const { error } = await supabase
-      .from("payslips")
-      .update(payslipPayload)
-      .eq("id", existingPayslip.id);
-    if (error) return { error: error.message };
-    return { runId: payrollRunId, payslipId: existingPayslip.id as string };
+  const existingByEmployee = new Map(
+    (existingPayslips ?? []).map((row) => [
+      String(row.employee_id),
+      String(row.id),
+    ])
+  );
+
+  const toInsert: Record<string, unknown>[] = [];
+  const toUpdate: { id: string; payload: PayslipSavePayload }[] = [];
+
+  for (const item of items) {
+    const payslipPayload = {
+      ...item.payload,
+      status: "processed" as const,
+    };
+    const existingId = existingByEmployee.get(item.employeeId);
+    if (existingId) {
+      toUpdate.push({ id: existingId, payload: payslipPayload });
+    } else {
+      toInsert.push({
+        payroll_run_id: payrollRunId,
+        employee_id: item.employeeId,
+        ...payslipPayload,
+      });
+    }
   }
 
-  const { data: inserted, error: insertError } = await supabase
-    .from("payslips")
-    .insert({
-      payroll_run_id: payrollRunId,
-      employee_id: employeeId,
-      ...payslipPayload,
-    })
-    .select("id")
-    .single();
+  if (toInsert.length) {
+    const { error } = await supabase.from("payslips").insert(toInsert);
+    if (error) return { error: error.message };
+  }
 
-  if (insertError) return { error: insertError.message };
-  return { runId: payrollRunId, payslipId: inserted?.id as string | undefined };
+  // Update existing rows in small parallel batches.
+  const chunkSize = 8;
+  for (let i = 0; i < toUpdate.length; i += chunkSize) {
+    const chunk = toUpdate.slice(i, i + chunkSize);
+    const results = await Promise.all(
+      chunk.map(({ id, payload }) =>
+        supabase.from("payslips").update(payload).eq("id", id)
+      )
+    );
+    const failed = results.find((result) => result.error);
+    if (failed?.error) return { error: failed.error.message };
+  }
+
+  return {};
 }
 
 async function recordUpload(
@@ -442,56 +473,84 @@ export async function importConstructionPayrollExcel(formData: FormData): Promis
             hourlyRate: row.hourlyRate,
           }));
 
+    // Unique employees across master + all sheets (one upsert each).
+    const employeeSeed = new Map<string, ParsedMasterEmployee>();
     for (const master of masterSource) {
+      employeeSeed.set(normalizeEmployeeName(master.employeeName), master);
+    }
+    for (const sheet of sheets) {
+      for (const row of sheet.rows) {
+        const key = normalizeEmployeeName(row.employeeName);
+        if (!employeeSeed.has(key)) {
+          employeeSeed.set(key, {
+            employeeName: row.employeeName,
+            siteAssignment: row.siteAssignment,
+            designation: row.designation,
+            dailyRate: row.dailyRate,
+            hourlyRate: row.hourlyRate,
+          });
+        }
+      }
+    }
+
+    for (const master of employeeSeed.values()) {
       const result = await ensureConstructionEmployee(supabase, master, existingByName);
       if (result.error) return { error: result.error };
     }
 
     let totalImported = 0;
     const sheetNames: string[] = [];
+    const runCache = new Map<string, string>();
 
     for (const sheet of sheets) {
-      let sheetImported = 0;
-      let runId: string | undefined;
-
-      for (const row of sheet.rows) {
-        const employee = await ensureConstructionEmployee(supabase, row, existingByName);
-        if (employee.error || !employee.id) {
-          return { error: employee.error || `Could not save ${row.employeeName}.` };
-        }
-
-        const saved = await upsertRunAndPayslip(supabase, employee.id, sheet.period, {
-          hours: row.hours,
-          overtime_hours: row.overtimeHours,
-          regular_pay: row.regularPay,
-          overtime_pay: row.overtimePay,
-          gross_pay: row.grossPay,
-          cash_advance: row.cashAdvance,
-          additional_pay: row.additionalPay,
-          deductions: Math.max(
-            0,
-            row.grossPay + row.additionalPay - row.cashAdvance - row.netPay
-          ),
-          net_pay: row.netPay,
-          site_assignment: row.siteAssignment,
-          disbursement: row.disbursement,
-          remarks: row.remarks,
-          charged_to: row.chargedTo,
-        });
-        if (saved.error) return { error: saved.error };
-        runId = saved.runId ?? runId;
-        sheetImported += 1;
+      const run = await ensurePayrollRun(supabase, sheet.period, runCache);
+      if (run.error || !run.runId) {
+        return { error: run.error || "Payroll run was not created." };
       }
 
-      totalImported += sheetImported;
+      const items: { employeeId: string; payload: PayslipSavePayload }[] = [];
+
+      for (const row of sheet.rows) {
+        const employee = existingByName.get(normalizeEmployeeName(row.employeeName));
+        if (!employee?.id) {
+          return { error: `Could not save ${row.employeeName}.` };
+        }
+
+        items.push({
+          employeeId: employee.id,
+          payload: {
+            hours: row.hours,
+            overtime_hours: row.overtimeHours,
+            regular_pay: row.regularPay,
+            overtime_pay: row.overtimePay,
+            gross_pay: row.grossPay,
+            cash_advance: row.cashAdvance,
+            additional_pay: row.additionalPay,
+            deductions: Math.max(
+              0,
+              row.grossPay + row.additionalPay - row.cashAdvance - row.netPay
+            ),
+            net_pay: row.netPay,
+            site_assignment: row.siteAssignment,
+            disbursement: row.disbursement,
+            remarks: row.remarks,
+            charged_to: row.chargedTo,
+          },
+        });
+      }
+
+      const saved = await savePayslipsForRun(supabase, run.runId, items);
+      if (saved.error) return { error: saved.error };
+
+      totalImported += items.length;
       sheetNames.push(sheet.sheetName);
 
       await recordUpload(supabase, {
         filename,
         sheetName: sheet.sheetName,
         period: sheet.period,
-        rowCount: sheetImported,
-        runId,
+        rowCount: items.length,
+        runId: run.runId,
         category: "construction",
       });
     }
@@ -592,47 +651,69 @@ export async function importAdminPayrollExcel(formData: FormData): Promise<{
       ])
     );
 
+    // Unique admin employees across all cutoffs first.
+    const employeeSeed = new Map<string, ImportedAdminPayrollRow>();
+    for (const rows of parsed.rowsByPeriod.values()) {
+      for (const row of rows) {
+        const key = normalizeEmployeeName(row.employeeName);
+        if (!employeeSeed.has(key)) employeeSeed.set(key, row);
+      }
+    }
+
+    for (const row of employeeSeed.values()) {
+      const result = await ensureAdminEmployee(supabase, row, existingByName);
+      if (result.error) return { error: result.error };
+    }
+
     let totalImported = 0;
+    const runCache = new Map<string, string>();
 
     for (const period of parsed.periods) {
       const rows = parsed.rowsByPeriod.get(period.key) ?? [];
-      let runId: string | undefined;
-      let sheetImported = 0;
+      const run = await ensurePayrollRun(supabase, period, runCache);
+      if (run.error || !run.runId) {
+        return { error: run.error || "Payroll run was not created." };
+      }
+
+      const items: { employeeId: string; payload: PayslipSavePayload }[] = [];
 
       for (const row of rows) {
-        const employee = await ensureAdminEmployee(supabase, row, existingByName);
-        if (employee.error || !employee.id) {
-          return { error: employee.error || `Could not save ${row.employeeName}.` };
+        const employee = existingByName.get(normalizeEmployeeName(row.employeeName));
+        if (!employee?.id) {
+          return { error: `Could not save ${row.employeeName}.` };
         }
 
         const amounts = adminRowToPayslipAmounts(row);
-        const saved = await upsertRunAndPayslip(supabase, employee.id, period, {
-          hours: amounts.hours,
-          overtime_hours: amounts.overtimeHours,
-          regular_pay: amounts.regularPay,
-          overtime_pay: amounts.overtimePay,
-          gross_pay: amounts.grossPay,
-          cash_advance: amounts.cashAdvance,
-          additional_pay: amounts.additionalPay,
-          deductions: amounts.deductions,
-          net_pay: amounts.netPay,
-          site_assignment: "",
-          disbursement: "",
-          remarks: encodeAdminPayslipMeta(amounts.meta),
-          charged_to: "",
+        items.push({
+          employeeId: employee.id,
+          payload: {
+            hours: amounts.hours,
+            overtime_hours: amounts.overtimeHours,
+            regular_pay: amounts.regularPay,
+            overtime_pay: amounts.overtimePay,
+            gross_pay: amounts.grossPay,
+            cash_advance: amounts.cashAdvance,
+            additional_pay: amounts.additionalPay,
+            deductions: amounts.deductions,
+            net_pay: amounts.netPay,
+            site_assignment: "",
+            disbursement: "",
+            remarks: encodeAdminPayslipMeta(amounts.meta),
+            charged_to: "",
+          },
         });
-        if (saved.error) return { error: saved.error };
-        runId = saved.runId ?? runId;
-        sheetImported += 1;
       }
 
-      totalImported += sheetImported;
+      const saved = await savePayslipsForRun(supabase, run.runId, items);
+      if (saved.error) return { error: saved.error };
+
+      totalImported += items.length;
       await recordUpload(supabase, {
         filename,
         sheetName: "Payroll Computation",
         period,
-        rowCount: sheetImported,
-        runId,
+        rowCount: items.length,
+        runId: run.runId,
         category: "admin",
       });
     }
