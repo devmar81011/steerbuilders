@@ -375,10 +375,19 @@ function previewEntriesFromAdminRows(
       additionalPay: amounts.additionalPay,
       deductions: amounts.deductions,
       deductionBreakdown: [
-        { code: "sss", label: "SSS", amount: amounts.meta.sss },
-        { code: "phic", label: "PhilHealth", amount: amounts.meta.phic },
-        { code: "hdmf", label: "HDMF", amount: amounts.meta.hdmf },
-        { code: "tax", label: "Tax", amount: amounts.meta.tax },
+        { code: "sss", label: "SSS Cont", amount: amounts.meta.sss },
+        {
+          code: "sss_loan",
+          label: "SSS Loan",
+          amount: amounts.meta.sssLoan,
+        },
+        { code: "phic", label: "PHIC", amount: amounts.meta.phic },
+        { code: "hdmf", label: "HDMF Cont", amount: amounts.meta.hdmf },
+        {
+          code: "hdmf_loan",
+          label: "HDMF Loan",
+          amount: amounts.meta.hdmfLoan,
+        },
       ],
       netPay: amounts.netPay,
       disbursement: "",

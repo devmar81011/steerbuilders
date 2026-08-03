@@ -88,10 +88,19 @@ function mapPayrollRow(
   const adminMeta = parseAdminPayslipMeta(remarks);
   const deductionBreakdown = adminMeta
     ? [
-        { code: "sss", label: "SSS", amount: adminMeta.sss },
-        { code: "phic", label: "PhilHealth", amount: adminMeta.phic },
-        { code: "hdmf", label: "HDMF", amount: adminMeta.hdmf },
-        { code: "tax", label: "Tax", amount: adminMeta.tax },
+        { code: "sss", label: "SSS Cont", amount: adminMeta.sss },
+        {
+          code: "sss_loan",
+          label: "SSS Loan",
+          amount: adminMeta.sssLoan ?? 0,
+        },
+        { code: "phic", label: "PHIC", amount: adminMeta.phic },
+        { code: "hdmf", label: "HDMF Cont", amount: adminMeta.hdmf },
+        {
+          code: "hdmf_loan",
+          label: "HDMF Loan",
+          amount: adminMeta.hdmfLoan ?? 0,
+        },
       ]
     : undefined;
 

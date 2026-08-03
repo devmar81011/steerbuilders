@@ -354,12 +354,14 @@ function PayrollPrintSheet({
               : entry.regularPay;
             const leavePay = meta?.leavePay ?? entry.additionalPay;
             const sss = isAdmin ? meta?.sss ?? 0 : 0;
+            const sssLoan = isAdmin ? meta?.sssLoan ?? 0 : 0;
             const phic = isAdmin ? meta?.phic ?? 0 : 0;
             const hdmf = isAdmin ? meta?.hdmf ?? 0 : 0;
+            const hdmfLoan = isAdmin ? meta?.hdmfLoan ?? 0 : 0;
             const overtimePay = entry.overtimePay;
             const cashAdvance = entry.cashAdvance;
             const totalDeductions = isAdmin
-              ? cashAdvance + sss + phic + hdmf
+              ? cashAdvance + sss + sssLoan + phic + hdmf + hdmfLoan
               : cashAdvance;
 
             const earningRows = isAdmin
@@ -422,18 +424,24 @@ function PayrollPrintSheet({
                   },
                   {
                     label: "SSS Cont",
-                    amount: printAmount(sss, { blankIfZero: true }),
+                    amount: printAmount(sss),
                   },
-                  { label: "SSS Loan", amount: "" },
+                  {
+                    label: "SSS Loan",
+                    amount: printAmount(sssLoan),
+                  },
                   {
                     label: "PHIC",
-                    amount: printAmount(phic, { blankIfZero: true }),
+                    amount: printAmount(phic),
                   },
                   {
                     label: "HDMF Cont",
-                    amount: printAmount(hdmf, { blankIfZero: true }),
+                    amount: printAmount(hdmf),
                   },
-                  { label: "HDMF Loan", amount: "" },
+                  {
+                    label: "HDMF Loan",
+                    amount: printAmount(hdmfLoan),
+                  },
                   {
                     label: "Total Deductions",
                     amount: printAmount(totalDeductions),

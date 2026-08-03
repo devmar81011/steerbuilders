@@ -17,8 +17,10 @@ export type ImportedAdminPayrollRow = {
   leavePay: number;
   tax: number;
   sss: number;
+  sssLoan: number;
   phic: number;
   hdmf: number;
+  hdmfLoan: number;
   basicPay: number;
   cashAdvance: number;
   dailyRate: number;
@@ -42,8 +44,10 @@ const MONTH_CODES: Record<string, number> = {
 
 export type AdminPayslipMeta = {
   sss: number;
+  sssLoan: number;
   phic: number;
   hdmf: number;
+  hdmfLoan: number;
   tax: number;
   leavePay: number;
   basicPay: number;
@@ -135,6 +139,13 @@ function colIndex(headers: string[], ...names: string[]): number {
   return -1;
 }
 
+function colIndexMatch(
+  headers: string[],
+  match: (header: string) => boolean
+): number {
+  return headers.findIndex(match);
+}
+
 /**
  * Parse Steer Builders Admin payroll workbook.
  * Primary source: "Payroll Computation" sheet (semi-monthly rows).
@@ -177,16 +188,52 @@ export function parseAdminPayrollWorkbook(buffer: ArrayBuffer): {
   const otIdx = colIndex(headers, "ot");
   const leaveIdx = colIndex(headers, "leave");
   const taxIdx = colIndex(headers, "tax");
-  const sssIdx = colIndex(headers, "sss");
-  const phicIdx = colIndex(headers, "phic");
-  const hdmfIdx = colIndex(headers, "hdmf");
+  const sssLoanIdx = colIndexMatch(
+    headers,
+    (header) => header.includes("sss") && header.includes("loan")
+  );
+  const sssIdx = colIndexMatch(
+    headers,
+    (header) =>
+      !header.includes("loan") &&
+      (header === "sss" ||
+        header.includes("sss cont") ||
+        header.includes("sss contribution") ||
+        header.startsWith("sss"))
+  );
+  const phicIdx = colIndexMatch(
+    headers,
+    (header) =>
+      header === "phic" ||
+      header.includes("phic") ||
+      header.includes("philhealth")
+  );
+  const hdmfLoanIdx = colIndexMatch(
+    headers,
+    (header) =>
+      header.includes("loan") &&
+      (header.includes("hdmf") ||
+        header.includes("pag-ibig") ||
+        header.includes("pagibig") ||
+        header.includes("pag ibig"))
+  );
+  const hdmfIdx = colIndexMatch(
+    headers,
+    (header) =>
+      !header.includes("loan") &&
+      (header === "hdmf" ||
+        header.includes("hdmf cont") ||
+        header.includes("pag-ibig") ||
+        header.includes("pagibig") ||
+        header.includes("pag ibig"))
+  );
   const basicIdx = colIndex(headers, "basic pay");
-  const caIdx = colIndex(headers, "ca");
+  const caIdx = colIndex(headers, "ca", "cash advance");
   const daysIdx = colIndex(headers, "payable days");
   const dailyIdx = colIndex(headers, "daily rate");
 
-  // Employee share SSS/PHIC/HDMF are the first occurrence columns (10-12).
-  // Employer share duplicates names later — colIndex already picks first.
+  // Employee share SSS/PHIC/HDMF are the first occurrence columns.
+  // Employer share duplicates names later — findIndex already picks first.
 
   const rowsByPeriod = new Map<string, ImportedAdminPayrollRow[]>();
   const periodMap = new Map<string, PayrollPeriod>();
@@ -212,8 +259,10 @@ export function parseAdminPayrollWorkbook(buffer: ArrayBuffer): {
       leavePay: toNumber(raw[leaveIdx]),
       tax: toNumber(raw[taxIdx]),
       sss: toNumber(raw[sssIdx]),
+      sssLoan: toNumber(raw[sssLoanIdx]),
       phic: toNumber(raw[phicIdx]),
       hdmf: toNumber(raw[hdmfIdx]),
+      hdmfLoan: toNumber(raw[hdmfLoanIdx]),
       basicPay: toNumber(raw[basicIdx]),
       cashAdvance: toNumber(raw[caIdx]),
       dailyRate: toNumber(raw[dailyIdx]),
@@ -234,7 +283,8 @@ export function parseAdminPayrollWorkbook(buffer: ArrayBuffer): {
 }
 
 export function adminRowToPayslipAmounts(row: ImportedAdminPayrollRow) {
-  const statutory = row.sss + row.phic + row.hdmf + row.tax;
+  const statutory =
+    row.sss + row.sssLoan + row.phic + row.hdmf + row.hdmfLoan + row.tax;
   const regularPay = Math.max(0, row.grossPay - row.overtimePay);
   const hours =
     row.payableDays > 0 ? row.payableDays * 8 : row.dailyRate > 0 ? regularPay / (row.dailyRate / 8 || 1) : 0;
@@ -258,8 +308,10 @@ export function adminRowToPayslipAmounts(row: ImportedAdminPayrollRow) {
           : 0,
     meta: {
       sss: row.sss,
+      sssLoan: row.sssLoan,
       phic: row.phic,
       hdmf: row.hdmf,
+      hdmfLoan: row.hdmfLoan,
       tax: row.tax,
       leavePay: row.leavePay,
       basicPay: row.basicPay,
