@@ -1597,78 +1597,92 @@ export function PayrollClient({
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={isBusy || isUploadsTab}
-            onClick={() => loadPeriod(-1)}
-          >
-            <ChevronLeftIcon />
-            Prev
-          </Button>
-          <span className="min-w-[140px] text-center text-sm font-medium text-sbc-black">
-            {isUploadsTab ? "Uploads" : activePeriod.label}
-          </span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={isBusy || isUploadsTab}
-            onClick={() => loadPeriod(1)}
-          >
-            Next
-            <ChevronRightIcon />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={isBusy || isUploadsTab}
-            onClick={jumpToCurrentPeriod}
-          >
-            <CalendarIcon />
-            {usesWeeklyPayroll(dataTab) ? "This Week" : "Current"}
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={(e) => handleExcelUpload(e.target.files?.[0] ?? null)}
-          />
-          <Button
-            type="button"
-            size="sm"
-            disabled={isBusy || uploading || isUploadsTab}
-            onClick={() => {
-              replaceCategoryRef.current = null;
-              fileInputRef.current?.click();
-            }}
-          >
-            <UploadIcon />
-            {uploading ? "Uploading…" : "Upload Excel"}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={isUploadsTab || activeEntries.length === 0}
-            onClick={handleExportPayroll}
-          >
-            <ExportIcon />
-            Export
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={isUploadsTab || activeEntries.length === 0}
-            onClick={() => window.print()}
-          >
-            <PrintIcon />
-            Print
-          </Button>
+          {!isUploadsTab && (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isBusy}
+                onClick={() => loadPeriod(-1)}
+              >
+                <ChevronLeftIcon />
+                Prev
+              </Button>
+              <span className="min-w-[140px] text-center text-sm font-medium text-sbc-black">
+                {activePeriod.label}
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isBusy}
+                onClick={() => loadPeriod(1)}
+              >
+                Next
+                <ChevronRightIcon />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={isBusy}
+                onClick={jumpToCurrentPeriod}
+              >
+                <CalendarIcon />
+                {usesWeeklyPayroll(dataTab) ? "This Week" : "Current"}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={(e) => handleExcelUpload(e.target.files?.[0] ?? null)}
+              />
+              <Button
+                type="button"
+                size="sm"
+                disabled={isBusy || uploading}
+                onClick={() => {
+                  replaceCategoryRef.current = null;
+                  replacePeriodKeyRef.current = null;
+                  fileInputRef.current?.click();
+                }}
+              >
+                <UploadIcon />
+                {uploading ? "Uploading…" : "Upload Excel"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={activeEntries.filter((e) => e.netPay > 0).length === 0}
+                onClick={handleExportPayroll}
+              >
+                <ExportIcon />
+                Export
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={activeEntries.filter((e) => e.netPay > 0).length === 0}
+                onClick={() => window.print()}
+              >
+                <PrintIcon />
+                Print
+              </Button>
+            </>
+          )}
+          {isUploadsTab && (
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={(e) => handleExcelUpload(e.target.files?.[0] ?? null)}
+            />
+          )}
         </div>
       </div>
 
