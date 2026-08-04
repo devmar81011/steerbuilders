@@ -606,11 +606,7 @@ function PayrollPrintSheet({
                   </div>
                   <div>
                     <span className="payroll-print-sign-line" />
-                    <strong>
-                      {category === "construction"
-                        ? entry.employeeName
-                        : "Wilson S. Barba"}
-                    </strong>
+                    <strong>{entry.employeeName}</strong>
                     <em>Received by</em>
                   </div>
                 </div>
