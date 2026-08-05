@@ -4,6 +4,11 @@ import { redirect } from "next/navigation";
 import type { NextRequest } from "next/server";
 import type { User } from "@supabase/supabase-js";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import {
+  cookiesHaveE2eAdminBypass,
+  e2eBypassAdminUser,
+  requestHasE2eAdminBypass,
+} from "@/lib/auth/e2e-bypass";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseEnv, isSupabaseConfigured } from "@/lib/supabase/config";
 
@@ -22,6 +27,18 @@ function getBearerToken(request?: NextRequest) {
 
 async function getAdminContext(request?: NextRequest): Promise<AdminContext | null> {
   if (!isSupabaseConfigured()) return null;
+
+  const e2eOk = request
+    ? requestHasE2eAdminBypass(request)
+    : await cookiesHaveE2eAdminBypass();
+  if (e2eOk) {
+    const supabase = await createClient();
+    return {
+      user: e2eBypassAdminUser(),
+      supabase,
+      accessToken: null,
+    };
+  }
 
   const bearer = getBearerToken(request);
   const env = getSupabaseEnv();

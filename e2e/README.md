@@ -20,7 +20,9 @@ npm run test:e2e:report
 
 ## Authenticated admin tests
 
-Set credentials to exercise Home → Payroll → Projects after login:
+Local `npm run test:e2e` uses a **Playwright-only** admin bypass (`E2E_ADMIN_BYPASS_SECRET`) so Home → Payroll → Projects run without the real Supabase password. The bypass is disabled when `VERCEL_ENV=production` and returns 404 if the secret is unset.
+
+To exercise real Supabase login instead:
 
 ```bash
 export TEST_ADMIN_EMAIL="info@steerbuilderscorporation.com"
@@ -28,7 +30,7 @@ export TEST_ADMIN_PASSWORD="your-admin-password"
 npm run test:e2e
 ```
 
-Without `TEST_ADMIN_PASSWORD`, authenticated admin tests are skipped; login gate + invalid-credentials tests still run.
+Against a remote `PLAYWRIGHT_BASE_URL` without `TEST_ADMIN_PASSWORD`, authenticated admin tests are skipped unless that host also has `E2E_ADMIN_BYPASS_SECRET` set (never on production).
 
 ## Against production
 
