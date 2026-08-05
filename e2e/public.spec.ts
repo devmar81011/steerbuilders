@@ -60,7 +60,17 @@ test.describe("Public site — client presentation quality", () => {
     await expect(
       page.getByRole("heading", { name: /project portfolio/i })
     ).toBeVisible();
-    await expect(page.getByRole("main").getByText(/all/i).first()).toBeVisible();
+    const tabs = page.getByRole("tablist", { name: /portfolio filter/i });
+    await expect(tabs).toBeVisible();
+    await expect(tabs.getByRole("tab", { name: /all projects/i })).toBeVisible();
+    await expect(tabs.getByRole("tab", { name: /completed/i })).toBeVisible();
+    await expect(tabs.getByRole("tab", { name: /ongoing/i })).toBeVisible();
+
+    await tabs.getByRole("tab", { name: /completed/i }).click();
+    await expect(page).toHaveURL(/filter=Completed/);
+    await expect(
+      tabs.getByRole("tab", { name: /completed/i })
+    ).toHaveAttribute("aria-selected", "true");
   });
 
   test("public About and Portfolio routes are reachable from the site", async ({

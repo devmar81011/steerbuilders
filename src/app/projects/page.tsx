@@ -3,7 +3,6 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ProjectsPortfolioCards } from "@/components/projects/projects-portfolio-cards";
-import { ButtonLink } from "@/components/ui/button-link";
 import { Section, SectionHeader } from "@/components/ui/section";
 import { getProjectsOrFallback } from "@/lib/actions/projects";
 import { isCompletedProject, isOngoingProject } from "@/lib/project-status";
@@ -30,6 +29,9 @@ export default async function ProjectsPage({
   const filter = parseFilter(params.filter);
   const portfolio = await getProjectsOrFallback();
 
+  const completedCount = portfolio.filter((p) => isCompletedProject(p)).length;
+  const ongoingCount = portfolio.filter((p) => isOngoingProject(p)).length;
+
   const filtered =
     filter === "all"
       ? portfolio
@@ -37,10 +39,22 @@ export default async function ProjectsPage({
           filter === "Ongoing" ? isOngoingProject(p) : isCompletedProject(p)
         );
 
-  const tabs: { key: Filter; label: string }[] = [
-    { key: "all", label: "All Projects" },
-    { key: "Completed", label: "Completed" },
-    { key: "Ongoing", label: "Ongoing" },
+  const tabs: { key: Filter; label: string; hint: string }[] = [
+    {
+      key: "all",
+      label: "All Projects",
+      hint: `${portfolio.length} total`,
+    },
+    {
+      key: "Completed",
+      label: "Completed",
+      hint: `${completedCount} projects`,
+    },
+    {
+      key: "Ongoing",
+      label: "Ongoing",
+      hint: `${ongoingCount} projects`,
+    },
   ];
 
   return (
@@ -63,23 +77,48 @@ export default async function ProjectsPage({
         </Section>
 
         <Section>
-          <div className="mb-8 flex flex-wrap gap-4">
-            {tabs.map((tab) => (
-              <ButtonLink
-                key={tab.key}
-                href={`/projects?filter=${tab.key}`}
-                variant={filter === tab.key ? "primary" : "outline"}
-                size="sm"
-              >
-                {tab.label}
-              </ButtonLink>
-            ))}
-          </div>
+          <div className="mb-0">
+            <div
+              role="tablist"
+              aria-label="Portfolio filter"
+              className="flex flex-wrap items-end gap-1"
+            >
+              {tabs.map((tab) => {
+                const active = filter === tab.key;
+                return (
+                  <Link
+                    key={tab.key}
+                    href={`/projects?filter=${tab.key}`}
+                    role="tab"
+                    aria-selected={active}
+                    className={`-mb-px rounded-t-md border px-3 py-1.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sbc-gold/35 ${
+                      active
+                        ? "border-sbc-gray-light border-b-sbc-white bg-sbc-white text-sbc-black"
+                        : "border-transparent bg-sbc-off-white text-sbc-gray hover:bg-sbc-white/80 hover:text-sbc-black"
+                    }`}
+                  >
+                    <span
+                      className={`block text-[11px] font-bold uppercase tracking-[0.12em] ${
+                        active ? "text-sbc-gold-dark" : ""
+                      }`}
+                    >
+                      {tab.label}
+                    </span>
+                    <span className="mt-0.5 block text-[10px] font-medium text-sbc-gray">
+                      {tab.hint}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
 
-          <ProjectsPortfolioCards
-            projects={filtered}
-            filterLabel={filter !== "all" ? filter : ""}
-          />
+            <div className="rounded-b-lg rounded-tr-lg border border-sbc-gray-light bg-sbc-white p-4 sm:p-5">
+              <ProjectsPortfolioCards
+                projects={filtered}
+                filterLabel={filter !== "all" ? filter : ""}
+              />
+            </div>
+          </div>
         </Section>
       </main>
       <SiteFooter />
