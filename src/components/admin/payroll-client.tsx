@@ -53,7 +53,6 @@ import {
   getPayrollUploadDate,
   payrollExportFilename,
 } from "@/lib/payroll-export";
-import { radii } from "@/lib/design-tokens";
 
 type Props = {
   initialConstructionEntries: PayrollEntry[];
@@ -918,7 +917,7 @@ export function PayrollClient({
   adminAttendance,
   ojtAttendance,
   payrollAdjustments,
-  disbursementMethods,
+  disbursementMethods: _disbursementMethods,
   otPayPercent,
 }: Props) {
   const [activeTab, setActiveTab] = useState<PayrollTab>(
