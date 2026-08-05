@@ -12,7 +12,7 @@ import {
 } from "@/components/admin/admin-theme";
 
 const navItems = [
-  { href: "/admin", label: "Dashboard", exact: true },
+  { href: "/admin", label: "Home", exact: true },
   { href: "/admin/projects", label: "Projects" },
   { href: "/admin/payroll", label: "Payroll" },
   { href: "/admin/account", label: "Account" },

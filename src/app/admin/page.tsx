@@ -1,30 +1,19 @@
-import { DashboardPayrollSummary } from "@/components/admin/dashboard-payroll-summary";
-import { getEmployees, getPayrollEntries } from "@/lib/actions/payroll";
+import { AdminOpsHome } from "@/components/admin/admin-ops-home";
 
-export default async function AdminDashboardPage() {
-  const [employees, payroll] = await Promise.all([
-    getEmployees(),
-    getPayrollEntries(),
-  ]);
-
-  const activeEmployees = employees.filter((e) => e.status === "active").length;
-
+export default function AdminHomePage() {
   return (
     <>
       <div className="mb-8">
         <p className="text-xs font-medium uppercase tracking-widest text-sbc-gray">
-          Overview
+          Admin
         </p>
-        <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Dashboard</h1>
-        <p className="mt-2 text-sm font-semibold text-sbc-gray">
-          Payroll and project management for Steer Builders.
+        <h1 className="mt-2 text-2xl font-bold text-sbc-gold">Home</h1>
+        <p className="mt-2 max-w-xl text-sm font-semibold text-sbc-gray">
+          Choose what you need to do — upload payroll or manage projects.
         </p>
       </div>
 
-      <DashboardPayrollSummary
-        initialPayroll={payroll}
-        activeEmployees={activeEmployees}
-      />
+      <AdminOpsHome />
     </>
   );
 }

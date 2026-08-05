@@ -63,6 +63,7 @@ type Props = {
   initialConstructionPeriod: PayrollPeriod;
   initialAdminPeriod: PayrollPeriod;
   initialOjtPeriod: PayrollPeriod;
+  initialTab?: PayrollTab;
   usingDatabase: boolean;
   employees: Employee[];
   constructionAttendance: AttendanceRow[];
@@ -615,7 +616,11 @@ function PayrollPrintSheet({
                   </div>
                   <div>
                     <span className="payroll-print-sign-line" />
-                    <strong>{entry.employeeName}</strong>
+                    <strong>
+                      {category === "admin"
+                        ? entry.chargedTo.trim() || "\u00a0"
+                        : entry.employeeName}
+                    </strong>
                     <em>Received by</em>
                   </div>
                 </div>
@@ -653,7 +658,7 @@ function PayrollTable({
 }) {
   const isAdminTable = category === "admin";
   const showDisbursementColumns = category === "construction";
-  const columnCount = isAdminTable ? 13 : 16;
+  const columnCount = isAdminTable ? 14 : 16;
 
   const payableEntries = useMemo(
     () => entries.filter((entry) => entry.netPay > 0),
@@ -758,6 +763,7 @@ function PayrollTable({
                 <TableHead align="right">HDMF Cont</TableHead>
                 <TableHead align="right">CA</TableHead>
                 <TableHead align="right">Basic Pay</TableHead>
+                <TableHead>Charged To</TableHead>
               </tr>
             ) : (
               <tr>
@@ -881,6 +887,15 @@ function PayrollTable({
                       </TableCell>
                       <TableCell align="right" numeric>
                         {formatCurrency(adminMeta?.basicPay ?? entry.regularPay)}
+                      </TableCell>
+                      <TableCell>
+                        <InlineTextField
+                          value={entry.chargedTo || ""}
+                          disabled={rowBusy}
+                          onCommit={(value) =>
+                            onInlineUpdate(entry, "chargedTo", value)
+                          }
+                        />
                       </TableCell>
                     </TableRow>
                   );
@@ -1021,6 +1036,7 @@ export function PayrollClient({
   initialConstructionPeriod,
   initialAdminPeriod,
   initialOjtPeriod,
+  initialTab = "construction",
   employees,
   constructionAttendance,
   adminAttendance,
@@ -1029,7 +1045,9 @@ export function PayrollClient({
   disbursementMethods,
   otPayPercent,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<PayrollTab>("construction");
+  const [activeTab, setActiveTab] = useState<PayrollTab>(
+    initialTab === "admin" ? "admin" : "construction"
+  );
   // Session-only: empty until Excel is uploaded this visit; refresh clears the table.
   const [constructionReady, setConstructionReady] = useState(false);
   const [adminReady, setAdminReady] = useState(false);

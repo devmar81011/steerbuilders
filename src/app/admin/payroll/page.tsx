@@ -5,9 +5,17 @@ import {
   getDisbursementMethods,
   getOtPayPercent,
 } from "@/lib/actions/site-settings";
-import { getCurrentPayrollPeriod } from "@/lib/payroll-periods";
+import { getCurrentPayrollPeriod, type PayrollTab } from "@/lib/payroll-periods";
 
-export default async function PayrollPage() {
+export default async function PayrollPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const params = await searchParams;
+  const initialTab: PayrollTab =
+    params.tab === "admin" ? "admin" : "construction";
+
   const constructionPeriod = getCurrentPayrollPeriod("construction");
   const adminPeriod = getCurrentPayrollPeriod("admin");
   const ojtPeriod = getCurrentPayrollPeriod("ojt");
@@ -28,6 +36,7 @@ export default async function PayrollPage() {
       initialConstructionPeriod={constructionPeriod}
       initialAdminPeriod={adminPeriod}
       initialOjtPeriod={ojtPeriod}
+      initialTab={initialTab}
       usingDatabase={false}
       employees={employees}
       constructionAttendance={[]}
