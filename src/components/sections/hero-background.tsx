@@ -14,71 +14,53 @@ export const HERO_SLIDES = [
 ] as const;
 
 const INTERVAL_MS = 8000;
-const SLIDE_MS = 1600;
+const FADE_MS = 900;
 
 export function HeroBackground() {
-  // Extra clone of first slide at the end for seamless wrap
-  const track = [...HERO_SLIDES, HERO_SLIDES[0]];
   const [index, setIndex] = useState(0);
-  const [animate, setAnimate] = useState(true);
+  // Prefetch the next slide so the crossfade is ready without loading all 6 upfront.
+  const nextIndex = (index + 1) % HERO_SLIDES.length;
 
   useEffect(() => {
     const id = window.setInterval(() => {
-      setAnimate(true);
-      setIndex((i) => i + 1);
+      setIndex((i) => (i + 1) % HERO_SLIDES.length);
     }, INTERVAL_MS);
     return () => window.clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    if (index !== HERO_SLIDES.length) return;
-
-    const t = window.setTimeout(() => {
-      setAnimate(false);
-      setIndex(0);
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => setAnimate(true));
-      });
-    }, SLIDE_MS);
-
-    return () => window.clearTimeout(t);
-  }, [index]);
-
-  const activeDot = index % HERO_SLIDES.length;
-  const slidePct = 100 / track.length;
-
   return (
     <div className="absolute inset-0 overflow-hidden bg-sbc-black" aria-hidden>
-      <div
-        className="flex h-full will-change-transform"
-        style={{
-          width: `${track.length * 100}%`,
-          transform: `translate3d(-${index * slidePct}%, 0, 0)`,
-          transition: animate
-            ? `transform ${SLIDE_MS}ms cubic-bezier(0.4, 0, 0.2, 1)`
-            : "none",
-        }}
-      >
-        {track.map((slide, i) => (
+      {HERO_SLIDES.map((slide, i) => {
+        const active = i === index;
+        const prefetch = i === nextIndex;
+        if (!active && !prefetch) return null;
+
+        return (
           <div
-            key={`${slide.src}-${i}`}
-            className="relative h-full shrink-0"
-            style={{ width: `${slidePct}%` }}
+            key={slide.src}
+            className="absolute inset-0"
+            style={{
+              opacity: active ? 1 : 0,
+              transition: `opacity ${FADE_MS}ms ease-in-out`,
+              zIndex: active ? 2 : 1,
+            }}
           >
             <Image
               src={slide.src}
               alt=""
               fill
-              priority={i === 0}
+              priority={i === 0 && index === 0}
+              loading={i === 0 && index === 0 ? "eager" : "lazy"}
+              quality={75}
               sizes="100vw"
               className="object-cover object-center"
             />
           </div>
-        ))}
-      </div>
+        );
+      })}
 
-      <div className="pointer-events-none absolute inset-0 bg-linear-to-r from-sbc-black/78 via-sbc-black/50 to-sbc-black/30" />
-      <div className="pointer-events-none absolute inset-0 bg-sbc-black/10" />
+      <div className="pointer-events-none absolute inset-0 z-[3] bg-linear-to-r from-sbc-black/78 via-sbc-black/50 to-sbc-black/30" />
+      <div className="pointer-events-none absolute inset-0 z-[3] bg-sbc-black/10" />
 
       <div className="absolute bottom-5 left-1/2 z-[5] flex -translate-x-1/2 items-center gap-2.5 md:bottom-7">
         {HERO_SLIDES.map((slide, i) => (
@@ -86,12 +68,9 @@ export function HeroBackground() {
             key={slide.src}
             type="button"
             aria-label={slide.label}
-            onClick={() => {
-              setAnimate(true);
-              setIndex(i);
-            }}
+            onClick={() => setIndex(i)}
             className={`h-2.5 cursor-pointer rounded-sm transition-all duration-300 ${
-              i === activeDot
+              i === index
                 ? "w-9 bg-sbc-gold"
                 : "w-2.5 bg-white/55 hover:bg-white/85"
             }`}

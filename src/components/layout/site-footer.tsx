@@ -14,7 +14,8 @@ export function SiteFooter() {
               width={200}
               height={90}
               className="h-16 w-auto"
-              unoptimized
+              sizes="128px"
+              quality={75}
             />
             <p className="mt-4 max-w-sm text-sm font-semibold text-sbc-gray-light">
               {company.mantra}

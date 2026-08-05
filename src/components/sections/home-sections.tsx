@@ -54,8 +54,8 @@ export function HeroSection() {
               width={420}
               height={460}
               className="sbc-hero-logo h-auto w-full max-w-[220px] sm:max-w-xs lg:max-w-sm"
-              priority
-              unoptimized
+              sizes="(max-width: 640px) 220px, (max-width: 1024px) 320px, 384px"
+              quality={80}
             />
           </div>
         </div>

@@ -60,7 +60,7 @@ export function ProjectImageGrid({
           src={urls[0]}
           alt={alt}
           fill
-          unoptimized
+          quality={70}
           className="object-cover transition-transform duration-500 hover:scale-[1.03]"
           sizes={variant === "featured" ? "(max-width: 768px) 100vw, 50vw" : "50vw"}
         />
@@ -91,7 +91,7 @@ export function ProjectImageGrid({
             src={url}
             alt={`${alt} — photo ${index + 1}`}
             fill
-            unoptimized
+            quality={70}
             className="object-cover transition-transform duration-500 hover:scale-[1.05]"
             sizes="25vw"
           />

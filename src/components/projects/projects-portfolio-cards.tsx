@@ -101,7 +101,7 @@ export function ProjectsPortfolioCards({ projects, filterLabel }: Props) {
                     src={cover}
                     alt={project.name}
                     fill
-                    unoptimized
+                    quality={70}
                     className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
@@ -187,7 +187,7 @@ export function ProjectsPortfolioCards({ projects, filterLabel }: Props) {
                   src={photos[photoIndex]}
                   alt={`${activeProject.name} — photo ${photoIndex + 1}`}
                   fill
-                  unoptimized
+                  quality={75}
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, 896px"
                   priority

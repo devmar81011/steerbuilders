@@ -89,8 +89,9 @@ export function SiteHeader() {
             width={48}
             height={48}
             className="h-10 w-auto md:h-12"
+            sizes="48px"
+            quality={80}
             priority
-            unoptimized
           />
           <div className="hidden sm:block">
             <p className="text-sm font-normal uppercase tracking-[0.2em] text-sbc-white">

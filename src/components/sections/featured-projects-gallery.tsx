@@ -170,7 +170,7 @@ export function FeaturedProjectsGallery({ projects }: Props) {
                   src={photos[photoIndex]}
                   alt={`${activeProject.name} — photo ${photoIndex + 1}`}
                   fill
-                  unoptimized
+                  quality={75}
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, 896px"
                   priority
