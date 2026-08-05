@@ -54,7 +54,7 @@ export default function AboutPage() {
           <SectionHeader
             label="The Management"
             title="Leadership Team"
-            description="Experienced leadership combining engineering excellence and financial governance."
+            description="Engineering excellence with sound financial governance."
             light
           />
           <div className="grid gap-8 md:grid-cols-2">
@@ -64,7 +64,7 @@ export default function AboutPage() {
                   {leader.title}
                 </p>
                 <h3 className="mt-2 text-xl font-bold text-sbc-white">{leader.name}</h3>
-                <p className="mt-4 whitespace-pre-line text-sm font-semibold leading-relaxed text-sbc-gray-light">
+                <p className="mt-4 whitespace-pre-line text-justify text-sm font-semibold leading-relaxed text-sbc-gray-light">
                   {leader.bio}
                 </p>
               </Card>
