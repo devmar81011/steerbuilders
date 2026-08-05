@@ -5,7 +5,6 @@ import { SortableTableHead } from "@/components/ui/sortable-table-head";
 import { sortRows, useTableSort } from "@/lib/table-sort";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -267,51 +266,6 @@ function chunkEntries(entries: PayrollEntry[], size: number): PayrollEntry[][] {
   return chunks;
 }
 
-const tableFieldClass =
-  `h-9 w-full min-w-[96px] ${radii.control} border border-sbc-gray-light/90 bg-sbc-white px-2 text-sm font-medium text-sbc-black outline-none transition-colors hover:border-sbc-gold/45 focus:border-sbc-gold focus:ring-2 focus:ring-sbc-gold/20 disabled:cursor-not-allowed disabled:opacity-60`;
-
-function InlineTextField({
-  value,
-  onCommit,
-  disabled,
-  type = "text",
-  align = "left",
-  className = "",
-}: {
-  value: string;
-  onCommit: (value: string) => void;
-  disabled?: boolean;
-  type?: "text" | "number";
-  align?: "left" | "right";
-  className?: string;
-}) {
-  return (
-    <input
-      key={value}
-      type={type}
-      disabled={disabled}
-      defaultValue={value}
-      min={type === "number" ? "0" : undefined}
-      step={type === "number" ? "0.01" : undefined}
-      onBlur={(e) => {
-        if (e.target.value !== value) onCommit(e.target.value);
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          (e.target as HTMLInputElement).blur();
-        }
-      }}
-      className={`${tableFieldClass} ${align === "right" ? "text-right" : ""} ${className}`}
-    />
-  );
-}
-
-type InlinePayrollField =
-  | "cashAdvance"
-  | "additionalPay"
-  | "disbursement"
-  | "remarks"
-  | "chargedTo";
 
 function printAmount(value: number, opts?: { blankIfZero?: boolean }) {
   if (opts?.blankIfZero && value === 0) return "";
@@ -633,24 +587,14 @@ function PayrollTable({
   entries,
   category,
   period,
-  pendingId,
   sort,
-  disbursementMethods,
   onToggleSort,
-  onInlineUpdate,
 }: {
   entries: PayrollEntry[];
   category: PayrollTab;
   period: PayrollPeriod;
-  pendingId: string | null;
   sort: ReturnType<typeof useTableSort<PayrollSortKey>>["sort"];
-  disbursementMethods: string[];
   onToggleSort: (key: PayrollSortKey) => void;
-  onInlineUpdate: (
-    entry: PayrollEntry,
-    field: InlinePayrollField,
-    value: string
-  ) => void;
 }) {
   const isAdminTable = category === "admin";
   const showDisbursementColumns = category === "construction";
@@ -822,12 +766,6 @@ function PayrollTable({
               />
             ) : (
               sortedEntries.map((entry) => {
-                const rowBusy = pendingId === entry.id;
-                const disbursementOptions = Array.from(
-                  new Set(
-                    [...disbursementMethods, entry.disbursement].filter(Boolean)
-                  )
-                );
                 const adminMeta = parseAdminPayslipMeta(entry.remarks);
                 const employmentStatus =
                   adminEmploymentStatusFromRemarks(entry.remarks);
@@ -884,15 +822,7 @@ function PayrollTable({
                       <TableCell align="right" numeric>
                         {formatCurrency(adminMeta?.basicPay ?? entry.regularPay)}
                       </TableCell>
-                      <TableCell>
-                        <InlineTextField
-                          value={entry.chargedTo || ""}
-                          disabled={rowBusy}
-                          onCommit={(value) =>
-                            onInlineUpdate(entry, "chargedTo", value)
-                          }
-                        />
-                      </TableCell>
+                      <TableCell>{entry.chargedTo || "—"}</TableCell>
                     </TableRow>
                   );
                 }
@@ -929,27 +859,11 @@ function PayrollTable({
                     >
                       {formatCurrency(entry.grossPay)}
                     </TableCell>
-                    <TableCell align="right">
-                      <InlineTextField
-                        type="number"
-                        align="right"
-                        value={String(entry.cashAdvance || 0)}
-                        disabled={rowBusy}
-                        onCommit={(value) =>
-                          onInlineUpdate(entry, "cashAdvance", value)
-                        }
-                      />
+                    <TableCell align="right" numeric>
+                      {formatCurrency(entry.cashAdvance)}
                     </TableCell>
-                    <TableCell align="right">
-                      <InlineTextField
-                        type="number"
-                        align="right"
-                        value={String(entry.additionalPay || 0)}
-                        disabled={rowBusy}
-                        onCommit={(value) =>
-                          onInlineUpdate(entry, "additionalPay", value)
-                        }
-                      />
+                    <TableCell align="right" numeric>
+                      {formatCurrency(entry.additionalPay)}
                     </TableCell>
                     <TableCell
                       align="right"
@@ -959,49 +873,15 @@ function PayrollTable({
                       {formatCurrency(entry.netPay)}
                     </TableCell>
                     {showDisbursementColumns ? (
-                      <TableCell>
-                        <select
-                          disabled={rowBusy}
-                          value={entry.disbursement || ""}
-                          onChange={(e) =>
-                            onInlineUpdate(
-                              entry,
-                              "disbursement",
-                              e.target.value
-                            )
-                          }
-                          className={`${tableFieldClass} min-w-[120px] appearance-none bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 20 20%22 fill=%22none%22%3E%3Cpath d=%22M5 7.5L10 12.5L15 7.5%22 stroke=%22%23b88f3f%22 stroke-width=%221.75%22/%3E%3C/svg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat pr-8`}
-                        >
-                          <option value="">Select</option>
-                          {disbursementOptions.map((method) => (
-                            <option key={method} value={method}>
-                              {method}
-                            </option>
-                          ))}
-                        </select>
-                      </TableCell>
+                      <TableCell>{entry.disbursement || "—"}</TableCell>
                     ) : null}
                     <TableCell>
-                      <InlineTextField
-                        value={entry.remarks || ""}
-                        disabled={rowBusy}
-                        className="min-w-[120px]"
-                        onCommit={(value) =>
-                          onInlineUpdate(entry, "remarks", value)
-                        }
-                      />
+                      {parseAdminPayslipMeta(entry.remarks)
+                        ? "—"
+                        : entry.remarks || "—"}
                     </TableCell>
                     {showDisbursementColumns ? (
-                      <TableCell>
-                        <InlineTextField
-                          value={entry.chargedTo || ""}
-                          disabled={rowBusy}
-                          className="min-w-[120px]"
-                          onCommit={(value) =>
-                            onInlineUpdate(entry, "chargedTo", value)
-                          }
-                        />
-                      </TableCell>
+                      <TableCell>{entry.chargedTo || "—"}</TableCell>
                     ) : null}
                   </TableRow>
                 );
@@ -1424,89 +1304,6 @@ export function PayrollClient({
     });
   }
 
-  function handleInlineUpdate(
-    entry: PayrollEntry,
-    field: InlinePayrollField,
-    rawValue: string
-  ) {
-    const cashAdvance =
-      field === "cashAdvance"
-        ? Math.max(Number(rawValue) || 0, 0)
-        : entry.cashAdvance;
-    const additionalPay =
-      field === "additionalPay"
-        ? Math.max(Number(rawValue) || 0, 0)
-        : entry.additionalPay;
-    const disbursement =
-      field === "disbursement" ? rawValue.trim() : entry.disbursement;
-    const remarks = field === "remarks" ? rawValue.trim() : entry.remarks;
-    const chargedTo =
-      field === "chargedTo" ? rawValue.trim() : entry.chargedTo;
-
-    // Keep Excel Regular/OT/Gross intact. Only adjust Net when CA /
-    // Additional Pay change: Net = Gross + Additional − CA − deductions.
-    const netPay = Math.round(
-      Math.max(
-        entry.grossPay + additionalPay - cashAdvance - entry.deductions,
-        0
-      ) * 100
-    ) / 100;
-
-    const updatedEntry: PayrollEntry = {
-      ...entry,
-      cashAdvance,
-      additionalPay,
-      disbursement,
-      remarks,
-      chargedTo,
-      netPay,
-    };
-
-    setPendingId(entry.id);
-    setActiveEntries((prev) =>
-      prev.map((item) => (item.id === entry.id ? updatedEntry : item))
-    );
-    savePayrollEntryPreview(updatedEntry);
-
-    if (editingId === entry.id) {
-      setForm((current) => ({
-        ...current,
-        cashAdvance: String(cashAdvance),
-        additionalPay: String(additionalPay),
-        disbursement,
-        remarks,
-        chargedTo,
-      }));
-    }
-
-    startTransition(async () => {
-      const result = await updatePayrollEntry(entry.id, {
-        hours: updatedEntry.hours,
-        overtime_hours: updatedEntry.overtimeHours,
-        regular_pay: updatedEntry.regularPay,
-        overtime_pay: updatedEntry.overtimePay,
-        gross_pay: updatedEntry.grossPay,
-        cash_advance: updatedEntry.cashAdvance,
-        additional_pay: updatedEntry.additionalPay,
-        deductions: updatedEntry.deductions,
-        net_pay: updatedEntry.netPay,
-        site_assignment: updatedEntry.siteAssignment,
-        disbursement: updatedEntry.disbursement,
-        remarks: updatedEntry.remarks,
-        charged_to: updatedEntry.chargedTo,
-        status: updatedEntry.status,
-      });
-
-      if (result.error) {
-        setMessage(result.error);
-        setActiveEntries((prev) =>
-          prev.map((item) => (item.id === entry.id ? entry : item))
-        );
-        savePayrollEntryPreview(entry);
-      }
-      setPendingId(null);
-    });
-  }
 
   function handleExcelUpload(file: File | null) {
     if (!file) return;
@@ -1739,11 +1536,8 @@ export function PayrollClient({
             entries={activeEntries}
             category={dataTab}
             period={activePeriod}
-            pendingId={pendingId}
             sort={sort}
-            disbursementMethods={disbursementMethods}
             onToggleSort={toggleSort}
-            onInlineUpdate={handleInlineUpdate}
           />
         </div>
       </div>
