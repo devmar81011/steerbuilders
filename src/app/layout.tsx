@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
 import { company } from "@/lib/company-content";
+import { SITE_URL, getSiteUrl } from "@/lib/site";
 import "./globals.css";
 
 const montserrat = Montserrat({
@@ -12,8 +13,10 @@ const montserrat = Montserrat({
 const siteDescription =
   "Steer Builders Corporation — residential and commercial design-build, renovation, fit-outs, and project management for homeowners and developers in Cebu and the region.";
 
+const siteUrl = getSiteUrl();
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://steerbuilders-psi.vercel.app"),
+  metadataBase: new URL(siteUrl),
   title: {
     default: `${company.name} | Construction in Cebu`,
     template: `%s | ${company.name}`,
@@ -27,12 +30,16 @@ export const metadata: Metadata = {
     "commercial fit-out",
     "project management",
   ],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     title: `${company.name} | ${company.mantra}`,
     description: siteDescription,
     type: "website",
     locale: "en_PH",
     siteName: company.name,
+    url: siteUrl,
     images: [
       {
         url: "/brand/logo-full.png",
@@ -57,7 +64,7 @@ export const metadata: Metadata = {
 const localBusinessJsonLd = {
   "@context": "https://schema.org",
   "@type": "LocalBusiness",
-  "@id": "https://steerbuilderscorporation.com/#organization",
+  "@id": `${SITE_URL}/#organization`,
   name: company.name,
   description: siteDescription,
   slogan: company.mantra,
@@ -72,9 +79,9 @@ const localBusinessJsonLd = {
   },
   areaServed: ["Cebu", "Central Visayas", "Philippines"],
   foundingDate: String(company.founded),
-  url: "https://steerbuilderscorporation.com",
+  url: SITE_URL,
   hasMap: company.mapsHref,
-  image: "/brand/logo-full.png",
+  image: `${SITE_URL}/brand/logo-full.png`,
 };
 
 export default function RootLayout({

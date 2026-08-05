@@ -22,7 +22,10 @@ const nextConfig: NextConfig = {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
       "sb_publishable_DRiclP8oRtQvspRQ2rPelg_OcVtpSNs",
     NEXT_PUBLIC_ADMIN_HOST:
-      process.env.NEXT_PUBLIC_ADMIN_HOST ?? "steerbuilders.vercel.app",
+      process.env.NEXT_PUBLIC_ADMIN_HOST ?? "steerbuilderscorporation.com",
+    NEXT_PUBLIC_SITE_URL:
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      "https://steerbuilderscorporation.com",
   },
 };
 

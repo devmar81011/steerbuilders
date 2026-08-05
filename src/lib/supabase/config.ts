@@ -27,9 +27,11 @@ export function getSupabaseEnv() {
   };
 }
 
+import { SITE_HOST } from "@/lib/site";
+
 /** Production admin host with Supabase env vars configured. */
 export function getAdminHost() {
-  return process.env.NEXT_PUBLIC_ADMIN_HOST ?? "steerbuilders.vercel.app";
+  return process.env.NEXT_PUBLIC_ADMIN_HOST ?? SITE_HOST;
 }
 
 export function shouldRedirectToConfiguredAdminHost(host: string | null) {
