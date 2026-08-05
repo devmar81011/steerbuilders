@@ -369,12 +369,92 @@ body {
     gap: 8mm;
   }
 
+  /* Construction: 4 slips (2×2) per sheet for large crews */
+  .payroll-print-page-construction {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 3.5mm;
+    align-content: stretch;
+    height: 277mm;
+  }
+
   .payroll-print-admin-slip {
     border: 1px solid #101010;
     padding: 6mm;
     break-inside: avoid;
     page-break-inside: avoid;
     min-height: 120mm;
+  }
+
+  .payroll-print-construction-slip {
+    min-height: 0;
+    height: 100%;
+    padding: 3mm;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .payroll-print-construction-slip .payroll-print-admin-header {
+    padding-bottom: 1.5mm;
+    margin-bottom: 2mm;
+  }
+
+  .payroll-print-construction-slip .payroll-print-admin-header h2 {
+    font-size: 12px;
+  }
+
+  .payroll-print-construction-slip .payroll-print-eyebrow {
+    font-size: 7.5px;
+  }
+
+  .payroll-print-construction-slip .payroll-print-admin-header p:last-child {
+    font-size: 8px;
+  }
+
+  .payroll-print-construction-slip .payroll-print-admin-meta {
+    grid-template-columns: 1fr;
+    margin-bottom: 2mm;
+    font-size: 8px;
+    gap: 1mm;
+  }
+
+  .payroll-print-construction-slip .payroll-print-sheet-table {
+    margin-bottom: 2mm;
+    font-size: 8px;
+  }
+
+  .payroll-print-construction-slip .payroll-print-sheet-table th,
+  .payroll-print-construction-slip .payroll-print-sheet-table td {
+    padding: 0.7mm 0.9mm;
+  }
+
+  .payroll-print-construction-slip .payroll-print-disbursement {
+    margin: 0 0 1.5mm;
+    font-size: 8px;
+  }
+
+  .payroll-print-construction-slip .payroll-print-signatures {
+    margin-top: auto;
+    padding-top: 1.5mm;
+    gap: 3mm;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .payroll-print-construction-slip .payroll-print-sign-line {
+    margin-top: 5mm;
+  }
+
+  .payroll-print-construction-slip .payroll-print-sign-line-blank {
+    margin-top: 4mm;
+  }
+
+  .payroll-print-construction-slip .payroll-print-signatures-named strong {
+    font-size: 7.5px;
+  }
+
+  .payroll-print-construction-slip .payroll-print-signatures-named em {
+    font-size: 6.5px;
   }
 
   .payroll-print-admin-header {

@@ -328,18 +328,27 @@ function PayrollPrintSheet({
   payrollAdjustments: PayrollAdjustment[];
   employees: Employee[];
 }) {
-  const printable = entries.filter((entry) => entry.netPay > 0);
-  const pages = chunkEntries(printable, 2);
   const isAdmin = category === "admin";
+  const printable = entries.filter((entry) => entry.netPay > 0);
+  // Construction crews are large — pack 4 compact slips (2×2) per sheet.
+  // Admin keeps 2 taller slips stacked per sheet.
+  const slipsPerPage = isAdmin ? 2 : 4;
+  const pages = chunkEntries(printable, slipsPerPage);
   const heading = isAdmin
     ? "Admin · Semi-monthly payroll"
     : "Construction · Weekly payroll";
+  const pageClass = isAdmin
+    ? "payroll-print-page payroll-print-page-admin"
+    : "payroll-print-page payroll-print-page-construction";
+  const slipClass = isAdmin
+    ? "payroll-print-admin-slip"
+    : "payroll-print-admin-slip payroll-print-construction-slip";
 
   return (
     <div className="payroll-print-area">
       {pages.map((pageEntries, pageIndex) => (
         <section
-          className="payroll-print-page payroll-print-page-admin"
+          className={pageClass}
           key={`${period.key}-${category}-${pageIndex}`}
         >
           {pageEntries.map((entry) => {
@@ -494,7 +503,7 @@ function PayrollPrintSheet({
             const rowCount = Math.max(earningRows.length, deductionRows.length);
 
             return (
-              <article className="payroll-print-admin-slip" key={entry.id}>
+              <article className={slipClass} key={entry.id}>
                 <header className="payroll-print-admin-header">
                   <p className="payroll-print-eyebrow">
                     Steer Builders Corporation
