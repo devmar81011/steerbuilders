@@ -616,11 +616,7 @@ function PayrollPrintSheet({
                   </div>
                   <div>
                     <span className="payroll-print-sign-line" />
-                    <strong>
-                      {category === "admin"
-                        ? entry.chargedTo.trim() || "\u00a0"
-                        : entry.employeeName}
-                    </strong>
+                    <strong>{entry.chargedTo.trim() || "\u00a0"}</strong>
                     <em>Received by</em>
                   </div>
                 </div>
