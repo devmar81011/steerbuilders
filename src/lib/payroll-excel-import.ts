@@ -79,7 +79,8 @@ function toText(value: unknown): string {
 
 /**
  * Parse sheet names like "7.3.26" (M.D.YY) into a weekly payroll period.
- * Label = sheet tab date (July 3, 2026). Range = Mon–Sun week containing that date.
+ * Sheet tab = when the Excel was entered (any day). Period = Saturday of that week.
+ * Example: 7.3.26 (Fri) → July 4, 2026 (Sat), range Mon Jun 29 – Sun Jul 5.
  */
 export function periodFromSheetName(
   sheetName: string,

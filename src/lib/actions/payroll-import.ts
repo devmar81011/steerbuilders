@@ -483,7 +483,7 @@ export async function importConstructionPayrollExcel(
   if (!parsed.sheets.length) {
     return {
       error:
-        "No weekly payroll sheets found. Use sheet tabs named like 7.3.26 (week dates).",
+        "No weekly payroll sheets found. Use sheet tabs named like 7.3.26 (entry dates — pay period is that week’s Saturday).",
     };
   }
 

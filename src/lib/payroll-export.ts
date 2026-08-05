@@ -1,7 +1,6 @@
 import type { Employee, PayrollEntry } from "@/lib/mvp-data";
 import type { PayrollAdjustment } from "@/lib/payroll-adjustments";
 import type { PayrollPeriod, PayrollTab } from "@/lib/payroll-periods";
-import { formatDateISO, parseDateISO } from "@/lib/attendance";
 import {
   getDeductionAmount,
   resolveEntryDeductionBreakdown,
@@ -158,24 +157,14 @@ export function buildPayrollCsv(input: {
 }
 
 /**
- * Date used when exporting/uploading payroll for a period:
- * - Construction (weekly): Friday of that pay period
+ * Date used when exporting payroll for a period:
+ * - Construction (weekly): Saturday pay day
  * - Admin / OJT (semi-monthly): 15th or last day of the month
  */
 export function getPayrollUploadDate(
-  category: PayrollTab,
+  _category: PayrollTab,
   period: PayrollPeriod
 ): string {
-  if (period.cadence === "weekly" || category === "construction") {
-    const start = parseDateISO(period.periodStart);
-    const end = parseDateISO(period.periodEnd);
-    const cursor = new Date(start);
-    while (cursor <= end) {
-      if (cursor.getDay() === 5) return formatDateISO(cursor);
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    return period.periodEnd;
-  }
   return period.processDate;
 }
 

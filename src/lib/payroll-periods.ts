@@ -42,7 +42,19 @@ function buildSemiMonthlyKey(year: number, month: number, half: PayrollPeriodHal
   return `s-${year}-${String(month).padStart(2, "0")}-${half}`;
 }
 
-/** Construction weekly period — Monday to Sunday, labeled by an anchor date (sheet tab). */
+/** Saturday (pay day) of the Mon–Sun week containing `date`. */
+function getWeekSaturday(date: Date): Date {
+  const monday = parseDateISO(getWeekStart(date));
+  const saturday = new Date(monday);
+  saturday.setDate(saturday.getDate() + 5);
+  return saturday;
+}
+
+/**
+ * Construction weekly period — Monday to Sunday.
+ * Pay day / label / key = Saturday of that week.
+ * `anchorDateISO` may be any date in the week (e.g. Excel sheet tab entry date).
+ */
 export function getWeeklyPayrollPeriod(anchorDateISO: string): PayrollPeriod {
   const anchor = parseDateISO(anchorDateISO);
   const weekStart = getWeekStart(anchor);
@@ -50,19 +62,18 @@ export function getWeeklyPayrollPeriod(anchorDateISO: string): PayrollPeriod {
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
 
-  // Pay the Monday after the Sunday week end.
-  const processDate = new Date(end);
-  processDate.setDate(processDate.getDate() + 1);
+  // Payroll is always Saturday of the week (sheet tabs are entry dates only).
+  const saturday = getWeekSaturday(anchor);
+  const saturdayISO = formatDateISO(saturday);
 
   return {
-    // Key uses the sheet/anchor date so 7.3.26 stays "July 3, 2026".
-    key: buildWeeklyKey(anchorDateISO),
+    key: buildWeeklyKey(saturdayISO),
     cadence: "weekly",
     periodStart: weekStart,
     periodEnd: formatDateISO(end),
-    processDate: formatDateISO(processDate),
-    label: formatProcessDate(anchor),
-    processLabel: `Pay on ${formatProcessDate(processDate)}`,
+    processDate: saturdayISO,
+    label: formatProcessDate(saturday),
+    processLabel: `Pay on ${formatProcessDate(saturday)}`,
   };
 }
 
@@ -207,7 +218,7 @@ export const payrollTabMeta: Record<
     label: "Construction",
     description: "Weekly daily-rate payroll from attendance days worked.",
     scheduleNote:
-      "Weekly cutoffs (Mon–Sun), paid the following Monday after attendance is confirmed.",
+      "Weekly cutoffs (Mon–Sun), paid on Saturday of that week.",
   },
   admin: {
     label: "Admin",

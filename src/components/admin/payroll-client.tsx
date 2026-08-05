@@ -1648,7 +1648,7 @@ export function PayrollClient({
         </span>
         {activeTab === "admin"
           ? "Upload one Admin payroll workbook. Exports use the 15th or month-end for that cutoff."
-          : "Upload one Construction payroll workbook (sheet tabs like 7.3.26 / 7.10.26). Opens the latest week; exports use that week’s Friday."}
+          : "Upload one Construction payroll workbook. Sheet tabs (e.g. 7.3.26) are entry dates — the pay period is that week’s Saturday."}
       </p>
 
       {message && (
