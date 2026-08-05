@@ -2,9 +2,11 @@
 
 Website and admin payroll system for **Steer Builders Corporation (SBC)**.
 
+- **Live site:** https://steerbuilderscorporation.com
+- **Admin:** https://steerbuilderscorporation.com/admin
+- **Domain setup:** see **[DOMAIN.md](./DOMAIN.md)**
 - **GitHub:** https://github.com/devmar81011/steerbuilders
-- **Vercel (live):** https://steerbuilders.vercel.app
-- **Vercel (admin):** https://steerbuilders.vercel.app/admin
+- **Vercel (legacy):** https://steerbuilders.vercel.app
 - **Vercel dashboard:** https://vercel.com/mar81011s-projects/steerbuilders
 - **Supabase:** https://supabase.com/dashboard/project/stoocngdvtgvbbvdjmdo
 - **MVP status:** `/mvp` (live roadmap)
@@ -44,7 +46,9 @@ Add your Supabase anon key to `.env.local` from **Supabase → Project Settings 
    - `NEXT_PUBLIC_SUPABASE_URL` → `https://stoocngdvtgvbbvdjmdo.supabase.co`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → your Supabase publishable/anon key
    - `SUPABASE_SERVICE_ROLE_KEY` → your Supabase **service_role** or **secret** key (required for reliable photo uploads)
-   - `NEXT_PUBLIC_ADMIN_HOST` → `steerbuilders.vercel.app` (optional; used to redirect legacy deployments)
+   - `NEXT_PUBLIC_SITE_URL` → `https://steerbuilderscorporation.com`
+   - `NEXT_PUBLIC_ADMIN_HOST` → `steerbuilderscorporation.com`
+4. Attach the custom domain (Vercel Domains + DNS + Supabase Auth URLs) — see [DOMAIN.md](./DOMAIN.md)
 
 ## Database
 

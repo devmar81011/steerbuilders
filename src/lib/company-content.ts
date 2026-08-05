@@ -1,8 +1,11 @@
+import { SITE_URL } from "@/lib/site";
+
 export const company = {
   name: "Steer Builders Corporation",
   shortName: "SBC",
   mantra: "We help build your vision.",
   tagline: "Reliable Construction Services for Homeowners and Developers",
+  website: SITE_URL,
   address: "Space 308 OneTree Plaza Hotel, R. Duterte St., Banawa, Cebu City",
   /** Google Maps search / open-in-app link */
   mapsHref:
