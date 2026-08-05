@@ -374,25 +374,38 @@ body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
-    gap: 3.5mm;
+    gap: 3mm;
+    /* Keep slips inset so outer borders are not clipped by printer margins */
+    padding: 1.5mm;
+    box-sizing: border-box;
+    width: 100%;
+    height: 270mm;
     align-content: stretch;
-    height: 277mm;
   }
 
   .payroll-print-admin-slip {
-    border: 1px solid #101010;
+    border: 0.5mm solid #000000;
+    box-sizing: border-box;
     padding: 6mm;
     break-inside: avoid;
     page-break-inside: avoid;
     min-height: 120mm;
+    background: #ffffff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   .payroll-print-construction-slip {
     min-height: 0;
     height: 100%;
+    max-height: 100%;
     padding: 3mm;
     display: flex;
     flex-direction: column;
+    /* Explicit full box so every edge prints (outer edges were getting clipped) */
+    border: 0.5mm solid #000000;
+    box-shadow: inset 0 0 0 0.35mm #000000;
+    overflow: hidden;
   }
 
   .payroll-print-construction-slip .payroll-print-admin-header {
