@@ -3,6 +3,14 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = Number(process.env.PLAYWRIGHT_PORT || 3100);
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || `http://127.0.0.1:${PORT}`;
 
+/** Local Playwright-only secret; never set on Vercel production. */
+const e2eBypassSecret =
+  process.env.E2E_ADMIN_BYPASS_SECRET || "playwright-local-e2e-bypass";
+
+if (!process.env.E2E_ADMIN_BYPASS_SECRET) {
+  process.env.E2E_ADMIN_BYPASS_SECRET = e2eBypassSecret;
+}
+
 export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
@@ -41,5 +49,9 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,
+        env: {
+          ...process.env,
+          E2E_ADMIN_BYPASS_SECRET: e2eBypassSecret,
+        },
       },
 });

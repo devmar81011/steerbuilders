@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { requestHasE2eAdminBypass } from "@/lib/auth/e2e-bypass";
 import {
   getAdminHost,
   getSupabaseEnv,
@@ -18,6 +19,7 @@ export async function proxy(request: NextRequest) {
 
   const env = getSupabaseEnv();
   const isLoginPage = request.nextUrl.pathname === "/admin/login";
+  const e2eBypass = requestHasE2eAdminBypass(request);
 
   if (!env) {
     return NextResponse.next({ request });
@@ -45,7 +47,7 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const isAdmin = user?.app_metadata.role === "admin";
+  const isAdmin = e2eBypass || user?.app_metadata.role === "admin";
 
   if (!isAdmin && !isLoginPage) {
     return NextResponse.redirect(new URL("/admin/login", request.url));
