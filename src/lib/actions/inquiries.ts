@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { company } from "@/lib/company-content";
+import { sendInquiryNotification } from "@/lib/inquiry-email";
 
 export type InquiryInput = {
   name: string;
@@ -56,6 +57,8 @@ export async function submitInquiry(input: InquiryInput) {
         usedMailto: true,
       };
     }
+
+    await sendInquiryNotification(payload);
 
     return { success: true as const };
   } catch {

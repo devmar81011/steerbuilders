@@ -52,12 +52,10 @@ Apply the MVP schema from `supabase/migrations/001_mvp_schema.sql` in the Supaba
 
 ## Inquiry Notifications
 
-Get email notifications when someone submits the contact form:
+Contact form submissions are saved and emailed to the office automatically. No Supabase webhook setup is required.
 
-1. **View inquiries**: Visit `/admin/inquiries` to see all submissions
-2. **Set up email alerts**: Follow [INQUIRY_NOTIFICATIONS_SETUP.md](./INQUIRY_NOTIFICATIONS_SETUP.md) for step-by-step instructions
-
-Requires a free [Resend](https://resend.com) account for sending emails.
+- **View inquiries:** `/admin/inquiries`
+- **Details:** [INQUIRY_NOTIFICATIONS_SETUP.md](./INQUIRY_NOTIFICATIONS_SETUP.md)
 
 ## Brand assets
 
