@@ -50,6 +50,15 @@ Add your Supabase anon key to `.env.local` from **Supabase → Project Settings 
 
 Apply the MVP schema from `supabase/migrations/001_mvp_schema.sql` in the Supabase SQL editor.
 
+## Inquiry Notifications
+
+Get email notifications when someone submits the contact form:
+
+1. **View inquiries**: Visit `/admin/inquiries` to see all submissions
+2. **Set up email alerts**: Follow [INQUIRY_NOTIFICATIONS_SETUP.md](./INQUIRY_NOTIFICATIONS_SETUP.md) for step-by-step instructions
+
+Requires a free [Resend](https://resend.com) account for sending emails.
+
 ## Brand assets
 
 Logos and style guide live in `public/brand/`.

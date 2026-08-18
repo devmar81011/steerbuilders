@@ -1,0 +1,21 @@
+{
+  "name": "Steer Builders - Next.js Development",
+  "description": "Next.js 16 payroll system with Supabase backend and Playwright E2E tests",
+  "version": "1.0.0",
+  "repos": [
+    "github.com/devmar81011/steerbuilders"
+  ],
+  "install": "npm ci",
+  "start": "",
+  "environmentVariables": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://stoocngdvtgvbbvdjmdo.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_DRiclP8oRtQvspRQ2rPelg_OcVtpSNs",
+    "SUPERADMIN_PASSWORD": "steer-super"
+  },
+  "secretEnvironmentVariables": [
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "SUPERADMIN_SECRET",
+    "TEST_ADMIN_EMAIL",
+    "TEST_ADMIN_PASSWORD"
+  ]
+}

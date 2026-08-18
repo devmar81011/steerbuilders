@@ -15,6 +15,7 @@ const navItems = [
   { href: "/admin", label: "Home", exact: true },
   { href: "/admin/projects", label: "Projects" },
   { href: "/admin/payroll", label: "Payroll" },
+  { href: "/admin/inquiries", label: "Inquiries" },
   { href: "/admin/account", label: "Account" },
 ];
 
