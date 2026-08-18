@@ -1,9 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   serverExternalPackages: ["heic-convert", "heic-decode", "libheif-js"],
   images: {
     formats: ["image/avif", "image/webp"],
