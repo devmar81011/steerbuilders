@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { submitInquiry } from "@/lib/actions/inquiries";
 import { company } from "@/lib/company-content";
+import { notifyOfficeFromBrowser } from "@/lib/inquiry-browser-notify";
 
 export function ContactForm() {
   const [pending, startTransition] = useTransition();
@@ -28,6 +29,12 @@ export function ContactForm() {
       const result = await submitInquiry(form);
 
       if (result.success) {
+        notifyOfficeFromBrowser({
+          name: form.name.trim(),
+          email: form.email.trim(),
+          phone: form.phone.trim(),
+          message: form.message.trim(),
+        });
         setSubmittedName(form.name.trim());
         setStatus("success");
         setForm({ name: "", email: "", phone: "", message: "" });

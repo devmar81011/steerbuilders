@@ -31,9 +31,7 @@ function formatDate(dateString?: string): string {
 }
 
 function notificationEmail(): string {
-  return (
-    process.env.INQUIRY_NOTIFICATION_EMAIL?.trim() || company.email
-  );
+  return process.env.INQUIRY_NOTIFICATION_EMAIL?.trim() || company.email;
 }
 
 function buildHtml(inquiry: InquiryEmailPayload): string {
@@ -70,10 +68,6 @@ function buildHtml(inquiry: InquiryEmailPayload): string {
           <a href="https://steerbuilders.vercel.app/admin/inquiries" style="display:inline-block;background-color:#C8A15A;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600;">View in Admin Dashboard</a>
         </p>
       </div>
-      <p style="text-align:center;margin-top:20px;font-size:12px;color:#666;">
-        Steer Builders Corporation<br>
-        <a href="https://steerbuilders.vercel.app" style="color:#C8A15A;">steerbuilders.vercel.app</a>
-      </p>
     </div>
   </body>
 </html>`;
@@ -82,97 +76,60 @@ function buildHtml(inquiry: InquiryEmailPayload): string {
 function buildText(inquiry: InquiryEmailPayload): string {
   return [
     "New Inquiry Received",
-    "",
     `Submitted: ${formatDate(inquiry.createdAt)}`,
     `Name: ${inquiry.name}`,
     `Email: ${inquiry.email}`,
-    inquiry.phone ? `Phone: ${inquiry.phone}` : "",
+    inquiry.phone ? `Phone: ${inquiry.phone}` : null,
     "",
     "Project Details:",
     inquiry.message,
     "",
     "View in admin dashboard: https://steerbuilders.vercel.app/admin/inquiries",
   ]
-    .filter((line) => line !== "")
+    .filter((line) => line != null)
     .join("\n");
 }
 
-async function sendViaResend(inquiry: InquiryEmailPayload): Promise<boolean> {
+/** Server-side send via Resend when RESEND_API_KEY is set. Never throws. */
+export async function sendInquiryNotification(
+  inquiry: InquiryEmailPayload
+): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY?.trim();
   if (!apiKey) return false;
 
-  const from =
-    process.env.RESEND_FROM?.trim() ||
-    "Steer Builders <beth.t@example.com>";
+  try {
+    const from =
+      process.env.RESEND_FROM?.trim() ||
+      "Steer Builders <beth.t@example.com>";
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      from,
-      to: [notificationEmail()],
-      reply_to: inquiry.email,
-      subject: `New Inquiry from ${inquiry.name}`,
-      html: buildHtml(inquiry),
-      text: buildText(inquiry),
-    }),
-  });
-
-  if (!response.ok) {
-    const details = await response.text();
-    console.error("Resend inquiry email failed:", response.status, details);
-    return false;
-  }
-
-  return true;
-}
-
-async function sendViaFormSubmit(inquiry: InquiryEmailPayload): Promise<boolean> {
-  const to = notificationEmail();
-  const response = await fetch(
-    `https://formsubmit.co/ajax/${encodeURIComponent(to)}`,
-    {
+    const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Accept: "application/json",
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        _subject: `New Inquiry from ${inquiry.name}`,
-        _template: "table",
-        _captcha: "false",
-        _replyto: inquiry.email,
-        name: inquiry.name,
-        email: inquiry.email,
-        phone: inquiry.phone || "—",
-        message: inquiry.message,
-        submitted: formatDate(inquiry.createdAt),
+        from,
+        to: [notificationEmail()],
+        reply_to: inquiry.email,
+        subject: `New Inquiry from ${inquiry.name}`,
+        html: buildHtml(inquiry),
+        text: buildText(inquiry),
       }),
+    });
+
+    if (!response.ok) {
+      console.error(
+        "Resend inquiry email failed:",
+        response.status,
+        await response.text()
+      );
+      return false;
     }
-  );
 
-  if (!response.ok) {
-    const details = await response.text();
-    console.error("FormSubmit inquiry email failed:", response.status, details);
-    return false;
-  }
-
-  return true;
-}
-
-/** Notify the office inbox. Never throws — inquiry save must not depend on email. */
-export async function sendInquiryNotification(
-  inquiry: InquiryEmailPayload
-): Promise<void> {
-  try {
-    const sent = (await sendViaResend(inquiry)) || (await sendViaFormSubmit(inquiry));
-    if (!sent) {
-      console.error("Inquiry notification email was not sent.");
-    }
+    return true;
   } catch (error) {
     console.error("Inquiry notification email failed:", error);
+    return false;
   }
 }
