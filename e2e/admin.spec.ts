@@ -1,8 +1,33 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 const adminEmail =
   process.env.TEST_ADMIN_EMAIL ?? "info@steerbuilderscorporation.com";
 const adminPassword = process.env.TEST_ADMIN_PASSWORD;
+const e2eBypassSecret = process.env.E2E_ADMIN_BYPASS_SECRET;
+
+const canAuthenticate = Boolean(adminPassword || e2eBypassSecret);
+
+async function signInAsAdmin(page: Page) {
+  if (adminPassword) {
+    await page.goto("/admin/login");
+    await page.getByLabel("Email").fill(adminEmail);
+    await page.getByLabel("Password").fill(adminPassword);
+    await page.getByRole("button", { name: "Sign In" }).click();
+    await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 20_000 });
+    return;
+  }
+
+  if (!e2eBypassSecret) {
+    throw new Error("Missing TEST_ADMIN_PASSWORD or E2E_ADMIN_BYPASS_SECRET");
+  }
+
+  const response = await page.request.post("/api/e2e/session", {
+    data: { secret: e2eBypassSecret },
+  });
+  expect(response.ok()).toBeTruthy();
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 20_000 });
+}
 
 test.describe("Admin auth gate", () => {
   test("unauthenticated /admin redirects to login", async ({ page }) => {
@@ -27,16 +52,12 @@ test.describe("Admin auth gate", () => {
 
 test.describe("Admin authenticated flows", () => {
   test.skip(
-    !adminPassword,
-    "Set TEST_ADMIN_PASSWORD to run authenticated admin E2E tests."
+    !canAuthenticate,
+    "Set TEST_ADMIN_PASSWORD or E2E_ADMIN_BYPASS_SECRET for authenticated admin E2E."
   );
 
   test.beforeEach(async ({ page }) => {
-    await page.goto("/admin/login");
-    await page.getByLabel("Email").fill(adminEmail);
-    await page.getByLabel("Password").fill(adminPassword!);
-    await page.getByRole("button", { name: "Sign In" }).click();
-    await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 20_000 });
+    await signInAsAdmin(page);
   });
 
   test("ops home shows Construction, Admin, and Projects actions", async ({
