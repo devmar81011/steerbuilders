@@ -2,6 +2,16 @@
 
 All notable changes to Steer Builders. Format based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- Custom domain integration for `steerbuilderscorporation.com` (`DOMAIN.md`, sitemap, robots)
+- `www` → apex permanent redirect in `vercel.json`
+
+### Changed
+- Canonical site URL / admin host defaults from `*.vercel.app` to `steerbuilderscorporation.com`
+- Open Graph / JSON-LD / metadataBase use the custom domain
+
 ## [0.4.0] - 2026-07-12
 
 ### Added

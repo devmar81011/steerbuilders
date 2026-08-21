@@ -20,7 +20,7 @@ export type MvpPhase = {
 
 export const MVP_VERSION = "0.4.0";
 
-export const MVP_UPDATED = "2026-07-12";
+export const MVP_UPDATED = "2026-08-05";
 
 export const mvpPhases: MvpPhase[] = [
   {
@@ -132,6 +132,12 @@ export const mvpPhases: MvpPhase[] = [
         name: "Vercel Auto-Deploy",
         status: "done",
         notes: "Deploys on every push to main",
+      },
+      {
+        id: "custom-domain",
+        name: "Custom Domain",
+        status: "in_progress",
+        notes: "steerbuilderscorporation.com — finish Vercel Domains + DNS + Supabase Auth URLs (DOMAIN.md)",
       },
       {
         id: "supabase",

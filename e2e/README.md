@@ -33,5 +33,5 @@ Without `TEST_ADMIN_PASSWORD`, authenticated admin tests are skipped; login gate
 ## Against production
 
 ```bash
-PLAYWRIGHT_BASE_URL=https://steerbuilders.vercel.app npm run test:e2e:public
+PLAYWRIGHT_BASE_URL=https://steerbuilderscorporation.com npm run test:e2e:public
 ```
